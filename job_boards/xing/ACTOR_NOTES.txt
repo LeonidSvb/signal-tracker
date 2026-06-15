@@ -1,0 +1,87 @@
+XING JOBS SCRAPER — ACTOR TESTING NOTES
+Actor: shahidirfan/Xing-Jobs-Scraper
+Tested: 2026-06-08
+Account: APIFY_KEY_KAD1
+
+=============================================================
+INPUT ПАРАМЕТРЫ
+=============================================================
+
+keyword    string — ключевое слово (ЕДИНСТВЕННЫЙ параметр!)
+location   string — "Deutschland", "Germany" и тд
+maxItems/count/limit — НЕ ПОДДЕРЖИВАЕТСЯ, вернёт invalid-input
+startUrls  — НЕ ПОДДЕРЖИВАЕТСЯ
+
+Xing возвращает максимум ~20 результатов per query в публичном режиме
+
+=============================================================
+OUTPUT ПОЛЯ — что реально приходит (GOLD DATA)
+=============================================================
+
+job_id              string — Xing job ID, cache key
+title               string
+company             string — название компании
+company_industry    string — ЗОЛОТО: "Food", "Food and Beverage", "Consulting", etc.
+company_size        string — "51-200", "201-500" — для ICP фильтра
+company_public_profile  string — Xing профиль компании → Blitz enrichment
+company_city        string
+company_country     string
+date_posted         ISO datetime — НАДЁЖНОЕ поле для staleness
+active_until        ISO datetime — когда истечёт объявление
+location            string — город
+location_country_code   string — DE/FR/AT/CH
+salary              string — часто пусто
+description_text    string — полное описание
+apply_url           string — ссылка для применения
+
+=============================================================
+ЧТО РАБОТАЕТ — ЭФФЕКТИВНЫЕ KEYWORDS
+=============================================================
+
+1. "Geschäftsführer Lebensmittel Molkerei" → 20 items
+   MOGLi Naturkost GmbH — company_industry=Food ← ПРЯМАЯ food компания
+   HAPEKO — Geschäftsführer Lebensmittel (рекрутер, food клиент)
+
+2. "Direktor Fleisch Bäckerei food" → 20 items
+   Wilhelm Brandenburg GmbH — Bereichsleiter Lebensmittelproduktion Wurst ← РЕАЛЬНАЯ food компания
+
+3. "Managing Director food manufacturing" → 20 items
+   HAPEKO — Geschäftsführer Lebensmittelindustrie Kassel [2026-04-02] ← STALE (67 дней)!
+   Доказано: Xing ловит stale сигналы
+
+4. "Geschäftsführer Getränke Brauerei" → 20 items
+   Iro&Partners — Geschäftsleitung Stiegl-Brauwelt ← пивоварня (если ICP одобряет напитки)
+
+=============================================================
+ЧТО НЕ РАБОТАЕТ
+=============================================================
+
+"Werksleiter Nahrungsmittel" → 20 items но ВСЕ операционные роли
+  Schichtleiter Produktion, Hallenleiter, Linienmeister — не executive level
+
+=============================================================
+KEY INSIGHT: company_industry FIELD
+=============================================================
+
+Это самое ценное поле Xing. В отличие от LinkedIn (industries строка из профиля компании),
+Xing даёт company_industry из их таксономии.
+
+Фильтр включить: "Food", "Food and Beverage", "Food and Beverages", "Dairy", "Beverage"
+Фильтр exclude: "Consulting", "HR services", "Staffing" (это рекрутеры)
+Но рекрутеры — не blacklist! Если рекрутер постит food exec роль → это всё равно сигнал.
+Просто пометить recruiter_posting=true.
+
+=============================================================
+РЕКОМЕНДАЦИЯ ДЛЯ ПРОДАКШНА
+=============================================================
+
+4 запроса еженедельно, понедельник:
+  "Geschäftsführer Lebensmittel Molkerei" + Deutschland → ~$0.02 (20 items)
+  "Direktor Fleisch Nahrungsmittel" + Deutschland → ~$0.02
+  "Managing Director food manufacturing" + Germany → ~$0.02
+  "Geschäftsführer Getränke Brauerei" + Deutschland → ~$0.02
+  Total: ~$0.08/run = ~$0.32/month
+
+Фильтрация: company_industry CONTAINS food/beverage/dairy keywords
+Staleness: date_posted поле, 60/90 дней порог
+TAM matching: company + company_public_profile → Blitz enrichment

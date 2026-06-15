@@ -1,0 +1,58 @@
+{
+  "actor_id": "shahidirfan/Xing-Jobs-Scraper",
+  "apify_key_env": "APIFY_KEY_KAD1",
+  "companies_pass_csv": "C:\\Users\\79818\\Desktop\\Mastr_Leads\\clients\\philippe-bosquillon\\3_contacts\\companies_pass.csv",
+
+  "tests": {
+    "gf_lebensmittel": {
+      "keyword": "Geschäftsführer Lebensmittel Molkerei",
+      "location": "Deutschland",
+      "note": "Best — food GF, company_industry=Food filters cleanly"
+    },
+    "direktor_fleisch": {
+      "keyword": "Direktor Fleisch Bäckerei food",
+      "location": "Deutschland",
+      "note": "Food manufacturing director — mixed but useful"
+    },
+    "managing_director_food": {
+      "keyword": "Managing Director food manufacturing",
+      "location": "Germany",
+      "note": "EN-language food exec — stale Kassel role found here"
+    },
+    "gf_getraenke": {
+      "keyword": "Geschäftsführer Getränke Brauerei",
+      "location": "Deutschland",
+      "note": "Beverage/brewery — Stiegl found here"
+    }
+  },
+
+  "production_queries": [
+    { "keyword": "Geschäftsführer Lebensmittel Molkerei", "location": "Deutschland" },
+    { "keyword": "Direktor Fleisch Nahrungsmittel", "location": "Deutschland" },
+    { "keyword": "Managing Director food manufacturing", "location": "Germany" },
+    { "keyword": "Geschäftsführer Getränke Brauerei", "location": "Deutschland" }
+  ],
+
+  "output_fields": {
+    "job_id": "string — Xing job ID, use as cache key",
+    "title": "string",
+    "company": "string",
+    "company_industry": "string — GOLD: e.g. 'Food', 'Food and Beverage', 'Dairy' — use for food filter",
+    "company_size": "string — e.g. '51-200'",
+    "company_public_profile": "string — Xing company URL",
+    "location": "string — city",
+    "location_country_code": "string — DE/FR/etc",
+    "date_posted": "string — ISO date, use for staleness",
+    "active_until": "string — when job expires",
+    "salary": "string — often empty",
+    "description_text": "string — full job description",
+    "apply_url": "string"
+  },
+
+  "do_not": [
+    "keyword Werksleiter Nahrungsmittel — returns Schichtleiter/Linienmeister, too operational",
+    "add maxItems or count or limit — not supported, actor ignores them",
+    "add startUrls — not supported",
+    "expect more than 20 results per query — Xing caps public search at 20"
+  ]
+}

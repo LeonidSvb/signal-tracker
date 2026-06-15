@@ -1,0 +1,159 @@
+LINKEDIN JOB SCRAPER — ACTOR TESTING NOTES
+Actor: curious_coder/linkedin-jobs-scraper
+Tested: 2026-06-08
+Cost: $0.47 total (9 test runs, 468 raw results)
+Account: APIFY_KEY_KAD1_BLOCKED (kadekwasriaty@gmail.com)
+
+=============================================================
+INPUT ПАРАМЕТРЫ (подтверждено тестами)
+=============================================================
+
+urls        array of strings (НЕ [{url:...}] — plain strings!)
+count       integer — ГЛОБАЛЬНЫЙ лимит на весь запуск, не на URL
+scrapeCompany  bool — дает companyWebsite, companyEmployeesCount, companyDescription
+splitByLocation  bool — ТРЕБУЕТ сессию, без cookies возвращает 1 результат, не использовать
+splitCountry    string (DE/FR/NL/BE) — только при splitByLocation=true
+
+=============================================================
+OUTPUT ПОЛЯ — что реально приходит
+=============================================================
+
+id                    string — уникальный job ID, использовать как cache key
+title                 string — название роли
+companyName           string — название компании
+companyLinkedinUrl    string — LinkedIn профиль компании → для Blitz enrichment
+companyWebsite        string — сайт компании
+companyEmployeesCount int    — количество сотрудников из LinkedIn профиля (надёжно)
+companyDescription    string — описание компании
+industries            string — индустрия компании (НЕ вакансии) → главный фильтр
+location              string — "City, Region, Country"
+postedAt              string — ISO дата "2026-06-01" → легко вычислить days_ago
+applicantsCount       string — "25", "180" — ненадёжно, LinkedIn округляет
+seniorityLevel        string — "Not Applicable" в 80% случаев, НЕ использовать
+jobFunction           string — слабый сигнал
+link                  string — URL вакансии на LinkedIn
+descriptionText       string — полный текст описания
+
+=============================================================
+ЧТО СРАБОТАЛО ХОРОШО
+=============================================================
+
+1. СПЕЦИФИЧНЫЕ КЛЮЧЕВЫЕ СЛОВА ПО СУБОРАТСЛЯМ
+   Вместо "food director" → конкретные слова по секторам:
+   DE: Geschäftsführer Molkerei, Direktor Fleisch, Werksleiter Bäckerei, Werksleiter Nahrungsmittel, Geschäftsführer Getränke
+   FR: directeur usine agroalimentaire, DG agroalimentaire, DRH industrie alimentaire, directeur commercial agroalimentaire
+   NL/BE: directeur voedingsmiddelen, directeur voeding food, directeur alimentaire
+   Результат: 2-3x больше релевантных сигналов vs широкие запросы
+
+2. ФИЛЬТРАЦИЯ ПО ПОЛЮ industries (post-scrape)
+   industries = "Food and Beverage Manufacturing" / "Dairy" / "Bakery" / etc.
+   Это поле из LinkedIn профиля компании — надёжнее чем keywords в URL
+   Ключевые значения для включения:
+     food and beverage, food & beverage, food manufacturing, food production,
+     dairy, meat processing, bakery, confectionery, beverage manufacturing,
+     food ingredients, agroalimentaire, nahrungsmittel, voedingsmiddelen
+
+3. STALE РОЛИ РЕАЛЬНО ПРИСУТСТВУЮТ
+   LinkedIn не удаляет активные вакансии из публичного поиска
+   Нашли роли 59-278 дней открытые — ключевой сигнал для headhunter
+
+4. ДАННЫЕ КАЧЕСТВЕННЫЕ
+   companyEmployeesCount точный integer (не "1001-5000" строка как у Indeed)
+   postedAt — ISO дата, точная
+   companyLinkedinUrl — прямой вход для Blitz enrichment
+
+5. ОПТИМАЛЬНАЯ КОНФИГУРАЦИЯ
+   3 запуска по 4-5 URL каждый, count=100 → ~400 raw results, ~$0.30
+   - de_specific_sectors: 5 DE URL по суботраслям
+   - fr_specific_sectors: 4 FR URL по суботраслям
+   - split_nl_be: 4 NL+BE URL
+
+=============================================================
+ЧТО НЕ СРАБОТАЛО / ЛОВУШКИ
+=============================================================
+
+1. f_I=96 И f_E=4,5,6 ФИЛЬТРЫ В URL — ИГНОРИРУЮТСЯ
+   Публичный LinkedIn без сессии не применяет industry и seniority фильтры
+   Получали фарму, строительство, software рядом с food результатами
+   Решение: убрать из URL, фильтровать по industries полю постфактум
+
+2. splitByLocation=true — НЕ РАБОТАЕТ БЕЗ КУКИ
+   С включённым параметром возвращает 1 результат вместо расщепления по городам
+   Полностью бесполезен без authenticated session
+
+3. count — ГЛОБАЛЬНЫЙ ЛИМИТ, НЕ НА URL
+   14 URLs + count=100 → 100 результатов total (не 1400)
+   При первом тесте потеряли 93% потенциальных результатов
+   Решение: разбивать на группы 4-5 URL per run, count=100 per group
+
+4. urls ПРИНИМАЕТ СТРОКИ, НЕ ОБЪЕКТЫ
+   Первый запуск упал с ERR_INVALID_URL — передавали [{url:"..."}]
+   Правильно: ["https://..."]
+
+5. КЕЙТЕРИНГ ПОПАДАЕТ В FOOD ФИЛЬТР
+   Sodexo, Newrest, Compass Group, Elior, Aramark, Eurest
+   industries = "Food and Beverages" но это НЕ наш ICP (производители, не кейтеринг)
+   Blacklist по company name обязателен
+
+6. ШИРОКИЕ ЗАПРОСЫ — НИЗКАЯ ТОЧНОСТЬ
+   "food director Geschäftsführer" location=Germany → 4 результата (0-1 релевантных)
+   "Geschäftsführer Lebensmittel" multi-URL → пришли хедхантеры и консалтинг
+   Широкие запросы без суботрасли = шум
+
+7. seniorityLevel ПОЛЕ — БЕСПОЛЕЗНО
+   80% результатов = "Not Applicable", даже для реальных C-level ролей
+   Не использовать для фильтрации
+
+=============================================================
+ТЕСТЫ В ДЕТАЛЯХ
+=============================================================
+
+smoke_de (1 URL, count=25)
+  → 4 raw, 3 exec+food, 1 TAM match (Planted Managing Director)
+  → Подтвердили: актор работает, поля качественные
+
+eu_sweep (5 URLs с f_I+f_E, count=50)
+  → 50 raw, 5 exec+food, 0 TAM
+  → Подтвердили: f_I фильтр не работает (пришёл Sofitel hotel)
+
+broader_food (3 URLs, count=100)
+  → 2 raw — катастрофа
+  → Причина: слишком много ключевых слов в одном запросе, LinkedIn матчит меньше
+
+full_14q (14 URLs, count=100)
+  → 100 raw (count глобальный!), 8 exec+food, 0 TAM
+  → Подтвердили проблему глобального count
+
+split_de_werksleiter / split_de_gf / split_fr_directeur (splitByLocation тесты)
+  → 1 raw каждый — splitByLocation не работает без сессии
+
+split_nl_be (4 URLs NL+BE без фильтров, count=100)
+  → 100 raw, 16 exec+food, 0 TAM — хорошо
+  → Ardo (2d), La Lorraine (59d stale), Planet Foods
+
+de_specific_sectors (5 суботраслевых URLs DE, count=100)
+  → 105 raw, 32 exec+food, 4 TAM — ЛУЧШИЙ ТЕСТ
+  → Ritter Sport, Aviko, Planted, HARIBO, DMK, Hügli, Mars, Intersnack, Ferrero
+
+fr_specific_sectors (4 URL FR, count=100)
+  → 101 raw, 27 exec+food, 0 TAM
+  → AGIS/LDC, Symrise, Mondelez, Groupe Nutriset (90d stale), Fromageries de l'Ermitage (278d stale)
+
+=============================================================
+PRODUCTION КОНФИГУРАЦИЯ (финальная)
+=============================================================
+
+Запускать 3 актора еженедельно, понедельник утром:
+  Run 1: de_specific_sectors (5 URL DE по суботраслям, count=100) ~$0.10
+  Run 2: fr_specific_sectors (4 URL FR по суботраслям, count=100) ~$0.10
+  Run 3: split_nl_be (4 URL NL+BE, count=100)                     ~$0.10
+  Total: ~$0.30/run = $1.20/month
+
+Конфигурация URL в: signals/job_boards/linkedin/config.json
+Скрипты в:          signals/job_boards/linkedin/
+  run_test.mjs         — запуск одного именованного теста
+  run_all_new.mjs      — серия тестов с live агрегацией
+  aggregate_signals.mjs — финальный агрегат всех raw файлов
+  analyze.mjs          — анализ одного теста (для дебага)
+
+Следующий шаг: scanner.mjs с кеш-логикой (spec в todo.txt)

@@ -1,0 +1,86 @@
+CADREMPLOI SCRAPER — ACTOR TESTING NOTES
+Actor: blackfalcondata/cadremploi-scraper
+Tested: 2026-06-08
+Account: APIFY_KEY_KAD2
+
+=============================================================
+ВАЖНО: ОГРАНИЧЕНИЯ АКТОРА
+=============================================================
+
+1. company = РЕКРУТЕР, не работодатель
+   Cadremploi показывает кто разместил объявление — обычно кадровое агентство.
+   Реальный food производитель скрыт. Нет прямого TAM matching.
+   Компания в поле company: ADH HOMMES & STRATÉGIE, TIME RECRUTEMENT, MICHAEL PAGE...
+
+2. postedDate = null в ~95% случаев
+   Нельзя определить сколько объявление висит по абсолютной дате.
+   РЕШЕНИЕ: использовать firstSeenAt/lastSeenAt из полей актора для cache-based stale detection.
+
+=============================================================
+INPUT ПАРАМЕТРЫ
+=============================================================
+
+keyword    string — ключевое слово по-французски
+maxItems   int — максимум результатов
+
+DRH industrie alimentaire → 0 results — не работает
+directeur agroalimentaire → 25 results — РАБОТАЕТ
+directeur usine alimentaire → 19 results — РАБОТАЕТ
+
+=============================================================
+OUTPUT ПОЛЯ
+=============================================================
+
+jobId           string — cache key
+title           string — часто содержит "agroalimentaire" в названии
+company         string — РЕКРУТЕР (не food компания)
+location        string
+postedDate      null — не надёжно
+firstSeenAt     ISO datetime — когда актор ВПЕРВЫЕ нашёл это объявление (cache key)
+lastSeenAt      ISO datetime — последний раз актор видел это объявление
+expiredAt       ISO datetime — когда объявление исчезло с сайта
+isRepost        bool — true если повторное размещение
+portalUrl       string — URL на Cadremploi
+description     string — полный текст (иногда содержит намёки на реальную компанию)
+
+=============================================================
+СТРАТЕГИЯ STALE DETECTION ДЛЯ CADREMPLOI
+=============================================================
+
+Нет абсолютной даты → используем cache:
+  1. Первый скрап: сохранить jobId + firstSeen = NOW()
+  2. Следующий скрап: если jobId ещё в результатах → обновить lastSeen
+  3. Если lastSeen - firstSeen >= 60 дней → SIGNAL_STALE
+  4. Если jobId исчез из результатов → filled or expired, удалить из cache
+
+Поле firstSeenAt в данных актора = дата которую видит САМА БАЗА Cadremploi (не надёжно).
+Используй НАШЕ firstSeen из локального cache.json.
+
+=============================================================
+ПОЛЕЗНОСТЬ ДЛЯ PHILIPPE
+=============================================================
+
+СРЕДНЯЯ:
++ Даёт exec food роли во Франции (titles: DIRECTEUR DE SITE, DIRECTEUR USINE)
++ 25-50 results per query
++ Cache-based stale detection возможен
+- Нет прямого company name → нет TAM matching
+- Нельзя знать изначальную дату размещения
+- Все через рекрутеров (конкуренция Philippe, не цель)
+
+Использовать как: сигнал "рынок ищет food exec директоров во FR" — quantity и trend signal.
+Не использовать для: прямой outreach к конкретной компании.
+
+=============================================================
+РЕКОМЕНДАЦИЯ ДЛЯ ПРОДАКШНА
+=============================================================
+
+3 запроса еженедельно:
+  "directeur agroalimentaire" → 50 items
+  "directeur usine alimentaire" → 50 items
+  "directeur general industrie alimentaire" → 50 items
+  Total: ~$0.05/run = ~$0.20/month
+
+Фильтрация: title содержит agroalimentaire/alimentaire/food + exec keywords
+Staleness: cache-based (наш cache.json), не postedDate
+Приоритет НИЖЕ чем LinkedIn/StepStone/Xing — нет company names

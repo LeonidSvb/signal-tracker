@@ -1,0 +1,53 @@
+{
+  "actor_id": "memo23/stepstone-search-cheerio-ppr",
+  "apify_key_env": "APIFY_KEY_KAD2",
+  "companies_pass_csv": "C:\\Users\\79818\\Desktop\\Mastr_Leads\\clients\\philippe-bosquillon\\3_contacts\\companies_pass.csv",
+
+  "tests": {
+    "gf_lebensmittel": {
+      "keyword": "Geschäftsführer Lebensmittel",
+      "location": "Deutschland",
+      "maxItems": 50,
+      "note": "BEST — food GF roles, low noise"
+    },
+    "werksleiter_food": {
+      "keyword": "Werksleiter Lebensmittel Bäckerei",
+      "location": "Deutschland",
+      "maxItems": 50,
+      "note": "Plant manager food sector"
+    },
+    "gf_getraenke": {
+      "keyword": "Geschäftsführer Getränke Brauerei",
+      "location": "Deutschland",
+      "maxItems": 50,
+      "note": "Beverage / brewery GF"
+    }
+  },
+
+  "production_queries": [
+    { "keyword": "Geschäftsführer Lebensmittel", "location": "Deutschland", "maxItems": 50 },
+    { "keyword": "Werksleiter Lebensmittel Bäckerei", "location": "Deutschland", "maxItems": 50 },
+    { "keyword": "Geschäftsführer Getränke Brauerei", "location": "Deutschland", "maxItems": 50 }
+  ],
+
+  "output_fields": {
+    "id": "int — StepStone job ID, use as cache key",
+    "title": "string",
+    "companyName": "string",
+    "companyUrl": "string — StepStone company page",
+    "datePosted": "ISO datetime — use for staleness",
+    "location": "string",
+    "textSnippet": "string — excerpt with bold keywords, useful for food verification",
+    "salary": "string — often empty",
+    "isAnonymous": "bool — true = company hidden"
+  },
+
+  "do_not": [
+    "keyword Direktor Molkerei Fleisch — returns hospital/bank directors, 90% noise",
+    "keyword Head of Operations Lebensmittel — returns pharma/logistics, not food",
+    "keyword Managing Director food Germany — English terms return too few results on DE platform",
+    "easyapi/stepstone-jobs-scraper — ignores keywords, returns AI jobs from homepage",
+    "santamaria/stepstone-de-scraper — wrong data source (Swiss aggregator), no datePosted field",
+    "fatihtahta/stepstone-scraper — returns 0 results"
+  ]
+}

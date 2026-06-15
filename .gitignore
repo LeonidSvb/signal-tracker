@@ -1,32 +1,28 @@
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-
-# local env files
-.env*.local
+# Secrets
 .env
+.env.local
 
-# vercel
-.vercel
+# Next.js
+nextjs/node_modules/
+nextjs/.next/
+nextjs/*.tsbuildinfo
+nextjs/next-env.d.ts
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Python cache
+__pycache__/
+*.pyc
+
+# Cached API results (большие файлы, не нужны в репо)
+job_boards/*/results/
+job_boards/*.csv
+job_boards/cache.json
+job_boards/pipeline_cache.json
+job_boards/test_log.csv
+job_boards/findings.txt
+exa/results/
+career_pages/data/
+enrichment/
+
+# Old stuff
+_archive/
+app/

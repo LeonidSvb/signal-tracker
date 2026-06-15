@@ -1,0 +1,110 @@
+{
+  "actor_id": "misceres/indeed-scraper",
+  "apify_key_env": "APIFY_KEY_KAD1_BLOCKED",
+  "price_per_result_usd": 0.005,
+  "results_dir": "C:/Users/79818/Desktop/Mastr_Leads/clients/philippe-bosquillon/signals/job_boards/indeed/results",
+
+  "notes": [
+    "country param REQUIRED — without it actor searches indeed.com (US), returns 0 for EU keywords",
+    "Max 2 parallel runs (memory limit 8192MB)",
+    "Output fields: positionName, company, location, postingDateParsed, isExpired, description, url"
+  ],
+
+  "tests": {
+    "de_gf_nahrungsmittel": {
+      "desc": "DE Geschaeftsfuehrer Nahrungsmittel — Lebensmittel synonym, finds different companies",
+      "position": "Geschaeftsfuehrer Nahrungsmittel",
+      "location": "Deutschland",
+      "country": "DE",
+      "maxItems": 50
+    },
+
+    "de_werksleiter": {
+      "desc": "DE Werksleiter Lebensmittelproduktion — plant directors food",
+      "position": "Werksleiter Lebensmittelproduktion",
+      "location": "Deutschland",
+      "country": "DE",
+      "maxItems": 50
+    },
+
+    "de_kaufm_leiter": {
+      "desc": "DE Kaufmaennischer Leiter Lebensmittelindustrie — commercial directors food",
+      "position": "Kaufmaennischer Leiter Lebensmittelindustrie",
+      "location": "Deutschland",
+      "country": "DE",
+      "maxItems": 50
+    },
+
+    "de_betriebsleiter": {
+      "desc": "DE Betriebsleiter Lebensmittel — ops directors food",
+      "position": "Betriebsleiter Lebensmittel",
+      "location": "Deutschland",
+      "country": "DE",
+      "maxItems": 50
+    },
+
+    "de_gf_lebensmittel": {
+      "desc": "DE Geschaeftsfuehrer Lebensmittel — proven session 2 query",
+      "position": "Geschaeftsfuehrer Lebensmittel",
+      "location": "Deutschland",
+      "country": "DE",
+      "maxItems": 50
+    },
+
+    "de_personalleiter": {
+      "desc": "DE Personalleiter Lebensmittelindustrie — HR directors food",
+      "position": "Personalleiter Lebensmittelindustrie",
+      "location": "Deutschland",
+      "country": "DE",
+      "maxItems": 50
+    },
+
+    "fr_directeur_usine": {
+      "desc": "FR directeur usine agroalimentaire — plant directors",
+      "position": "directeur usine agroalimentaire",
+      "location": "France",
+      "country": "FR",
+      "maxItems": 50
+    },
+
+    "fr_directeur_general": {
+      "desc": "FR directeur general agroalimentaire — GDs food",
+      "position": "directeur general agroalimentaire",
+      "location": "France",
+      "country": "FR",
+      "maxItems": 50
+    },
+
+    "nl_directeur_voeding": {
+      "desc": "NL directeur voedingsmiddelen — food directors Netherlands",
+      "position": "directeur voedingsmiddelen",
+      "location": "Nederland",
+      "country": "NL",
+      "maxItems": 50
+    },
+
+    "nl_directeur_voedingsindustrie": {
+      "desc": "NL directeur voedingsindustrie — broader NL food industry directors",
+      "position": "directeur voedingsindustrie",
+      "location": "Nederland",
+      "country": "NL",
+      "maxItems": 50
+    },
+
+    "be_directeur_alimentaire": {
+      "desc": "BE directeur alimentaire — FR-speaking Belgium food directors",
+      "position": "directeur alimentaire",
+      "location": "Belgique",
+      "country": "BE",
+      "maxItems": 50
+    },
+
+    "be_directeur_levensmiddelen": {
+      "desc": "BE directeur levensmiddelen — NL-speaking Belgium food directors",
+      "position": "directeur levensmiddelen",
+      "location": "Belgie",
+      "country": "BE",
+      "maxItems": 50
+    }
+  }
+}

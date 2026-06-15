@@ -1,0 +1,98 @@
+CAREER PAGE MONITORING -- PLAN
+==============================
+
+GOAL: monitor careers pages of 2442 ICP companies -> catch hiring signals
+      that job boards miss (companies posting only on own site)
+
+
+PHASE 1 -- DISCOVERY
+---------------------
+[x] DONE 2026-06-08
+    1479 own career pages + 369 ATS pages out of 2243 companies (83% coverage)
+    CSVs: data/test_9999_careers_20260608_2334.csv / test_9999_ats_20260608_2334.csv
+    Script: scripts/discover_careers.py (supports --retry mode)
+    Note: ~17% companies have zero web presence -- covered by Apify job boards
+
+
+PHASE 2 -- CHANGEDETECTION SETUP
+---------------------------------
+[x] DONE 2026-06-08
+    Service: changedetection.pamelacoreypc.com (self-hosted on VPS)
+    API key: 43a166fcf88e6ba2e512773ca8a738ff
+    2517 watches imported (1344 career pages + 1173 ATS), 24h interval
+    Script: scripts/import_to_changedetection.py
+
+
+PHASE 3 -- n8n INTEGRATION
+---------------------------
+[x] DONE 2026-06-09 -- FULLY LIVE
+
+  [x] LLM classifier tested -- 8/8 with gpt-oss-120b (also tested gpt-4o-mini)
+      Script: scripts/test_llm_classifier.py
+
+  [x] career-diffs workflow (ID: JNltdXbbV0CTF1AF) -- ACTIVE
+      All diffs -> shared-postgres.platform.career_diffs (raw, no filter)
+      For analysis: query via psql or Supabase Studio (SSH tunnel 8001)
+
+  [x] career-signals workflow (ID: zI6bmINiOKy0DtOe) -- ACTIVE
+      LLM: gpt-oss-120b via OpenRouter (key in .env.shared OPENROUTER_KEY)
+      Relevant diffs -> Google Sheets 1JrC-.../Career Signals tab + Telegram thread 3
+      Criteria: Director/Head/VP/C-level/DRH/Leiter, 80k+ EUR, FR/DE/NL/BE/CH/AT
+
+  [x] Webhooks on all 2494 watches: both career-diffs AND career-signals
+      Script: scripts/update_changedetection_webhooks.py (re-run after new imports)
+
+  [x] Sticky notes in both n8n workflows with full context + file paths
+
+
+PHASE 4 -- MAINTENANCE (ongoing)
+---------------------------------
+  [ ] monthly: re-run discover_careers.py --retry on 404 URLs
+  [ ] quarterly: re-run full discovery on new companies in companies_pass.csv
+  [ ] quarterly: re-run ATS detection (companies adopt new ATS platforms)
+  [ ] as needed: re-run update_changedetection_webhooks.py after new imports
+
+
+NEXT SESSION PRIORITIES
+-----------------------
+
+  1. ANALYSE RAW DIFFS (after 2-5 days of real data)
+     SELECT company, url, diff_length, diff_added FROM career_diffs ORDER BY received_at DESC;
+     - What % of pages actually change per day?
+     - What types of changes: nav/cookie/promo vs real job postings?
+     - False positives from LLM? False negatives?
+     - -> Calibrate prompt or add keyword pre-filter if needed
+
+  2. KEYWORD PRE-FILTER in Changedetection (optional, saves ~80% LLM calls)
+     Per-watch trigger_text: Director, Head of, VP, DRH, Leiter, CFO, COO
+     Only fire webhook if these keywords appear in diff
+     -> Reduces OpenRouter cost significantly at scale
+
+  3. DEACTIVATE career-diffs after analysis is done
+     Once we understand signal quality, the raw Postgres collection is no longer needed
+     -> Saves n8n executions, simplifies pipeline
+     -> Update watches to career-signals only (run update_changedetection_webhooks.py)
+
+  4. OUTREACH INTEGRATION (Phase 5)
+     When signal hits Google Sheets -> trigger BlitzAPI contact lookup for that domain
+     Auto-enrich: find recruiter/HR contact at company -> add to outreach sequence
+     This closes the loop: signal detected -> contact found -> email sent
+
+  5. GOOGLE SHEET SETUP
+     Tab "Career Signals" needs proper header row if not already created:
+     date_received | company | url | role_title | seniority | language |
+     reason | diff_preview | status | notes | date_contacted
+
+
+SIGNAL COVERAGE MAP
+--------------------
+  Apify job boards (existing): LinkedIn/StepStone/Xing/Cadremploi -- companies posting publicly
+  career_pages (this system):  companies posting only on own /careers -- often avoid board fees
+  ats_pages (this system):     Greenhouse/Lever etc. -- parallel or unique listings
+  overlap = higher priority signal (same company appearing in multiple sources)
+
+
+INFRASTRUCTURE NOTES
+---------------------
+  See docs/server-config.md for: VPS paths, API keys, Postgres credentials,
+  Docker network setup (WARNING re: app_net), n8n workflow IDs.

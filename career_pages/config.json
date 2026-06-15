@@ -1,0 +1,45 @@
+{
+  "description": "Career page discovery and monitoring for 2442 ICP companies",
+  "source_file": "../../1_filtering/companies_pass.csv",
+  "output_dir": "data/",
+
+  "url_patterns": {
+    "FR": ["/carrieres", "/recrutement", "/nous-rejoindre", "/offres-emploi", "/rejoindre", "/emploi", "/jobs"],
+    "DE": ["/karriere", "/jobs", "/stellenangebote", "/stellen", "/arbeiten-bei-uns", "/karriere-bei-uns"],
+    "NL": ["/vacatures", "/werken-bij", "/carriere", "/jobs", "/vacature"],
+    "BE": ["/vacatures", "/carrieres", "/recrutement", "/jobs", "/werken-bij"],
+    "CH": ["/karriere", "/carrieres", "/jobs", "/stellenangebote", "/recrutement"],
+    "AT": ["/karriere", "/jobs", "/stellenangebote", "/stellen"],
+    "default": ["/careers", "/jobs", "/join-us", "/work-with-us", "/opportunities", "/open-positions", "/hiring"]
+  },
+
+  "ats_subdomains": [
+    "jobs.{domain}",
+    "careers.{domain}",
+    "recrutement.{domain}",
+    "karriere.{domain}",
+    "vacatures.{domain}"
+  ],
+
+  "ats_platforms": [
+    "greenhouse.io",
+    "lever.co",
+    "workday.com",
+    "bamboohr.com",
+    "teamtailor.com",
+    "welcometothejungle.com",
+    "recruitee.com",
+    "jobvite.com"
+  ],
+
+  "monitor_keywords": [
+    "recruteur", "recruiter", "talent acquisition", "rh", "drh", "responsable rh",
+    "hr manager", "head of hr", "people", "chro",
+    "personalleiter", "recruiter", "hr leiter",
+    "hr manager", "recruiter", "talent"
+  ],
+
+  "check_interval_hours": 24,
+  "request_timeout_seconds": 8,
+  "concurrency": 50
+}

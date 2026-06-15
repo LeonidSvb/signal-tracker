@@ -1,0 +1,84 @@
+STEPSTONE SCRAPER — ACTOR TESTING NOTES
+Actor: memo23/stepstone-search-cheerio-ppr
+Tested: 2026-06-08
+Account: APIFY_KEY_KAD2
+
+=============================================================
+ПРАВИЛЬНЫЙ АКТОР
+=============================================================
+
+memo23/stepstone-search-cheerio-ppr — РАБОТАЕТ
+  Возвращает релевантные food exec роли при правильных keywords
+  Поля: id, title, companyName, datePosted, location, textSnippet
+
+НЕ ИСПОЛЬЗОВАТЬ:
+  easyapi/stepstone-jobs-scraper (55K runs) — ИГНОРИРУЕТ keywords
+    Возвращает результаты поиска с главной страницы StepStone AI
+    Первые результаты: KI-Produktmanager, AI Solution Specialist — не еда вообще
+  santamaria-automations/stepstone-de-scraper — НЕПРАВИЛЬНЫЙ ИСТОЧНИК
+    100 items возвращает но это швейцарский агрегатор (поле canton присутствует)
+    Педагоги, механики, SAP консультанты — никакой еды
+    Нет поля datePosted вообще!
+  fatihtahta/stepstone-scraper-fast-reliable-4-1k — НОЛЬ items при любых keyword
+
+=============================================================
+INPUT ПАРАМЕТРЫ
+=============================================================
+
+keyword    string — ключевое слово для поиска
+location   string — "Deutschland", "France" и тд
+maxItems   int (min 30) — максимум результатов
+
+=============================================================
+OUTPUT ПОЛЯ — что реально приходит
+=============================================================
+
+id                int — StepStone job ID, cache key
+title             string
+companyName       string — название компании (или HAPEKO/другой хедхантер)
+companyUrl        string — StepStone страница компании
+datePosted        ISO datetime — ЕСТЬ! Надёжное
+location          string
+textSnippet       string — excerpt с жирными ключевыми словами, полезно для food проверки
+isAnonymous       bool — true = компания скрыта (анонимное размещение)
+salary            string — часто пусто
+
+НЕТ поля industries/company_industry — фильтровать по title и textSnippet
+
+=============================================================
+ЧТО РАБОТАЕТ — ЭФФЕКТИВНЫЕ KEYWORDS
+=============================================================
+
+1. "Geschäftsführer Lebensmittel" + Deutschland → 32 items, ~70% food exec
+   Пример: HAPEKO GF Lebensmittel (рекрутер), PSP Personalberatung GF Genussmittel/Produktion
+
+2. "Werksleiter Lebensmittel Bäckerei" + Deutschland → 50 items, ~30-40% food exec
+   Пример: hitschler International GmbH Werksleiter Lebensmittelproduktion (реальная food компания!)
+   Пример: Rochus Mummert (рекрутер) Werksleiter/Technischer Direktor
+
+3. "Geschäftsführer Getränke Brauerei" + Deutschland → 50 items, ~25-30% food/beverage exec
+
+=============================================================
+ЧТО НЕ РАБОТАЕТ — НЕЭФФЕКТИВНЫЕ KEYWORDS
+=============================================================
+
+"Direktor Molkerei Fleisch" → 75 items но 90% шум
+  Возвращает: директора больниц, банков, пансионатов — keyword Direktor слишком broad
+
+"Head of Operations Lebensmittel" → 50 items, вся фарма и логистика, ноль еды
+
+"Managing Director food Germany" → 10 items (EN keyword плохо работает на DE платформе)
+
+=============================================================
+РЕКОМЕНДАЦИЯ ДЛЯ ПРОДАКШНА
+=============================================================
+
+3 запроса еженедельно, понедельник:
+  "Geschäftsführer Lebensmittel" + Deutschland, maxItems=50 → ~$0.02
+  "Werksleiter Lebensmittel Bäckerei" + Deutschland, maxItems=50 → ~$0.02
+  "Geschäftsführer Getränke Brauerei" + Deutschland, maxItems=50 → ~$0.02
+  Total: ~$0.06/run, ~$0.25/month
+
+Фильтрация: по title (EXEC_KW) + textSnippet (FOOD_KW)
+datePosted поле использовать для staleness (60/90 дней)
+isAnonymous=true → можно включать (анонимная компания = рекрутер не может найти = Philippe может)

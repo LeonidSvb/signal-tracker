@@ -1,0 +1,51 @@
+{
+  "actor_id": "blackfalcondata/cadremploi-scraper",
+  "apify_key_env": "APIFY_KEY_KAD2",
+  "companies_pass_csv": "C:\\Users\\79818\\Desktop\\Mastr_Leads\\clients\\philippe-bosquillon\\3_contacts\\companies_pass.csv",
+
+  "tests": {
+    "directeur_agroa": {
+      "keyword": "directeur agroalimentaire",
+      "maxItems": 50,
+      "note": "Food director — 25 results, relevant titles"
+    },
+    "directeur_usine": {
+      "keyword": "directeur usine alimentaire",
+      "maxItems": 50,
+      "note": "Factory director food — 19 results"
+    },
+    "dg_alimentaire": {
+      "keyword": "directeur general industrie alimentaire",
+      "maxItems": 50,
+      "note": "DG food industry"
+    }
+  },
+
+  "production_queries": [
+    { "keyword": "directeur agroalimentaire", "maxItems": 50 },
+    { "keyword": "directeur usine alimentaire", "maxItems": 50 },
+    { "keyword": "directeur general industrie alimentaire", "maxItems": 50 }
+  ],
+
+  "output_fields": {
+    "jobId": "string — use as cache key",
+    "title": "string",
+    "company": "string — WARNING: usually the recruiter/headhunter, not the actual employer",
+    "location": "string",
+    "postedDate": "null in most cases — NOT reliable",
+    "firstSeenAt": "ISO datetime — when scraper FIRST found this job (use for cache-based stale detection)",
+    "lastSeenAt": "ISO datetime — last time scraper saw this job",
+    "expiredAt": "ISO datetime — when job was removed from site",
+    "isRepost": "bool — true = recycled listing",
+    "portalUrl": "string — Cadremploi URL to view job",
+    "description": "string — full description, often contains actual company details"
+  },
+
+  "stale_detection_note": "postedDate is null for most listings. Use cache-based approach: store jobId + firstSeenAt on first scrape, alert when job persists 60+ days in cache (lastSeenAt - firstSeenAt >= 60 days).",
+
+  "do_not": [
+    "use company field for TAM matching — it shows the recruiter, not the food manufacturer",
+    "use keyword DRH industrie alimentaire — returns 0 results",
+    "expect datePosted — it is null in ~95% of listings"
+  ]
+}

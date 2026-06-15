@@ -1,0 +1,121 @@
+INDEED SCRAPER — ACTOR TESTING NOTES
+Actor: misceres/indeed-scraper
+Tested: 2026-06-09
+Account: APIFY_KEY_KAD1_BLOCKED
+
+=============================================================
+CRITICAL: REQUIRED INPUT PARAMS
+=============================================================
+
+position   string — job title keyword
+location   string — "Deutschland", "France", "Nederland" etc.
+country    string — "DE", "FR", "NL", "BE"  ← MANDATORY, без него вернёт 0 результатов
+maxItems   int — max results (50 рекомендуется)
+
+Без country актор ищет на indeed.com (US) → немецкие/французские слова дают 0 результатов.
+С country="DE" → ищет на indeed.de / country="FR" → indeed.fr
+
+=============================================================
+ЦЕНООБРАЗОВАНИЕ
+=============================================================
+
+$0.005 per result (PAY_PER_EVENT)
+50 items = $0.25 per run
+KAD2 depleted ($4.18 из $5 потрачено) — использовать KAD1 ($4.33 остаток)
+
+=============================================================
+OUTPUT ПОЛЯ
+=============================================================
+
+positionName        string — название должности
+company             string — компания (может быть рекрутер!)
+location            string — город
+postingDateParsed   ISO datetime — НАДЁЖНОЕ поле для staleness
+isExpired           bool — объявление снято
+description         string — полный текст
+url                 string — URL на indeed.de/fr
+
+=============================================================
+ЧТО РАБОТАЕТ — FR QUERIES (ВЫСОКАЯ ЦЕННОСТЬ)
+=============================================================
+
+"directeur usine agroalimentaire" + France → 50 items
+  GOLD: Agrial (cooperatif alimentaire) — Directeur Usine
+  GOLD: Groupe SAVENCIA Saveurs & Spécialités — Directeur d'Usine
+  GOLD: MAG FRUITS — Directeur de site Grossiste agroalimentaire
+
+"directeur general agroalimentaire" + France → 50 items
+  Пересечение с fr_directeur_usine! Дедуп обязателен по company+title.
+
+FR запросы дают ПРЯМЫХ food manufacturer директоров — ценность высокая.
+5-8 ICP на 50 results = 10-16% точность.
+
+=============================================================
+ЧТО НЕ РАБОТАЕТ — DE QUERIES (НИЗКАЯ ЦЕННОСТЬ)
+=============================================================
+
+Все DE запросы возвращают преимущественно кадровые агентства:
+  Bluetec Production GmbH (staffing) — появляется в каждом DE запросе 3-5 раз
+  be4solutions GmbH (recruiter) — повторяется
+  Delphi HRC — хедхантер, не food producer
+
+Причина: Indeed.de не поддерживает exact phrase match.
+"Geschaeftsfuehrer Lebensmittel" → ANY job where оба слова есть в тексте →
+  рекрутеры постят дюжины вакансий с "Lebensmittel" в описании.
+
+Исключение: de_werksleiter = 1 реальная компания (hitschler International, кондитерская)
+
+=============================================================
+SECTOR-SPECIFIC DE KEYWORDS НЕ РАБОТАЮТ
+=============================================================
+
+"Geschaeftsfuehrer Molkerei" → 1 результат (инженерное бюро, "Molkerei" в адресе проекта)
+"Geschaeftsfuehrer Baeckerei" → 50 results НО: Bäckermeister, Verkäufer, Schichtleiter
+"Geschaeftsfuehrer Nahrungsmittel" → 8 results, ни одного food exec
+"Geschaeftsfuehrer Fleischverarbeitung" → memory limit (не тестировалось)
+
+=============================================================
+NL/BE РЕЗУЛЬТАТЫ
+=============================================================
+
+NL (indeed.nl, country:"NL"):
+  "directeur voedingsmiddelen" → 15 items, 0 ICP
+  "directeur voedingsindustrie" → 11 items, 0 ICP
+  Компании: Sonneveld Group (ингредиенты для хлеба, много объявлений), dsm-firmenich, STEF
+  Роли: Planner, Controller, Nutritionist — НЕ директорский уровень
+  Итог: НЕ ИСПОЛЬЗОВАТЬ — мало вакансий executive-уровня на indeed.nl
+
+BE (indeed.be, country:"BE"):
+  "directeur alimentaire" + Belgique/Belgium → error: no jobs
+  "directeur levensmiddelen" + Belgie → error: no jobs
+  Итог: ACTOR НЕ ПОДДЕРЖИВАЕТ indeed.be — 0 результатов любой запрос
+
+=============================================================
+РЕКОМЕНДАЦИЯ ДЛЯ ПРОДАКШНА
+=============================================================
+
+ИСПОЛЬЗОВАТЬ только для FR:
+  "directeur usine agroalimentaire" + France, country:"FR", maxItems=50 → $0.25
+  "directeur general agroalimentaire" + France, country:"FR", maxItems=50 → $0.25
+  Total FR: ~$0.50/run
+
+Частота: ежемесячно (не еженедельно) — indeed.fr обновляется медленнее LinkedIn
+Дедупликация: по company+positionName между запросами (Agrial появляется дважды)
+Staleness: postingDateParsed поле — 60 дней порог
+
+НЕ ИСПОЛЬЗОВАТЬ для DE: staffing agencies доминируют, LinkedIn/StepStone/Xing лучше
+НЕ ИСПОЛЬЗОВАТЬ для NL: 0 exec hits, indeed.nl не используется для директорских вакансий
+НЕ ИСПОЛЬЗОВАТЬ для BE: actor не поддерживает indeed.be
+
+=============================================================
+ИТОГО ПО ВСЕМ ЗАПРОСАМ
+=============================================================
+
+DE: 212 raw | 16 ICP (7.5%) — но большинство рекрутеры (Bluetec, be4solutions, Delphi HRC)
+FR: 100 raw | 10 ICP (10%) — ПРЯМЫЕ food manufacturers (Agrial, SAVENCIA, MAG FRUITS)
+NL: 26 raw | 0 ICP (0%) — нет exec-level вакансий
+BE: 0 raw | 0 ICP — actor не поддерживает
+
+Итого: 338 raw | 26 ICP | Cost: ~$1.69
+
+FR sector-specific дают 4x лучше точность vs generic session 2 (10% vs 2.3%)

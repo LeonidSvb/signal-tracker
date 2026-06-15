@@ -1,0 +1,212 @@
+{
+  "actor_id": "curious_coder~linkedin-jobs-scraper",
+  "apify_key_env": "APIFY_KEY_KAD1_BLOCKED",
+  "companies_pass_csv": "C:/Users/79818/Desktop/Mastr_Leads/clients/philippe-bosquillon/1_filtering/companies_pass.csv",
+  "results_dir": "C:/Users/79818/Desktop/Mastr_Leads/clients/philippe-bosquillon/signals/job_boards/linkedin/results",
+
+  "tests": {
+    "smoke_de": {
+      "desc": "1 DE query — verify actor works + inspect field quality",
+      "count": 25,
+      "scrapeCompany": true,
+      "urls": [
+        "https://www.linkedin.com/jobs/search/?keywords=food%20director%20Gesch%C3%A4ftsf%C3%BChrer&location=Germany&f_I=96&f_E=4%2C5%2C6&sortBy=DD"
+      ]
+    },
+
+    "eu_sweep": {
+      "desc": "5 target URLs — DE/FR/NL/BE/stale-DE, 50 results each",
+      "count": 50,
+      "scrapeCompany": true,
+      "urls": [
+        "https://www.linkedin.com/jobs/search/?keywords=food%20director%20Gesch%C3%A4ftsf%C3%BChrer&location=Germany&f_I=96&f_E=4%2C5%2C6&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=directeur%20agroalimentaire%20DRH&location=France&f_I=96&f_E=4%2C5%2C6&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=directeur%20voedingsmiddelen&location=Netherlands&f_I=96&f_E=4%2C5%2C6&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=directeur%20alimentaire&location=Belgium&f_I=96&f_E=4%2C5%2C6&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=Lebensmittel%20Gesch%C3%A4ftsf%C3%BChrer&location=Germany&f_I=96&sortBy=DD"
+      ]
+    },
+
+    "broader_food": {
+      "desc": "Broader food industry queries (no exec filter) — raw signal density",
+      "count": 100,
+      "scrapeCompany": true,
+      "urls": [
+        "https://www.linkedin.com/jobs/search/?keywords=Lebensmittel%20Direktor%20Gesch%C3%A4ftsf%C3%BChrer%20Werksleiter&location=Germany&f_I=96&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=directeur%20agroalimentaire%20usine%20operations&location=France&f_I=96&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=food%20beverage%20director%20managing%20director&location=Netherlands&f_I=96&sortBy=DD"
+      ]
+    },
+
+    "full_14q": {
+      "desc": "14 queries matching the Indeed run — apples-to-apples comparison",
+      "count": 100,
+      "scrapeCompany": true,
+      "urls": [
+        "https://www.linkedin.com/jobs/search/?keywords=Gesch%C3%A4ftsf%C3%BChrer%20Lebensmittel&location=Germany&f_I=96&f_E=4%2C5%2C6&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=Personalleiter%20Lebensmittelindustrie&location=Germany&f_I=96&f_E=4%2C5%2C6&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=Betriebsleiter%20Lebensmittel&location=Germany&f_I=96&f_E=4%2C5%2C6&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=Werksleiter%20Lebensmittel&location=Germany&f_I=96&f_E=4%2C5%2C6&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=Kaufm%C3%A4nnischer%20Leiter%20Lebensmittel&location=Germany&f_I=96&f_E=4%2C5%2C6&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=Vertriebsleiter%20Ern%C3%A4hrung&location=Germany&f_I=96&f_E=4%2C5%2C6&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=directeur%20g%C3%A9n%C3%A9ral%20agroalimentaire&location=France&f_I=96&f_E=4%2C5%2C6&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=DRH%20agroalimentaire&location=France&f_I=96&f_E=4%2C5%2C6&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=directeur%20usine%20agroalimentaire&location=France&f_I=96&f_E=4%2C5%2C6&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=directeur%20commercial%20agroalimentaire&location=France&f_I=96&f_E=4%2C5%2C6&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=directeur%20voedingsmiddelen&location=Netherlands&f_I=96&f_E=4%2C5%2C6&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=HR%20directeur%20food&location=Netherlands&f_I=96&f_E=4%2C5%2C6&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=directeur%20alimentaire&location=Belgium&f_I=96&f_E=4%2C5%2C6&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=DRH%20agroalimentaire&location=Belgium&f_I=96&f_E=4%2C5%2C6&sortBy=DD"
+      ]
+    },
+
+    "split_de_werksleiter": {
+      "desc": "DE Werksleiter — один URL + splitByLocation=true, даёт города отдельно",
+      "count": 200,
+      "scrapeCompany": true,
+      "splitByLocation": true,
+      "splitCountry": "DE",
+      "urls": [
+        "https://www.linkedin.com/jobs/search/?keywords=Werksleiter+Lebensmittel&location=Germany&sortBy=DD"
+      ]
+    },
+
+    "split_de_gf": {
+      "desc": "DE Geschäftsführer Lebensmittel — splitByLocation",
+      "count": 200,
+      "scrapeCompany": true,
+      "splitByLocation": true,
+      "splitCountry": "DE",
+      "urls": [
+        "https://www.linkedin.com/jobs/search/?keywords=Gesch%C3%A4ftsf%C3%BChrer+Lebensmittel&location=Germany&sortBy=DD"
+      ]
+    },
+
+    "split_de_personalleiter": {
+      "desc": "DE Personalleiter Lebensmittel — splitByLocation",
+      "count": 200,
+      "scrapeCompany": true,
+      "splitByLocation": true,
+      "splitCountry": "DE",
+      "urls": [
+        "https://www.linkedin.com/jobs/search/?keywords=Personalleiter+Lebensmittel&location=Germany&sortBy=DD"
+      ]
+    },
+
+    "split_fr_directeur": {
+      "desc": "FR directeur agroalimentaire — splitByLocation",
+      "count": 200,
+      "scrapeCompany": true,
+      "splitByLocation": true,
+      "splitCountry": "FR",
+      "urls": [
+        "https://www.linkedin.com/jobs/search/?keywords=directeur+agroalimentaire&location=France&sortBy=DD"
+      ]
+    },
+
+    "split_fr_drh": {
+      "desc": "FR DRH agroalimentaire — splitByLocation",
+      "count": 200,
+      "scrapeCompany": true,
+      "splitByLocation": true,
+      "splitCountry": "FR",
+      "urls": [
+        "https://www.linkedin.com/jobs/search/?keywords=DRH+industrie+alimentaire&location=France&sortBy=DD"
+      ]
+    },
+
+    "split_nl_be": {
+      "desc": "NL + BE food directors — без splitByLocation (маленькие страны)",
+      "count": 100,
+      "scrapeCompany": true,
+      "urls": [
+        "https://www.linkedin.com/jobs/search/?keywords=directeur+voedingsmiddelen&location=Netherlands&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=directeur+voeding+food&location=Netherlands&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=directeur+alimentaire&location=Belgium&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=directeur+g%C3%A9n%C3%A9ral+agroalimentaire&location=Belgium&sortBy=DD"
+      ]
+    },
+
+    "en_europe": {
+      "desc": "EN-language queries across Europe — managing director food",
+      "count": 200,
+      "scrapeCompany": true,
+      "splitByLocation": true,
+      "splitCountry": "DE",
+      "urls": [
+        "https://www.linkedin.com/jobs/search/?keywords=managing+director+food+manufacturing&location=Europe&sortBy=DD"
+      ]
+    },
+
+    "de_specific_sectors": {
+      "desc": "DE — specific food sectors without location filter in keyword",
+      "count": 100,
+      "scrapeCompany": true,
+      "urls": [
+        "https://www.linkedin.com/jobs/search/?keywords=Gesch%C3%A4ftsf%C3%BChrer+Molkerei&location=Germany&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=Direktor+Fleisch+Schlachterei&location=Germany&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=Gesch%C3%A4ftsf%C3%BChrer+B%C3%A4ckerei+Backwaren&location=Germany&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=Werksleiter+Nahrungsmittel&location=Germany&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=Gesch%C3%A4ftsf%C3%BChrer+Getr%C3%A4nke&location=Germany&sortBy=DD"
+      ]
+    },
+
+    "fr_specific_sectors": {
+      "desc": "FR — specific food sectors",
+      "count": 100,
+      "scrapeCompany": true,
+      "urls": [
+        "https://www.linkedin.com/jobs/search/?keywords=directeur+usine+agroalimentaire&location=France&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=directeur+g%C3%A9n%C3%A9ral+agroalimentaire&location=France&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=directeur+commercial+agroalimentaire&location=France&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=DRH+agroalimentaire&location=France&sortBy=DD"
+      ]
+    },
+
+    "de_new_sectors": {
+      "desc": "DE — sub-sectors not yet covered: Süßwaren/Tiefkühl/Brauerei/Öl",
+      "count": 100,
+      "scrapeCompany": true,
+      "urls": [
+        "https://www.linkedin.com/jobs/search/?keywords=Gesch%C3%A4ftsf%C3%BChrer+S%C3%BC%C3%9Fwaren+Konfekt&location=Germany&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=Werksleiter+Tiefk%C3%BChlkost+Tiefk%C3%BChl&location=Germany&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=Gesch%C3%A4ftsf%C3%BChrer+Brauerei+Bier&location=Germany&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=Gesch%C3%A4ftsf%C3%BChrer+%C3%96l+Fett+M%C3%BChle&location=Germany&sortBy=DD"
+      ]
+    },
+
+    "fr_new_titles": {
+      "desc": "FR — missing exec title variants: PDG, DGA, directeur de site",
+      "count": 100,
+      "scrapeCompany": true,
+      "urls": [
+        "https://www.linkedin.com/jobs/search/?keywords=PDG+agroalimentaire&location=France&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=DGA+directeur+g%C3%A9n%C3%A9ral+adjoint+agroalimentaire&location=France&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=directeur+de+site+agroalimentaire&location=France&sortBy=DD"
+      ]
+    },
+
+    "nl_deep": {
+      "desc": "NL — deeper coverage with more Dutch food keywords",
+      "count": 100,
+      "scrapeCompany": true,
+      "urls": [
+        "https://www.linkedin.com/jobs/search/?keywords=directeur+levensmiddelen&location=Netherlands&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=directeur+voedingsindustrie&location=Netherlands&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=algemeen+directeur+voeding&location=Netherlands&sortBy=DD"
+      ]
+    },
+
+    "en_language": {
+      "desc": "EN-language queries — DE/FR food companies posting senior roles in English",
+      "count": 100,
+      "scrapeCompany": true,
+      "urls": [
+        "https://www.linkedin.com/jobs/search/?keywords=Managing+Director+food+manufacturing&location=Germany&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=General+Manager+FMCG+food&location=France&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=VP+Operations+food+manufacturing&location=Germany&sortBy=DD",
+        "https://www.linkedin.com/jobs/search/?keywords=Plant+Director+food+manufacturing&location=Germany&sortBy=DD"
+      ]
+    }
+  }
+}
