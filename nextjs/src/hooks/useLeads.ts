@@ -75,7 +75,9 @@ export function useLeads(clientSlug: string) {
             signal_title: primary?.title ?? "",
             signal_source: primary?.source ?? "",
             signal_pub_date: primary?.pub_date ?? "",
-            signal_days_ago: primary?.days_ago ?? 0,
+            signal_days_ago: primary?.pub_date
+              ? Math.floor((Date.now() - new Date(primary.pub_date).getTime()) / 86_400_000)
+              : (primary?.days_ago ?? 0),
             signal_country: primary?.country ?? "",
             signal_url: primary?.source_url ?? "",
             signal_narrative: primary?.narrative ?? "",
@@ -92,7 +94,9 @@ export function useLeads(clientSlug: string) {
             })),
             all_signals: compSignals.map((s: any) => ({
               title: s.title ?? "",
-              days_ago: s.days_ago ?? 0,
+              days_ago: s.pub_date
+                ? Math.floor((Date.now() - new Date(s.pub_date).getTime()) / 86_400_000)
+                : (s.days_ago ?? 0),
               source: s.source ?? "",
               country: s.country ?? "",
               url: s.source_url ?? "",
