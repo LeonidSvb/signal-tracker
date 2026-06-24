@@ -55,7 +55,7 @@ export function useLeads(clientSlug: string) {
           contactsByCompany[c.company_id].push(c);
         });
 
-        const assembled: Lead[] = companies.map((company) => {
+        const assembled: Lead[] = companies.filter((company) => (signalsByCompany[company.id]?.length ?? 0) > 0).map((company) => {
           const compSignals = (signalsByCompany[company.id] ?? [])
             .sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0));
           const primary = compSignals[0];
