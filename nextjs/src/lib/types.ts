@@ -48,7 +48,7 @@ export interface Lead {
 
 export interface AppState {
   id: string;
-  lead_id: string;
+  company_id: string;
   client_id: string;
   status: LeadStatus;
   updated_at: string;
@@ -57,7 +57,7 @@ export interface AppState {
 
 export interface Note {
   id: string;
-  lead_id: string;
+  company_id: string;
   client_id: string;
   author: "leo" | "philippe";
   body: string;
