@@ -1,0 +1,62 @@
+{
+  "_comment": "Default values for all client configs. Override only what differs.",
+
+  "slug": "",
+  "name": "",
+  "operator_name": "leo",
+  "client_author_name": "client",
+
+  "sources": {
+    "job_boards": ["linkedin", "stepstone", "xing", "cadremploi", "indeed"],
+    "exa": true
+  },
+
+  "icp": {
+    "countries": [],
+    "min_employees": 50,
+    "max_employees": 10000,
+    "industry_keywords": [],
+    "hiring_exec_keywords": [],
+    "hiring_blacklist_keywords": [
+      "Praktikum", "Praktikant", "Internship", "Intern", "Stage ", "Stagiaire",
+      "Junior", "Trainee", "Azubi", "Auszubildende", "Werkstudent",
+      "Assistent", "Assistant", "Coordinator", "Koordinator",
+      "Sachbearbeiter", "Referent"
+    ],
+    "company_blacklist": [],
+    "staleness_days": {
+      "HIRING": 90,
+      "MA": 90,
+      "CLEVEL": 30,
+      "EXPAND": 60,
+      "INVEST": 60,
+      "CONTRACT": 60,
+      "NICHE": 30,
+      "SECTOR": 30
+    }
+  },
+
+  "scoring": {
+    "thresholds": {
+      "priority": 8,
+      "hot": 6,
+      "warm": 4,
+      "cold": 2
+    },
+    "auto_push_below_score": 7
+  },
+
+  "copy": {
+    "tone": "professional",
+    "languages": ["en"],
+    "llm_model": "openai/gpt-oss-120b",
+    "system_prompt_override": null
+  },
+
+  "sequencer": {
+    "provider": "plusvibe",
+    "workspace_id": null,
+    "auto_push": false,
+    "campaign_map": {}
+  }
+}

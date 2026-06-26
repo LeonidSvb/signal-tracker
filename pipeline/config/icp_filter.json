@@ -1,0 +1,53 @@
+{
+  "client": "philippe-bosquillon",
+  "countries": ["DE", "FR", "NL", "BE", "LU", "CH", "AT"],
+  "max_employees": 10000,
+  "min_employees": 50,
+  "industry_keywords": [
+    "food", "beverage", "dairy", "bakery", "bäckerei", "baking", "biscuit",
+    "meat", "fleisch", "molkerei", "nahrungsmittel", "lebensmittel",
+    "ingredients", "fmcg", "agroalimentaire", "alimentaire", "voeding",
+    "voedingsmiddelen", "agri", "confectionery", "süßwaren", "chocolate",
+    "schokolade", "brewing", "brauerei", "getränke", "winery", "spirits"
+  ],
+  "hiring_exec_keywords": [
+    "CEO", "CFO", "COO", "CTO", "CDO", "Chief",
+    "Geschäftsführer", "Geschäftsleiter", "Betriebsleiter",
+    "Werksleiter", "Werkleiter", "Produktionsleiter",
+    "Kaufmännischer Leiter", "Kaufm. Leiter",
+    "Direktor", "Directeur", "Directeur Général", "DG",
+    "Directeur Commercial", "Directeur des Opérations", "Directeur Usine",
+    "DRH", "Directeur des Ressources Humaines",
+    "PDG", "Président", "Managing Director", "General Manager",
+    "Plant Manager", "Operations Director", "Commercial Director",
+    "HR Director", "Head of HR", "VP ", "Vice President",
+    "Directeur d'Unité", "Directeur de Site",
+    "Directeur Adjoint", "Deputy Managing Director",
+    "Algemeen Directeur", "Bedrijfsleider", "Directeur"
+  ],
+  "hiring_blacklist_keywords": [
+    "Praktikum", "Praktikant", "Internship", "Intern", "Stage ", "Stagiaire",
+    "Junior", "Trainee", "Azubi", "Auszubildende", "Werkstudent",
+    "Assistent", "Assistant", "Coordinator", "Koordinator",
+    "Sachbearbeiter", "Referent"
+  ],
+  "company_blacklist": [
+    "Sodexo", "Newrest", "Compass Group", "Elior", "Sysco", "Aramark",
+    "Dussmann", "ISS ", "Apetito", "Eurest", "Gategroup",
+    "Randstad", "Adecco", "ManpowerGroup", "Hays ", "Michael Page",
+    "HAPEKO", "Kienbaum", "Egon Zehnder", "Spencer Stuart",
+    "Korn Ferry", "Russell Reynolds", "Odgers Berndtson",
+    "Bluetec", "be4solutions", "Talents Industrie"
+  ],
+  "news_signal_types": ["MA", "CLEVEL", "EXPAND", "INVEST", "CONTRACT", "NICHE", "SECTOR"],
+  "staleness_days": {
+    "HIRING": 90,
+    "MA": 90,
+    "CLEVEL": 30,
+    "EXPAND": 60,
+    "INVEST": 60,
+    "CONTRACT": 60,
+    "NICHE": 30,
+    "SECTOR": 30
+  }
+}

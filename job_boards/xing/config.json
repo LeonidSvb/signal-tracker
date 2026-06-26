@@ -1,6 +1,6 @@
 {
   "actor_id": "shahidirfan/Xing-Jobs-Scraper",
-  "apify_key_env": "APIFY_KEY_KAD1",
+  "apify_key_env": "APIFY_KEY_KAD2",
   "companies_pass_csv": "C:\\Users\\79818\\Desktop\\Mastr_Leads\\clients\\philippe-bosquillon\\3_contacts\\companies_pass.csv",
 
   "tests": {

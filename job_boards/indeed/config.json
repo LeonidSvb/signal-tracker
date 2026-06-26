@@ -1,6 +1,6 @@
 {
   "actor_id": "misceres/indeed-scraper",
-  "apify_key_env": "APIFY_KEY_KAD1_BLOCKED",
+  "apify_key_env": "APIFY_KEY_KAD2",
   "price_per_result_usd": 0.005,
   "results_dir": "C:/Users/79818/Desktop/Mastr_Leads/clients/philippe-bosquillon/signals/job_boards/indeed/results",
 

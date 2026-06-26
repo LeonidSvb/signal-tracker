@@ -1,0 +1,42 @@
+{
+  "description": "Staffing agencies and executive search firms — NOT food manufacturers. Filter these out before enrichment.",
+  "updated": "2026-06-09",
+  "companies": [
+    {
+      "name": "Bluetec Production GmbH & Co. KG",
+      "type": "staffing_agency",
+      "country": "DE",
+      "reason": "Places workers at food factories — not a food manufacturer itself"
+    },
+    {
+      "name": "be4solutions GmbH",
+      "type": "staffing_agency",
+      "country": "DE",
+      "reason": "Places workers at food factories — not a food manufacturer itself"
+    },
+    {
+      "name": "Delphi HRC GmbH",
+      "type": "executive_search",
+      "country": "DE",
+      "reason": "Executive search firm — not a food manufacturer"
+    },
+    {
+      "name": "Heberlein Consultants",
+      "type": "executive_search",
+      "country": "DE",
+      "reason": "Executive search / headhunter — not a food manufacturer"
+    },
+    {
+      "name": "CABINET ACP ATLANTIQUE",
+      "type": "executive_search",
+      "country": "FR",
+      "reason": "French executive search firm posting food industry roles"
+    },
+    {
+      "name": "Martens & Brijs",
+      "type": "executive_search",
+      "country": "BE",
+      "reason": "Belgian executive search firm posting food industry roles"
+    }
+  ]
+}

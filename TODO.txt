@@ -1,0 +1,69 @@
+SIGNAL SYSTEM — Philippe Bosquillon
+Updated: 2026-06-26
+Full plan: signals/PRD.md | Architecture: docs/OVERVIEW.md | DB: docs/SCHEMA.md
+
+=== DONE: DB + PIPELINE SCRIPTS ===
+
+[x] 1. Apply SQL migration on Supabase (003_monitoring_schema.sql — signal_monitoring schema)
+[x] 2. Run historical import (2038 raw_signals, 71 companies, 44 contacts, 21 signals)
+[x] 3. Verify data in Supabase
+[x] 4. Apify keys — KAD2 working for all job boards
+[x] 5. pipeline/stages/01_scrape_jobs.mjs — LinkedIn/StepStone/Xing/Cadremploi/Indeed + key rotation
+[x] 6. pipeline/stages/02_filter.mjs — ICP filter, writes passed_icp / filtered_out
+[x] 7. pipeline/stages/03_resolve_companies.mjs — match signals → companies, create stubs
+[x] 8. pipeline/stages/04_find_contacts.mjs — Blitz waterfall per company
+[x] 9. pipeline/stages/05_score_llm.mjs — rule-based score + OpenRouter angle
+[x] 10. pipeline/run.mjs — orchestrator (03→04→05, --all flag для 01→05)
+[x] 11. First full run: 378 passed_icp → 399 signals, 106 contacts, 226 companies
+        Blitz key updated: blitz-019f0220-e113-7a16-b722-dce52f40a4fc
+
+=== CURRENT PHASE: FRONTEND ===
+
+[x] 12. Rewrite useLeads.ts for new schema (companies + signals + contacts)
+        Done 2026-06-24: queries signal_monitoring schema, assembles Lead client-side
+
+[ ] 13. Update LeadCard — show signals list per company, drill-down to source_url
+        Each company can have multiple signals (job + exa news)
+
+[ ] 14. Build /monitoring page (pipeline_runs table + raw_signals stats)
+        Columns: script / status / started_at / duration / rows_scraped / rows_passed_icp
+
+[ ] 15. Change Exa monitor webhook: n8n → /api/exa-webhook (Next.js route)
+        33 monitors currently on old n8n webhook, need to update in Exa dashboard
+
+[ ] 16. Deploy updated Next.js (deploy.ps1)
+
+=== SERVER + CRON ===
+
+[ ] 17. Deploy pipeline/ to server (VPS 152.53.194.162)
+        Copy: pipeline/ + nextjs/.env.local + blitz/.env
+        Run: crontab -e → every Monday 08:00 UTC
+        Command: cd /path && node --env-file=nextjs/.env.local pipeline/run.mjs --all
+
+[ ] 18. Test cron run — trigger manually, verify pipeline_runs entry
+
+=== LATER ===
+
+[ ] 19. Write 06_recalc_scores.mjs — weekly freshness recalculation (score decay)
+[ ] 20. Job staleness: re-scrape + mark status=filled if job_id disappeared
+[ ] 21. Multi-client: add second client config + test
+
+=================================================================
+SESSION HISTORY
+=================================================================
+
+SESSION 1 (2026-05-29): Exa scan 33 queries, 164 results, 9 TAM hits, 16 lead cards
+SESSION 2 (2026-05-31): Job board RSS/API testing — all blocked, Apify Indeed validated
+SESSION 3 (2026-06-02): 33 Exa monitors created, n8n workflow built, end-to-end test
+SESSION 4 (2026-06-06): n8n → Google Sheets live, Blitz enrichment pipeline, 23 final leads
+SESSION 5 (2026-06-08): LinkedIn job boards tested (26 ICP signals), actor selection
+SESSION 6 (2026-06-08): StepStone/Xing/Cadremploi/APEC tested, architecture finalized
+SESSION 7 (2026-06-09): Indeed FR validated, NL/BE boards tested (broken), 287 signals CSV
+SESSION 8 (2026-06-19): Apify MCP installed, Philippe LinkedIn posts analyzed
+SESSION 9 (2026-06-22): Architecture reset — drop n8n/Sheets, PRD written, DB schema v2,
+                          normalize functions, import_historical.mjs, app/ archived
+SESSION 10 (2026-06-26): Full pipeline written + executed. 03/04/05 + run.mjs done.
+                           Blitz key updated. Result: 399 signals, 106 contacts, 226 companies.
+                           useLeads.ts rewritten (June 24). Structure cleanup: db/migrations/,
+                           pipeline/clients/, exa/clients/, docs/SCHEMA.md + OVERVIEW.md,
+                           CHANGELOG.md, DB fixes (meta jsonb, notes.author free text).
