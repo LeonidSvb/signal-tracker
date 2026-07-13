@@ -1,6 +1,7 @@
 SIGNAL SYSTEM — Philippe Bosquillon
-Updated: 2026-06-26
+Updated: 2026-07-13
 Full plan: signals/PRD.md | Architecture: docs/OVERVIEW.md | DB: docs/SCHEMA.md
+Exa architecture + incident history: docs/EXA_INTEGRATION.md
 
 === DONE: DB + PIPELINE SCRIPTS ===
 
@@ -28,10 +29,37 @@ Full plan: signals/PRD.md | Architecture: docs/OVERVIEW.md | DB: docs/SCHEMA.md
 [ ] 14. Build /monitoring page (pipeline_runs table + raw_signals stats)
         Columns: script / status / started_at / duration / rows_scraped / rows_passed_icp
 
-[ ] 15. Change Exa monitor webhook: n8n → /api/exa-webhook (Next.js route)
-        33 monitors currently on old n8n webhook, need to update in Exa dashboard
+[x] 15. Exa monitor webhook → /api/exa-webhook — was ALREADY pointing here since 2026-06-22
+        (n8n fully removed that session), but broken: route expected a flat
+        {monitorId,results} body, Exa actually sends an event envelope
+        ({type, data:{monitorId, output:{results,content,grounding}}}). Confirmed
+        empirically 2026-07-13, zero exa rows landed in raw_signals for 3 weeks
+        despite all 33 monitors firing weekly. Fixed + deployed 2026-07-13.
+[x]     Backfill script written (exa/scripts/backfill_monitor_runs.mjs) — recovered
+        153 signals the broken webhook silently dropped.
+[x]     Migration 004: raw_signals.monitor_label real column, dedup key widened to
+        (client_id, source, external_id, monitor_label) — 39 of 310 URLs were being
+        caught by 2+ monitor categories simultaneously and losing all but one
+        category's attribution under the old 3-column key.
+[x]     contents.text:true enabled on all 33 monitors — full article text (Markdown)
+        now captured, was headline-only before. Takes effect from each monitor's
+        next scheduled run (first ones expected 2026-07-14 onward).
+[x]     05_score_llm.mjs: fixed company_name always-null bug for news signals (LLM
+        extraction added, 195/198 resolved in first live run) + exec-keyword regex
+        scoring news headlines (never matched) → signal_type-based scoring +
+        multi-signal bonus.
+[ ]     Still open: calcExpires() in 05_score_llm.mjs hardcodes 30d for all news,
+        ignoring icp_filter.json's per-type staleness windows (MA:90/CLEVEL:30/
+        EXPAND:60/INVEST:60) that 02_filter.mjs already respects correctly.
 
-[ ] 16. Deploy updated Next.js (deploy.ps1)
+[x] 16. Deploy updated Next.js — done 2026-07-13. Also fixed deploy.ps1 itself:
+        $NEXTJS_DIR pointed at scripts/nextjs (never existed, broken since the
+        06-26 file move) and the server .env it writes was missing
+        SUPABASE_SERVICE_ROLE_KEY. NOTE: philippe.pamelacoreypc.com is actually
+        served by a separate Coolify/Docker container (Traefik-routed, built from
+        git commit cc7bfdb), not the systemd service this script deploys to —
+        real prod updates for this domain happen via git push (Coolify
+        auto-deploy), confirmed working 2026-07-13.
 
 === SERVER + CRON ===
 
@@ -67,3 +95,17 @@ SESSION 10 (2026-06-26): Full pipeline written + executed. 03/04/05 + run.mjs do
                            useLeads.ts rewritten (June 24). Structure cleanup: db/migrations/,
                            pipeline/clients/, exa/clients/, docs/SCHEMA.md + OVERVIEW.md,
                            CHANGELOG.md, DB fixes (meta jsonb, notes.author free text).
+SESSION 11 (2026-07-13): Exa webhook incident found + fixed (broken 3 weeks, 0 rows delivered
+                           despite 33 monitors firing weekly) — see docs/EXA_INTEGRATION.md.
+                           Backfill script recovered 153 lost signals. Migration 004: monitor_label
+                           real column + widened dedup key (was silently dropping cross-monitor
+                           category attribution on 39/310 URLs). contents.text enabled on all 33
+                           monitors (full article text from here on). Fixed 2 real bugs in
+                           05_score_llm.mjs (company_name always null for news; exec-keyword regex
+                           scoring news headlines) — verified live: 198 signals scored, 195
+                           resolved to a company, 126 new leads. New mockups: Database (TAM
+                           explorer), Settings (ICP Filter/Staleness/Runs/Health), Exa Analytics
+                           (real data). Fixed deploy.ps1 (broken path since 06-26 move + missing
+                           SUPABASE_SERVICE_ROLE_KEY). Deployed to production via git push
+                           (discovered philippe.pamelacoreypc.com is actually served by a
+                           Coolify/Docker container, not the systemd/deploy.ps1 path).
