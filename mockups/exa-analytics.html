@@ -52,10 +52,10 @@
   .wk-tt-bubble::after { content: ''; position: absolute; left: 50%; transform: translateX(-50%); top: 100%; border: 5px solid transparent; }
   .wk-tt-total { background: #1F2430; color: white; }
   .wk-tt-total::after { border-top-color: #1F2430; }
-  .wk-tt-passed { background: #059669; color: white; }
-  .wk-tt-passed::after { border-top-color: #059669; }
-  .wk-tt-filtered { background: #DC2626; color: white; }
-  .wk-tt-filtered::after { border-top-color: #DC2626; }
+  .wk-tt-passed { background: #4F5FD1; color: white; }
+  .wk-tt-passed::after { border-top-color: #4F5FD1; }
+  .wk-tt-filtered { background: #A6ACEE; color: #1F2430; }
+  .wk-tt-filtered::after { border-top-color: #A6ACEE; }
   .wk-tt-pending { background: #C0CDD8; color: #1F2430; }
   .wk-tt-pending::after { border-top-color: #C0CDD8; }
 
@@ -84,9 +84,9 @@
   .drill-title a { color: inherit; text-decoration: none; }
   .drill-title a:hover { text-decoration: underline; color: #4A55C4; }
   .status-mini { font-size: 8.5px; font-weight: 700; padding: 1px 5px; border-radius: 8px; white-space: nowrap; flex-shrink: 0; }
-  .status-mini.passed { background: #E4F5E9; color: #4C8A66; }
+  .status-mini.passed { background: #EEF0FE; color: #4A55C4; }
   .status-mini.pending { background: #ECEEF2; color: #8B92A6; }
-  .status-mini.filtered { background: #FCEAF0; color: #B25577; }
+  .status-mini.filtered { background: #E3E5FA; color: #6B72C4; }
 </style>
 </head>
 <body class="bg-bg font-sans text-[12.5px] text-text">
@@ -110,25 +110,25 @@
       <div class="text-[21px] font-bold text-heading leading-none">310</div>
     </div>
     <div class="stat-card">
-      <div class="flex items-center justify-between"><span class="stat-card-icon" style="background:#E4F5E9;color:#059669;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg></span>
+      <div class="flex items-center justify-between"><span class="stat-card-icon" style="background:#EEF0FE;color:#4F5FD1;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg></span>
         <div class="tip tip-r"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box">status='passed_icp' — cleared 02_filter.mjs, promotable to signals[]</span></div>
       </div>
       <div class="text-[9px] text-muted font-semibold">Passed ICP</div>
-      <div class="flex items-baseline gap-1"><span class="text-[21px] font-bold text-pos-text leading-none">148</span><span class="text-[9px] text-muted">47.7%</span></div>
+      <div class="flex items-baseline gap-1"><span class="text-[21px] font-bold text-accent-text leading-none">148</span><span class="text-[9px] text-muted">47.7%</span></div>
     </div>
     <div class="stat-card">
-      <div class="flex items-center justify-between"><span class="stat-card-icon" style="background:#FCEAF0;color:#DC2626;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></span>
+      <div class="flex items-center justify-between"><span class="stat-card-icon" style="background:#EEF0FE;color:#4F5FD1;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></span>
         <div class="tip tip-r"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box">status='filtered_out' — rejected by ICP filter, kept for observability (filter_reason)</span></div>
       </div>
       <div class="text-[9px] text-muted font-semibold">Filtered Out</div>
-      <div class="flex items-baseline gap-1"><span class="text-[21px] font-bold text-heading leading-none">9</span><span class="text-[9px] text-muted">2.9%</span></div>
+      <div class="flex items-baseline gap-1"><span class="text-[21px] font-bold text-accent-text leading-none">9</span><span class="text-[9px] text-muted">2.9%</span></div>
     </div>
     <div class="stat-card">
-      <div class="flex items-center justify-between"><span class="stat-card-icon" style="background:#FBF1DC;color:#D97706;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
+      <div class="flex items-center justify-between"><span class="stat-card-icon" style="background:#EEF0FE;color:#4F5FD1;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
         <div class="tip tip-r"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box">status='pending' — 153 of these are the 2026-07-13 backfill, not yet run through 02_filter.mjs</span></div>
       </div>
       <div class="text-[9px] text-muted font-semibold">Pending Review</div>
-      <div class="flex items-baseline gap-1"><span class="text-[21px] font-bold text-warn-text leading-none">153</span><span class="text-[9px] text-muted">49.4%</span></div>
+      <div class="flex items-baseline gap-1"><span class="text-[21px] font-bold text-accent-text leading-none">153</span><span class="text-[9px] text-muted">49.4%</span></div>
     </div>
     <div class="stat-card">
       <div class="flex items-center justify-between"><span class="stat-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></span>
@@ -163,8 +163,8 @@
     <div class="flex items-center justify-between mb-1">
       <div class="text-[12px] font-bold text-heading">Weekly Activity — raw signals by ICP outcome</div>
       <div class="flex items-center gap-3 text-[10px] text-muted">
-        <span class="flex items-center gap-1"><span class="legend-dot" style="background:#059669;"></span>Passed</span>
-        <span class="flex items-center gap-1"><span class="legend-dot" style="background:#DC2626;"></span>Filtered</span>
+        <span class="flex items-center gap-1"><span class="legend-dot" style="background:#4F5FD1;"></span>Passed</span>
+        <span class="flex items-center gap-1"><span class="legend-dot" style="background:#A6ACEE;"></span>Filtered</span>
         <span class="flex items-center gap-1"><span class="legend-dot" style="background:#C0CDD8;"></span>Pending</span>
       </div>
     </div>
@@ -199,10 +199,30 @@
         <tr class="text-[9px] font-bold uppercase tracking-wide text-muted border-b border-border">
           <th class="text-left px-4 py-1.5" style="width:28px;"></th>
           <th class="text-left px-4 py-1.5" data-col="label">Monitor</th>
-          <th class="text-left px-4 py-1.5" data-col="category">Category</th>
+          <th class="text-left px-4 py-1.5" data-col="category">
+            <span class="inline-flex items-center gap-1">Category
+              <span class="tip" onclick="event.stopPropagation()"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#C0CDD8;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box" style="width:260px;text-transform:none;font-weight:500;text-align:left;">
+                <b>MA</b> — Mergers &amp; acquisitions<br>
+                <b>CLEVEL</b> — Leadership change (new CEO/MD/HR Director)<br>
+                <b>EXPAND</b> — New plant / facility / production capacity<br>
+                <b>INVEST</b> — Funding raised / capital invested<br>
+                <b>CONTRACT</b> — Major contract or partnership signed<br>
+                <b>NICHE</b> — Pinned to one trade-media site (foodnavigator.com etc.)<br>
+                <b>SECTOR</b> — Sub-industry query (dairy, bakery, meat, ...)
+              </span></span>
+            </span>
+          </th>
           <th class="text-left px-4 py-1.5" data-col="country">Country</th>
-          <th class="text-right px-4 py-1.5" data-col="runs">Runs seen</th>
-          <th class="text-right px-4 py-1.5 sorted sort-desc" data-col="results">Results seen</th>
+          <th class="text-right px-4 py-1.5" data-col="runs">
+            <span class="inline-flex items-center gap-1">Runs seen
+              <span class="tip tip-r" onclick="event.stopPropagation()"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#C0CDD8;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box" style="width:200px;text-transform:none;font-weight:500;text-align:left;">Number of times GET /monitors/{id}/runs shows this monitor has fired since it was created (2026-06-02) — not our cron, Exa's own weekly schedule.</span></span>
+            </span>
+          </th>
+          <th class="text-right px-4 py-1.5 sorted sort-desc" data-col="results">
+            <span class="inline-flex items-center gap-1">Results seen
+              <span class="tip tip-r" onclick="event.stopPropagation()"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#C0CDD8;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box" style="width:220px;text-transform:none;font-weight:500;text-align:left;">Total articles Exa returned across all those runs. The same article can show up again in a later week's run, so this can be higher than the number of unique rows actually stored.</span></span>
+            </span>
+          </th>
         </tr>
       </thead>
       <tbody id="monitor-tbody" class="text-[11px]"></tbody>
@@ -243,8 +263,8 @@
           ${w.filtered > 0 ? `<div class="wk-tt-bubble wk-tt-filtered">${w.filtered}<span class="lbl">Filtered</span></div>` : ''}
           ${w.passed > 0 ? `<div class="wk-tt-bubble wk-tt-passed">${w.passed}<span class="lbl">Passed</span></div>` : ''}
         </div>
-        <div class="wk-seg" style="height:${passedShare}%;background:#059669;"></div>
-        <div class="wk-seg" style="height:${filteredShare}%;background:#DC2626;"></div>
+        <div class="wk-seg" style="height:${passedShare}%;background:#4F5FD1;"></div>
+        <div class="wk-seg" style="height:${filteredShare}%;background:#A6ACEE;"></div>
         <div class="wk-seg" style="height:${pendingShare}%;background:#C0CDD8;"></div>
       </div>`;
     wkChart.appendChild(col);
@@ -557,7 +577,7 @@
   }
 
   let sortCol = 'results', sortAsc = false;
-  const openMonitors = new Set(); // persists across re-sorts, keyed by monitor label (not row index)
+  let openMonitor = null; // accordion — only one monitor's drill-down open at a time, keyed by label
 
   function renderMonitors() {
     const rows = [...MONITORS].sort((a, b) => {
@@ -566,7 +586,7 @@
       return sortAsc ? va - vb : vb - va;
     });
     document.getElementById('monitor-tbody').innerHTML = rows.map(m => {
-      const isOpen = openMonitors.has(m.label);
+      const isOpen = openMonitor === m.label;
       const drillId = 'drill-' + m.label.replace('|', '-');
       const mainRow = `
         <tr class="row-hover border-b border-[#F4F4F5]" onclick="toggleMonitor('${m.label}')">
@@ -595,8 +615,7 @@
   }
 
   function toggleMonitor(label) {
-    if (openMonitors.has(label)) openMonitors.delete(label);
-    else openMonitors.add(label);
+    openMonitor = (openMonitor === label) ? null : label; // accordion: opening one closes any other
     renderMonitors();
   }
 
