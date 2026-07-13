@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signal Tracker — Exa Analytics (mockup)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          bg: '#EEF1F7', surface: '#ffffff', border: '#E1E4EC', muted: '#8B92A6',
+          text: '#3D4457', heading: '#1F2430',
+          accent: { DEFAULT: '#4F5FD1', light: '#EEF0FE', text: '#4A55C4' },
+          pos:    { DEFAULT: '#059669', light: '#E4F5E9', text: '#4C8A66' },
+          neg:    { DEFAULT: '#DC2626', light: '#FCEAF0', text: '#B25577' },
+          warn:   { DEFAULT: '#D97706', light: '#FBF1DC', text: '#9C7A1F' },
+        },
+        fontFamily: { sans: ['Lato', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'] },
+      },
+    },
+  }
+</script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  ::-webkit-scrollbar { width: 7px; height: 7px; }
+  ::-webkit-scrollbar-thumb { background: #E1E4EC; border-radius: 4px; }
+  .tip { position: relative; display: inline-flex; }
+  .tip .tip-box { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: #1F2430; color: white; font-size: 10px; font-weight: 500; line-height: 1.4; padding: 5px 8px; border-radius: 5px; white-space: normal; width: 220px; opacity: 0; pointer-events: none; transition: opacity 0.1s; z-index: 60; }
+  .tip:hover .tip-box { opacity: 1; }
+  .tip.tip-r .tip-box { left: auto; right: 0; transform: none; }
+  .icon-btn { color: #A6ACBD; background: none; border: none; cursor: pointer; padding: 3px; display: flex; align-items: center; border-radius: 4px; }
+  .icon-btn:hover { color: #3D4457; background: #F2F4F9; }
+
+  .stat-card { background: #FAFBFD; border: 1px solid #E1E4EC; border-radius: 8px; padding: 7px 10px; display: flex; flex-direction: column; gap: 2px; }
+  .stat-card-icon { width: 18px; height: 18px; border-radius: 5px; background: #EEF0FE; color: #4F5FD1; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .stat-card-icon svg { width: 10px; height: 10px; }
+  .legend-dot { width: 7px; height: 7px; border-radius: 2px; display: inline-block; }
+  .disclaimer { font-size: 10px; color: #B7BECC; font-style: italic; }
+
+  .wk-chart { display: flex; align-items: flex-end; gap: 8px; height: 130px; padding-top: 34px; }
+  .wk-chart .wk-col { flex: 1; position: relative; height: 100%; min-width: 0; }
+  .wk-stack { position: absolute; bottom: 0; left: 0; right: 0; display: flex; flex-direction: column-reverse; }
+  .wk-seg:first-child { border-radius: 0 0 2px 2px; }
+  .wk-seg:last-child { border-radius: 2px 2px 0 0; }
+  .wk-tooltip { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); display: none; flex-direction: column; align-items: center; gap: 3px; margin-bottom: 6px; z-index: 20; }
+  .wk-col:hover .wk-tooltip { display: flex; }
+  .wk-tt-bubble { position: relative; padding: 3px 9px; border-radius: 6px; font-size: 10px; white-space: nowrap; text-align: center; line-height: 1.5; font-weight: 700; }
+  .wk-tt-bubble .lbl { font-size: 8px; font-weight: 600; opacity: 0.85; display: block; }
+  .wk-tt-bubble::after { content: ''; position: absolute; left: 50%; transform: translateX(-50%); top: 100%; border: 5px solid transparent; }
+  .wk-tt-total { background: #1F2430; color: white; }
+  .wk-tt-total::after { border-top-color: #1F2430; }
+  .wk-tt-passed { background: #059669; color: white; }
+  .wk-tt-passed::after { border-top-color: #059669; }
+  .wk-tt-filtered { background: #DC2626; color: white; }
+  .wk-tt-filtered::after { border-top-color: #DC2626; }
+  .wk-tt-pending { background: #C0CDD8; color: #1F2430; }
+  .wk-tt-pending::after { border-top-color: #C0CDD8; }
+
+  .type-bar-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .type-bar-label { font-size: 10.5px; font-family: monospace; width: 82px; flex-shrink: 0; color: #3D4457; }
+  .type-bar-track { flex: 1; height: 12px; background: #F0F1F5; border-radius: 3px; overflow: hidden; }
+  .type-bar-fill { height: 100%; border-radius: 3px; }
+  .type-bar-val { font-size: 10.5px; font-weight: 700; color: #3D4457; width: 28px; text-align: right; flex-shrink: 0; }
+
+  table { border-collapse: collapse; }
+  thead th { cursor: pointer; user-select: none; }
+  thead th.sorted { color: #4F5FD1; }
+  .sort-asc::after  { content: ' \25B2'; font-size: 8px; opacity: .7; }
+  .sort-desc::after { content: ' \25BC'; font-size: 8px; opacity: .7; }
+  .row-hover:hover { background: #FAFAFC; }
+  .cat-badge { font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 9px; white-space: nowrap; display: inline-block; }
+</style>
+</head>
+<body class="bg-bg font-sans text-[12.5px] text-text">
+
+<div class="max-w-5xl mx-auto px-6 py-5">
+  <div class="flex items-center justify-between mb-4">
+    <div>
+      <div class="text-[14px] font-bold text-heading">Exa Analytics</div>
+      <div class="disclaimer mt-0.5">Real data — pulled live from signal_monitoring.raw_signals (source=exa) and the Exa Monitors API, 2026-07-13. Not illustrative.</div>
+    </div>
+    <a href="settings.html" class="icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></a>
+  </div>
+
+  <!-- STAT CARDS -->
+  <div class="grid grid-cols-4 gap-2 mb-3">
+    <div class="stat-card">
+      <div class="flex items-center justify-between"><span class="stat-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
+        <div class="tip tip-r"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box">COUNT(*) WHERE source='exa' in signal_monitoring.raw_signals</span></div>
+      </div>
+      <div class="text-[9px] text-muted font-semibold">Raw Signals Ingested</div>
+      <div class="text-[16px] font-bold text-heading leading-none">310</div>
+    </div>
+    <div class="stat-card">
+      <div class="flex items-center justify-between"><span class="stat-card-icon" style="background:#E4F5E9;color:#059669;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg></span>
+        <div class="tip tip-r"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box">status='passed_icp' — cleared 02_filter.mjs, promotable to signals[]</span></div>
+      </div>
+      <div class="text-[9px] text-muted font-semibold">Passed ICP</div>
+      <div class="flex items-baseline gap-1"><span class="text-[16px] font-bold text-pos-text leading-none">148</span><span class="text-[9px] text-muted">47.7%</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="flex items-center justify-between"><span class="stat-card-icon" style="background:#FCEAF0;color:#DC2626;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></span>
+        <div class="tip tip-r"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box">status='filtered_out' — rejected by ICP filter, kept for observability (filter_reason)</span></div>
+      </div>
+      <div class="text-[9px] text-muted font-semibold">Filtered Out</div>
+      <div class="flex items-baseline gap-1"><span class="text-[16px] font-bold text-heading leading-none">9</span><span class="text-[9px] text-muted">2.9%</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="flex items-center justify-between"><span class="stat-card-icon" style="background:#FBF1DC;color:#D97706;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
+        <div class="tip tip-r"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box">status='pending' — 153 of these are the 2026-07-13 backfill, not yet run through 02_filter.mjs</span></div>
+      </div>
+      <div class="text-[9px] text-muted font-semibold">Pending Review</div>
+      <div class="flex items-baseline gap-1"><span class="text-[16px] font-bold text-warn-text leading-none">153</span><span class="text-[9px] text-muted">49.4%</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="flex items-center justify-between"><span class="stat-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></span>
+        <div class="tip tip-r"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box">GET /monitors — all 33 confirmed status:"active" on 2026-07-13</span></div>
+      </div>
+      <div class="text-[9px] text-muted font-semibold">Active Monitors</div>
+      <div class="text-[16px] font-bold text-pos-text leading-none">33 / 33</div>
+    </div>
+    <div class="stat-card">
+      <div class="flex items-center justify-between"><span class="stat-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg></span>
+      </div>
+      <div class="text-[9px] text-muted font-semibold">Categories</div>
+      <div class="text-[16px] font-bold text-heading leading-none">7</div>
+    </div>
+    <div class="stat-card">
+      <div class="flex items-center justify-between"><span class="stat-card-icon" style="background:#EEF0FE;color:#4F5FD1;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/></svg></span>
+        <div class="tip tip-r"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box">Trigger interval — Exa's own schedule, not our cron</span></div>
+      </div>
+      <div class="text-[9px] text-muted font-semibold">Run Cadence</div>
+      <div class="text-[16px] font-bold text-heading leading-none">7d</div>
+    </div>
+    <div class="stat-card">
+      <div class="flex items-center justify-between"><span class="stat-card-icon" style="background:#E4F5E9;color:#4C8A66;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg></span>
+      </div>
+      <div class="text-[9px] text-muted font-semibold">Newest Signal</div>
+      <div class="text-[16px] font-bold text-heading leading-none">Jul 7</div>
+    </div>
+  </div>
+
+  <!-- WEEKLY ACTIVITY -->
+  <div class="border border-border rounded-lg px-4 py-3 mb-3 bg-white">
+    <div class="flex items-center justify-between mb-1">
+      <div class="text-[12px] font-bold text-heading">Weekly Activity — raw signals by ICP outcome</div>
+      <div class="flex items-center gap-3 text-[10px] text-muted">
+        <span class="flex items-center gap-1"><span class="legend-dot" style="background:#059669;"></span>Passed</span>
+        <span class="flex items-center gap-1"><span class="legend-dot" style="background:#DC2626;"></span>Filtered</span>
+        <span class="flex items-center gap-1"><span class="legend-dot" style="background:#C0CDD8;"></span>Pending</span>
+      </div>
+    </div>
+    <div class="wk-chart" id="wk-chart"></div>
+    <div class="flex justify-between text-[9px] text-muted mt-1" id="wk-labels"></div>
+    <div class="disclaimer mt-1">Bucketed by ISO week of pub_date. 6 rows with no pub_date (Exa didn't supply one) are excluded from this chart but counted in the stat cards above.</div>
+  </div>
+
+  <div class="grid grid-cols-2 gap-3 mb-3">
+    <!-- SIGNAL TYPE BREAKDOWN -->
+    <div class="border border-border rounded-lg px-4 py-3 bg-white">
+      <div class="text-[12px] font-bold text-heading mb-2">By Signal Type</div>
+      <div id="type-breakdown"></div>
+    </div>
+
+    <!-- COUNTRY BREAKDOWN -->
+    <div class="border border-border rounded-lg px-4 py-3 bg-white">
+      <div class="text-[12px] font-bold text-heading mb-2">By Country</div>
+      <div id="country-breakdown"></div>
+      <div class="disclaimer mt-2">EU-scoped monitors (6 of 33) have country=null by design — not a data gap.</div>
+    </div>
+  </div>
+
+  <!-- MONITOR PERFORMANCE TABLE -->
+  <div class="border border-border rounded-lg overflow-hidden bg-white">
+    <div class="flex items-center justify-between px-4 pt-3 pb-2">
+      <div class="text-[12px] font-bold text-heading">Monitor Performance</div>
+      <span class="text-[10px] text-muted">Live from GET /monitors/{id}/runs — all 33, 2026-07-13</span>
+    </div>
+    <table class="w-full">
+      <thead>
+        <tr class="text-[9px] font-bold uppercase tracking-wide text-muted border-b border-border">
+          <th class="text-left px-4 py-1.5" data-col="label">Monitor</th>
+          <th class="text-left px-4 py-1.5" data-col="category">Category</th>
+          <th class="text-left px-4 py-1.5" data-col="country">Country</th>
+          <th class="text-right px-4 py-1.5" data-col="runs">Runs seen</th>
+          <th class="text-right px-4 py-1.5 sorted sort-desc" data-col="results">Results seen</th>
+        </tr>
+      </thead>
+      <tbody id="monitor-tbody" class="text-[11px]"></tbody>
+    </table>
+    <div class="disclaimer px-4 pb-3 pt-1">"Results seen" = all results the Exa API has ever returned for that monitor across every run (includes repeats across weekly reruns of the same article) — not the same as unique rows stored in raw_signals (310 total, after dedup on url).</div>
+  </div>
+
+</div>
+
+<script>
+  // ── REAL DATA: signal_monitoring.raw_signals WHERE source='exa', grouped by ISO week of pub_date ──
+  // Pulled live 2026-07-13. 6 additional rows have pub_date=null (not shown here, counted in stat cards).
+  const WEEKS = [
+    { label: 'May 17', total: 12, passed: 4,  filtered: 8, pending: 0 },
+    { label: 'May 24', total: 43, passed: 43, filtered: 0, pending: 0 },
+    { label: 'May 31', total: 55, passed: 54, filtered: 0, pending: 1 },
+    { label: 'Jun 7',  total: 36, passed: 31, filtered: 0, pending: 5 },
+    { label: 'Jun 14', total: 50, passed: 15, filtered: 0, pending: 35 },
+    { label: 'Jun 21', total: 55, passed: 0,  filtered: 0, pending: 55 },
+    { label: 'Jun 28', total: 37, passed: 0,  filtered: 0, pending: 37 },
+    { label: 'Jul 5',  total: 15, passed: 0,  filtered: 0, pending: 15 },
+  ];
+
+  const wkMax = Math.max(...WEEKS.map(w => w.total));
+  const wkChart = document.getElementById('wk-chart');
+  WEEKS.forEach(w => {
+    const totalPct = wkMax ? (w.total / wkMax) * 100 : 0;
+    const passedShare = w.total ? (w.passed / w.total) * 100 : 0;
+    const filteredShare = w.total ? (w.filtered / w.total) * 100 : 0;
+    const pendingShare = w.total ? (w.pending / w.total) * 100 : 0;
+    const col = document.createElement('div');
+    col.className = 'wk-col';
+    col.innerHTML = `
+      <div class="wk-stack" style="height:${totalPct}%">
+        <div class="wk-tooltip">
+          <div class="wk-tt-bubble wk-tt-total">${w.total}<span class="lbl">Total</span></div>
+          ${w.pending > 0 ? `<div class="wk-tt-bubble wk-tt-pending">${w.pending}<span class="lbl">Pending</span></div>` : ''}
+          ${w.filtered > 0 ? `<div class="wk-tt-bubble wk-tt-filtered">${w.filtered}<span class="lbl">Filtered</span></div>` : ''}
+          ${w.passed > 0 ? `<div class="wk-tt-bubble wk-tt-passed">${w.passed}<span class="lbl">Passed</span></div>` : ''}
+        </div>
+        <div class="wk-seg" style="height:${passedShare}%;background:#059669;"></div>
+        <div class="wk-seg" style="height:${filteredShare}%;background:#DC2626;"></div>
+        <div class="wk-seg" style="height:${pendingShare}%;background:#C0CDD8;"></div>
+      </div>`;
+    wkChart.appendChild(col);
+  });
+  document.getElementById('wk-labels').innerHTML = WEEKS.map(w => `<span>${w.label}</span>`).join('');
+
+  // ── REAL DATA: by signal_type, from raw_signals->raw_data->>signal_type ──
+  const TYPES = [
+    { label: 'MA',       count: 63, color: '#4F5FD1' },
+    { label: 'CLEVEL',   count: 61, color: '#0EA5A5' },
+    { label: 'EXPAND',   count: 57, color: '#D97706' },
+    { label: 'SECTOR',   count: 40, color: '#7C3AED' },
+    { label: 'INVEST',   count: 36, color: '#059669' },
+    { label: 'NICHE',    count: 35, color: '#C24E76' },
+    { label: 'CONTRACT', count: 18, color: '#8B92A6' },
+  ];
+  const typeMax = Math.max(...TYPES.map(t => t.count));
+  document.getElementById('type-breakdown').innerHTML = TYPES.map(t => `
+    <div class="type-bar-wrap">
+      <span class="type-bar-label">${t.label}</span>
+      <div class="type-bar-track"><div class="type-bar-fill" style="width:${(t.count/typeMax)*100}%;background:${t.color};"></div></div>
+      <span class="type-bar-val">${t.count}</span>
+    </div>`).join('');
+
+  // ── REAL DATA: raw_signals.country WHERE source='exa', grouped directly (not derived) ──
+  const COUNTRIES = [
+    { label: 'EU / niche', count: 111, color: '#8B92A6' },
+    { label: 'FR', count: 69,  color: '#0EA5A5' },
+    { label: 'DE', count: 63,  color: '#4F5FD1' },
+    { label: 'NL', count: 35,  color: '#D97706' },
+    { label: 'BE', count: 28,  color: '#7C3AED' },
+    { label: 'CH', count: 4,   color: '#059669' },
+  ];
+  const countryMax = Math.max(...COUNTRIES.map(c => c.count));
+  document.getElementById('country-breakdown').innerHTML = COUNTRIES.map(c => `
+    <div class="type-bar-wrap">
+      <span class="type-bar-label">${c.label}</span>
+      <div class="type-bar-track"><div class="type-bar-fill" style="width:${(c.count/countryMax)*100}%;background:${c.color};"></div></div>
+      <span class="type-bar-val">${c.count}</span>
+    </div>`).join('');
+
+  // ── REAL DATA: GET /monitors/{id}/runs for all 33 monitors, live call 2026-07-13 ──
+  const MONITORS = [
+    { label: 'MA|DE', runs: 8, results: 18 }, { label: 'MA|FR', runs: 8, results: 13 },
+    { label: 'MA|NL', runs: 6, results: 11 }, { label: 'MA|BE', runs: 6, results: 15 },
+    { label: 'MA|CH', runs: 6, results: 6 },  { label: 'MA|EU', runs: 6, results: 15 },
+    { label: 'CLEVEL|DE', runs: 6, results: 16 }, { label: 'CLEVEL|FR', runs: 6, results: 9 },
+    { label: 'CLEVEL|NL', runs: 6, results: 10 }, { label: 'CLEVEL|BE', runs: 6, results: 8 },
+    { label: 'CLEVEL|DE7', runs: 6, results: 15 }, { label: 'CLEVEL|FR7', runs: 6, results: 10 },
+    { label: 'EXPAND|DE', runs: 6, results: 12 }, { label: 'EXPAND|FR', runs: 6, results: 16 },
+    { label: 'EXPAND|NL', runs: 6, results: 15 }, { label: 'EXPAND|BE', runs: 6, results: 7 },
+    { label: 'EXPAND|EU', runs: 6, results: 15 },
+    { label: 'INVEST|DE', runs: 6, results: 11 }, { label: 'INVEST|FR', runs: 6, results: 14 },
+    { label: 'INVEST|EU', runs: 6, results: 17 },
+    { label: 'CONTRACT|DE', runs: 6, results: 9 }, { label: 'CONTRACT|FR', runs: 6, results: 11 },
+    { label: 'NICHE|FN-DEFRBE', runs: 6, results: 7 }, { label: 'NICHE|FN-NL', runs: 6, results: 7 },
+    { label: 'NICHE|FOODBEV', runs: 6, results: 12 }, { label: 'NICHE|JUST-FOOD', runs: 6, results: 8 },
+    { label: 'NICHE|BAKINGBISCUIT', runs: 6, results: 0 }, { label: 'NICHE|DAIRYREPORTER', runs: 6, results: 5 },
+    { label: 'SECTOR|DAIRY-DE', runs: 6, results: 9 }, { label: 'SECTOR|BAKERY-EU', runs: 6, results: 9 },
+    { label: 'SECTOR|INGREDIENTS', runs: 6, results: 14 }, { label: 'SECTOR|MEAT-DE', runs: 6, results: 13 },
+    { label: 'SECTOR|BEVERAGE-DE', runs: 6, results: 6 },
+  ].map(m => {
+    const [category, country] = m.label.split('|');
+    return { ...m, category, country: country || '—' };
+  });
+
+  const CAT_COLORS = { MA: '#4F5FD1', CLEVEL: '#0EA5A5', EXPAND: '#D97706', INVEST: '#059669', CONTRACT: '#8B92A6', NICHE: '#C24E76', SECTOR: '#7C3AED' };
+  function catBadge(cat) {
+    return `<span class="cat-badge" style="background:${CAT_COLORS[cat]}22;color:${CAT_COLORS[cat]};">${cat}</span>`;
+  }
+
+  let sortCol = 'results', sortAsc = false;
+  function renderMonitors() {
+    const rows = [...MONITORS].sort((a, b) => {
+      let va = a[sortCol], vb = b[sortCol];
+      if (typeof va === 'string') return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+      return sortAsc ? va - vb : vb - va;
+    });
+    document.getElementById('monitor-tbody').innerHTML = rows.map(m => `
+      <tr class="row-hover border-b border-[#F4F4F5]">
+        <td class="px-4 py-1.5 font-mono text-[10.5px]">${m.label}</td>
+        <td class="px-4 py-1.5">${catBadge(m.category)}</td>
+        <td class="px-4 py-1.5 text-muted">${m.country}</td>
+        <td class="px-4 py-1.5 text-right">${m.runs}</td>
+        <td class="px-4 py-1.5 text-right font-semibold">${m.results}</td>
+      </tr>`).join('');
+  }
+  document.querySelectorAll('thead th[data-col]').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.col;
+      sortAsc = (sortCol === col) ? !sortAsc : false;
+      sortCol = col;
+      document.querySelectorAll('thead th').forEach(h => h.classList.remove('sort-asc', 'sort-desc', 'sorted'));
+      th.classList.add(sortAsc ? 'sort-asc' : 'sort-desc', 'sorted');
+      renderMonitors();
+    });
+  });
+  renderMonitors();
+</script>
+</body>
+</html>
