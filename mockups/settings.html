@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signal Tracker — Settings (mockup)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          bg: '#EEF1F7', surface: '#ffffff', border: '#E1E4EC', muted: '#8B92A6',
+          text: '#3D4457', heading: '#1F2430',
+          accent: { DEFAULT: '#4F5FD1', light: '#EEF0FE', text: '#4A55C4' },
+          pos:    { DEFAULT: '#059669', light: '#E4F5E9', text: '#4C8A66' },
+          neg:    { DEFAULT: '#DC2626', light: '#FCEAF0', text: '#B25577' },
+          warn:   { DEFAULT: '#D97706', light: '#FBF1DC', text: '#9C7A1F' },
+        },
+        fontFamily: { sans: ['Lato', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'] },
+      },
+    },
+  }
+</script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  ::-webkit-scrollbar { width: 7px; height: 7px; }
+  ::-webkit-scrollbar-thumb { background: #E1E4EC; border-radius: 4px; }
+  .rail-icon { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #A6ACBD; cursor: pointer; position: relative; }
+  .rail-icon:hover { background: #F2F4F9; color: #5C6478; }
+  .rail-icon.active { background: #EEF0FE; color: #4F5FD1; }
+  .rail-tip { position: absolute; left: 46px; top: 50%; transform: translateY(-50%); background: #1F2430; color: white; font-size: 10.5px; font-weight: 600; padding: 3px 8px; border-radius: 5px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.1s; z-index: 50; }
+  .rail-icon:hover .rail-tip { opacity: 1; }
+  .tip { position: relative; display: inline-flex; }
+  .tip .tip-box { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: #1F2430; color: white; font-size: 10px; font-weight: 500; line-height: 1.4; padding: 5px 8px; border-radius: 5px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.1s; z-index: 60; }
+  .tip:hover .tip-box { opacity: 1; }
+  .tip-box.tip-wide { white-space: normal; width: 260px; }
+  .health-pill { font-size: 9.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .health-ok { background: #E4F5E9; color: #4C8A66; }
+  .health-warn { background: #FBF1DC; color: #9C7A1F; }
+  .health-missing { background: #FBE7E7; color: #B23B3B; }
+  .health-unknown { background: #F2F4F9; color: #8B92A6; }
+  .status-badge { font-size: 9.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .status-done  { background: #E4F5E9; color: #4C8A66; }
+  .row-hover:hover { background: #FAFAFC; cursor: pointer; }
+  .settings-group-label { font-size: 10.5px; font-weight: 700; color: #8B92A6; text-transform: uppercase; letter-spacing: 0.03em; padding: 0 10px; margin: 14px 0 4px; }
+  .settings-nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 7px; font-size: 12.5px; font-weight: 500; color: #52525B; cursor: pointer; }
+  .settings-nav-item:hover { background: #F5F6FA; }
+  .settings-nav-item.active { background: #EEF0FE; color: #4A55C4; font-weight: 700; }
+  .settings-panel { display: none; }
+  .settings-panel.active { display: block; }
+  .tag-chip { font-size: 10.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: #F2F4F9; color: #3D4457; display: inline-flex; align-items: center; gap: 5px; }
+  .tag-chip.neg { background: #FCEAF0; color: #B25577; }
+  .field-label { font-size: 10.5px; font-weight: 700; color: #8B92A6; text-transform: uppercase; letter-spacing: 0.02em; margin-bottom: 6px; }
+  .card { background: white; border: 1px solid #E1E4EC; border-radius: 8px; padding: 14px 16px; }
+</style>
+</head>
+<body class="bg-bg font-sans text-[12.5px] text-text">
+
+<div class="flex h-screen overflow-hidden">
+
+  <!-- ICON RAIL -->
+  <div class="w-14 bg-white border-r border-border flex flex-col items-center py-3 gap-1 flex-shrink-0 relative z-20">
+    <div class="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white font-bold text-[11px] mb-3">PB</div>
+    <a href="#" class="rail-icon">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 3 7l9 5 9-5-9-5z"/><path d="M3 12l9 5 9-5M3 17l9 5 9-5"/></svg>
+      <span class="rail-tip">Leads</span>
+    </a>
+    <a href="database.html" class="rail-icon">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+      <span class="rail-tip">Database</span>
+    </a>
+    <div class="flex-1"></div>
+    <div class="rail-icon active">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/></svg>
+      <span class="rail-tip">Settings</span>
+    </div>
+  </div>
+
+  <!-- SETTINGS SIDEBAR -->
+  <div class="w-56 bg-white border-r border-border flex flex-col flex-shrink-0 overflow-y-auto">
+    <div class="px-4 py-4 border-b border-border">
+      <span class="font-bold text-heading text-[15px]">Settings</span>
+    </div>
+    <div class="px-2.5 pb-4">
+      <div class="settings-group-label">Pipeline</div>
+      <div id="nav-icpfilter" onclick="switchSettings('icpfilter')" class="settings-nav-item active">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+        ICP Filter
+      </div>
+      <div id="nav-staleness" onclick="switchSettings('staleness')" class="settings-nav-item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        Staleness Rules
+      </div>
+      <div class="settings-group-label">System</div>
+      <div id="nav-runs" onclick="switchSettings('runs')" class="settings-nav-item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M18 17V9M13 17V5M8 17v-3"/></svg>
+        Runs
+      </div>
+      <div id="nav-health" onclick="switchSettings('health')" class="settings-nav-item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        Health
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="flex-1 overflow-y-auto">
+    <div class="px-6 py-5" style="max-width:900px;">
+
+      <!-- ══════════════ ICP FILTER PANEL ══════════════ -->
+      <div id="panel-icpfilter" class="settings-panel active">
+        <div class="mb-4">
+          <div class="font-bold text-heading text-[16px]">ICP Filter</div>
+          <div class="text-[11.5px] text-muted mt-0.5">Single source of truth for targeting — maps to <code>pipeline/config/icp_filter.json</code>, read by <code>02_filter.mjs</code>.</div>
+        </div>
+        <div class="flex items-center gap-1.5 mb-4">
+          <span class="tip tip-wide">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#A6ACBD;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            <span class="tip-box tip-wide">PRD.md flagged 3 different ICP-filter versions scattered across scripts before the first production run — this file doesn't exist on disk yet (TODO #6). This panel is the proposed single edit surface for it, so a future 2nd client just gets a new file, not a 4th copy-pasted version.</span>
+          </span>
+          <span class="text-[10px] text-muted">Not created yet — content below mirrors PRD.md's spec exactly</span>
+        </div>
+
+        <div class="card mb-3">
+          <div class="field-label">Industries</div>
+          <div class="flex flex-wrap gap-1.5">
+            <span class="tag-chip">food</span><span class="tag-chip">beverage</span><span class="tag-chip">dairy</span><span class="tag-chip">bakery</span><span class="tag-chip">meat</span><span class="tag-chip">ingredients</span><span class="tag-chip">fmcg</span><span class="tag-chip">agroalimentaire</span><span class="tag-chip">lebensmittel</span><span class="tag-chip">nahrungsmittel</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div class="card">
+            <div class="field-label">Countries</div>
+            <div class="flex flex-wrap gap-1.5">
+              <span class="tag-chip">DE</span><span class="tag-chip">FR</span><span class="tag-chip">NL</span><span class="tag-chip">BE</span><span class="tag-chip">LU</span><span class="tag-chip">CH</span><span class="tag-chip">AT</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="field-label">Headcount range</div>
+            <div class="flex items-center gap-2">
+              <input type="number" value="50" class="border border-border rounded px-2 py-1 text-[11.5px] w-20 outline-none">
+              <span class="text-muted">–</span>
+              <input type="number" value="10000" class="border border-border rounded px-2 py-1 text-[11.5px] w-24 outline-none">
+              <span class="text-[10.5px] text-muted ml-1">employees</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-3">
+          <div class="field-label">Hiring signal — exec-level keywords</div>
+          <div class="flex flex-wrap gap-1.5 mb-1">
+            <span class="tag-chip">CEO</span><span class="tag-chip">Geschäftsführer</span><span class="tag-chip">Directeur</span><span class="tag-chip">Managing Director</span><span class="tag-chip">Werksleiter</span><span class="tag-chip">Plant Manager</span><span class="tag-chip">DRH</span><span class="tag-chip">PDG</span><span class="tag-chip">Directeur Général</span><span class="tag-chip">Directeur Commercial</span><span class="tag-chip">COO</span><span class="tag-chip">Chief</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div class="card">
+            <div class="field-label">Blacklisted companies</div>
+            <div class="flex flex-wrap gap-1.5">
+              <span class="tag-chip neg">Sodexo</span><span class="tag-chip neg">Newrest</span><span class="tag-chip neg">Compass Group</span><span class="tag-chip neg">Elior</span><span class="tag-chip neg">Sysco</span><span class="tag-chip neg">Aramark</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="field-label">Blacklisted keywords</div>
+            <div class="flex flex-wrap gap-1.5">
+              <span class="tag-chip neg">Praktikum</span><span class="tag-chip neg">Internship</span><span class="tag-chip neg">Stage</span><span class="tag-chip neg">Junior</span><span class="tag-chip neg">Trainee</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="field-label">News signal — accepted types</div>
+          <div class="flex flex-wrap gap-1.5">
+            <span class="tag-chip">MA</span><span class="tag-chip">CLEVEL</span><span class="tag-chip">EXPAND</span><span class="tag-chip">INVEST</span><span class="tag-chip">CONTRACT</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════ STALENESS RULES PANEL ══════════════ -->
+      <div id="panel-staleness" class="settings-panel">
+        <div class="mb-4">
+          <div class="font-bold text-heading text-[16px]">Staleness Rules</div>
+          <div class="text-[11.5px] text-muted mt-0.5">How long a signal stays "active" before <code>07_recalc_scores.mjs</code> (weekly) marks it <code>stale</code>.</div>
+        </div>
+
+        <div class="bg-white border border-border rounded-lg overflow-hidden mb-4">
+          <table class="w-full text-left">
+            <thead>
+              <tr class="border-b border-border bg-[#FAFBFD]">
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide">Signal type</th>
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide">Expires after</th>
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide">Confirmation</th>
+              </tr>
+            </thead>
+            <tbody class="text-[11.5px]">
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">HIRING</td><td class="px-3 py-2"><input type="number" value="90" class="border border-border rounded px-2 py-0.5 text-[11px] w-14 outline-none">&nbsp;days</td><td class="px-3 py-2 text-muted">Re-scrape job board — <code>status=filled</code> if job_id disappears. Xing gives <code>active_until</code> directly.</td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">MA</td><td class="px-3 py-2"><input type="number" value="90" class="border border-border rounded px-2 py-0.5 text-[11px] w-14 outline-none">&nbsp;days</td><td class="px-3 py-2 text-muted">None needed — news is a fact, score just decays via freshness.</td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">CLEVEL</td><td class="px-3 py-2"><input type="number" value="30" class="border border-border rounded px-2 py-0.5 text-[11px] w-14 outline-none">&nbsp;days</td><td class="px-3 py-2 text-muted">None needed.</td></tr>
+              <tr><td class="px-3 py-2 font-mono text-[10.5px]">EXPAND / INVEST</td><td class="px-3 py-2"><input type="number" value="60" class="border border-border rounded px-2 py-0.5 text-[11px] w-14 outline-none">&nbsp;days</td><td class="px-3 py-2 text-muted">None needed.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="rounded-lg px-3 py-2 text-[11.5px] font-semibold flex items-center gap-2 bg-warn-light text-warn-text">
+          ⚠ <code class="font-mono text-[10.5px]">07_recalc_scores.mjs</code> is not implemented yet (see Health) — these numbers describe intended behavior from PRD.md, nothing enforces them in production today.
+        </div>
+      </div>
+
+      <!-- ══════════════ RUNS PANEL ══════════════ -->
+      <div id="panel-runs" class="settings-panel">
+        <div class="mb-3">
+          <div class="font-bold text-heading text-[16px]">Pipeline runs</div>
+          <div class="text-[11.5px] text-muted mt-0.5">One row per <code>pipeline_runs</code> entry — what each script found, filtered, and pushed.</div>
+        </div>
+
+        <div class="bg-white border border-border rounded-lg overflow-hidden">
+          <table class="w-full text-left">
+            <thead>
+              <tr class="border-b border-border bg-[#FAFBFD]">
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide">Script</th>
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide">Source</th>
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide">Started</th>
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide text-right">Scraped</th>
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide text-right">Passed ICP</th>
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide text-right">Pushed</th>
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide">Status</th>
+              </tr>
+            </thead>
+            <tbody class="text-[11.5px]" id="runs-tbody"></tbody>
+          </table>
+        </div>
+        <div class="text-[10.5px] text-muted mt-2">
+          All rows below are from the single manual run on 2026-06-26 (399 signals / 106 contacts / 226 companies total, per CHANGELOG 0.4.0) — nothing since, because cron isn't set up yet (see Health). Once scheduled, this fills in weekly.
+        </div>
+      </div>
+
+      <!-- ══════════════ HEALTH PANEL ══════════════ -->
+      <div id="panel-health" class="settings-panel">
+        <div class="mb-4 flex items-center justify-between">
+          <div>
+            <div class="font-bold text-heading text-[16px]">Health</div>
+            <div class="text-[11.5px] text-muted mt-0.5">Supabase tables, external integrations, and the <code>signals/pipeline</code> stages this whole system depends on.</div>
+          </div>
+          <span class="text-[10.5px] text-muted">Last checked: 2026-07-13 (manual review, no live wiring yet)</span>
+        </div>
+
+        <div class="rounded-lg px-3 py-2 text-[11.5px] font-semibold mb-2 flex items-center gap-2 bg-warn-light text-warn-text">
+          ⚠ 3 issues need attention: cron not configured, Exa monitor status unverified, tam_companies/tam_contacts not migrated
+        </div>
+        <div class="flex items-center gap-1.5 mb-4">
+          <span class="tip tip-wide">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#A6ACBD;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            <span class="tip-box tip-wide">Real status as of the 2026-07-13 review, not illustrative all-green. Once wired, "Last write"/"Last run" become one query each: MAX(created_at) per table, and the existing pipeline_runs rows (see Runs) for sync jobs — no new instrumentation needed, log.mjs already writes pipeline_runs on every stage.</span>
+          </span>
+          <span class="text-[10px] text-muted">Real gaps, not illustrative — see TODO.txt items 13-18</span>
+        </div>
+
+        <div class="flex items-center gap-1.5 mb-2">
+          <div class="font-bold text-heading text-[12.5px]">Database tables (schema: signal_monitoring)</div>
+          <span class="tip tip-wide">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#A6ACBD;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            <span class="tip-box tip-wide">Self-hosted Supabase on 152.53.194.162, isolated schema (migration 003 dropped all 8 project tables from public). Table Editor link requires the SSH tunnel to localhost:8001 to be open — same pattern as cockpit's CockpitSupabaseTunnel scheduled task.</span>
+          </span>
+        </div>
+        <div class="bg-white border border-border rounded-lg overflow-hidden mb-4">
+          <table class="w-full text-left">
+            <thead>
+              <tr class="border-b border-border bg-[#FAFBFD]">
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide">Table</th>
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide">Used by</th>
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide">Last write</th>
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide">Status</th>
+              </tr>
+            </thead>
+            <tbody class="text-[11.5px]">
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">clients</td><td class="px-3 py-2 text-muted">all pages (client_id scope)</td><td class="px-3 py-2 text-muted">2026-06-26</td><td class="px-3 py-2"><span class="health-pill health-ok">OK</span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">companies</td><td class="px-3 py-2 text-muted">Leads tracker, Database</td><td class="px-3 py-2 text-muted">2026-06-26</td><td class="px-3 py-2"><span class="health-pill health-ok">OK</span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">signals</td><td class="px-3 py-2 text-muted">Leads tracker (score, narrative, angle)</td><td class="px-3 py-2 text-muted">2026-06-26</td><td class="px-3 py-2"><span class="health-pill health-ok">OK</span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">contacts</td><td class="px-3 py-2 text-muted">Leads tracker, Database drawer</td><td class="px-3 py-2 text-muted">2026-06-26</td><td class="px-3 py-2"><span class="health-pill health-ok">OK</span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">raw_signals</td><td class="px-3 py-2 text-muted">Runs drill-down</td><td class="px-3 py-2 text-muted">2026-06-26</td><td class="px-3 py-2"><span class="health-pill health-ok">OK</span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">pipeline_runs</td><td class="px-3 py-2 text-muted">Runs</td><td class="px-3 py-2 text-muted">2026-06-26 (one full run, 399 signals)</td><td class="px-3 py-2"><span class="tip"><span class="health-pill health-warn">stale</span><span class="tip-box">Only one row per script exists, from the manual 2026-06-26 test run — nothing since because cron isn't set up.</span></span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">app_state</td><td class="px-3 py-2 text-muted">Leads tracker (CRM status)</td><td class="px-3 py-2 text-muted">2026-06-26</td><td class="px-3 py-2"><span class="health-pill health-ok">OK</span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">notes</td><td class="px-3 py-2 text-muted">Leads tracker (append-only notes)</td><td class="px-3 py-2 text-muted">2026-06-26</td><td class="px-3 py-2"><span class="health-pill health-ok">OK</span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">tam_companies</td><td class="px-3 py-2 text-muted">Database page (TAM cache)</td><td class="px-3 py-2 text-muted">—</td><td class="px-3 py-2"><span class="tip"><span class="health-pill health-missing">not migrated</span><span class="tip-box">Proposed in this session's Database page design — migration not written yet. Would hold the ~2,952 deduped companies currently sitting in db/blitz_all_scored.jsonl / tam_companies.jsonl.</span></span></td></tr>
+              <tr><td class="px-3 py-2 font-mono text-[10.5px]">tam_contacts</td><td class="px-3 py-2 text-muted">Database page (contact cache)</td><td class="px-3 py-2 text-muted">—</td><td class="px-3 py-2"><span class="tip"><span class="health-pill health-missing">not migrated</span><span class="tip-box">Would hold db/master_contacts.jsonl (~3,930 rows) + db/apollo_contacts.jsonl (1,307 rows) — lets 03_resolve_companies/04_find_contacts check this table before paying for another Blitz/Apollo API call.</span></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="flex items-center gap-1.5 mb-2">
+          <div class="font-bold text-heading text-[12.5px]">Integrations</div>
+          <span class="tip tip-wide">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#A6ACBD;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            <span class="tip-box tip-wide">External APIs the pipeline stages call directly. A dead key or silent format change fails a stage quietly otherwise — see the KAD1_BLOCKED key issue already hit once on Xing/Indeed.</span>
+          </span>
+        </div>
+        <div class="bg-white border border-border rounded-lg overflow-hidden mb-4">
+          <table class="w-full text-left">
+            <thead>
+              <tr class="border-b border-border bg-[#FAFBFD]">
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide">Integration</th>
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide">Used for</th>
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide">Last success</th>
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide">Status</th>
+              </tr>
+            </thead>
+            <tbody class="text-[11.5px]">
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">Exa (33 monitors)</td><td class="px-3 py-2 text-muted">News signals (MA/CLEVEL/EXPAND/INVEST)</td><td class="px-3 py-2 text-muted">unknown</td><td class="px-3 py-2"><span class="tip"><span class="health-pill health-unknown">unverified</span><span class="tip-box">monitor_ids.json last touched 2026-06-02. Feed still routes through n8n workflow 0WmBVaYBGDUMfPSl → Sheets/Telegram, not into this DB. No local file proves whether the monitors are still firing; check the Exa dashboard or n8n directly.</span></span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">Apify — LinkedIn / StepStone / Cadremploi</td><td class="px-3 py-2 text-muted">Job-board hiring signals (01_scrape_jobs)</td><td class="px-3 py-2 text-muted">2026-06-26</td><td class="px-3 py-2"><span class="health-pill health-ok">OK</span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">Apify — Xing / Indeed</td><td class="px-3 py-2 text-muted">Job-board hiring signals (DE/AT coverage)</td><td class="px-3 py-2 text-muted">—</td><td class="px-3 py-2"><span class="tip"><span class="health-pill health-missing">key blocked</span><span class="tip-box">APIFY_KEY_KAD1_BLOCKED still referenced in job_boards/xing/ACTOR_NOTES.txt and job_boards/indeed/ACTOR_NOTES.txt. Configs need to switch to APIFY_KEY_KAD2 before these two sources produce anything.</span></span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">Blitz API</td><td class="px-3 py-2 text-muted">Company resolution + contact waterfall</td><td class="px-3 py-2 text-muted">2026-06-29 (bulk TAM build)</td><td class="px-3 py-2"><span class="health-pill health-ok">OK</span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">OpenRouter (gpt-oss-120b)</td><td class="px-3 py-2 text-muted">Narrative + angle + score (05_score_llm)</td><td class="px-3 py-2 text-muted">2026-06-26</td><td class="px-3 py-2"><span class="health-pill health-ok">OK</span></td></tr>
+              <tr><td class="px-3 py-2 font-mono text-[10.5px]">mails.so</td><td class="px-3 py-2 text-muted">Email deliverability validation</td><td class="px-3 py-2 text-muted">2026-06-29</td><td class="px-3 py-2"><span class="health-pill health-ok">OK</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="flex items-center gap-1.5 mb-2">
+          <div class="font-bold text-heading text-[12.5px]">Pipeline stages (<code class="font-mono text-[10.5px]">signals/pipeline</code>, planned VPS cron)</div>
+          <span class="tip tip-wide">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#A6ACBD;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            <span class="tip-box tip-wide">log.mjs already writes to pipeline_runs on every stage start/finish — once cron is set up, the Runs panel reads live from there instead of these hand-maintained rows. Cadence per PRD.md: Monday 08:00 UTC weekly.</span>
+          </span>
+        </div>
+        <div class="bg-white border border-border rounded-lg overflow-hidden">
+          <table class="w-full text-left">
+            <thead>
+              <tr class="border-b border-border bg-[#FAFBFD]">
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide">Stage</th>
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide">Cadence</th>
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide">Last run</th>
+                <th class="px-3 py-2 text-[9.5px] font-bold text-muted uppercase tracking-wide">Status</th>
+              </tr>
+            </thead>
+            <tbody class="text-[11.5px]">
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">01_scrape_jobs / 01_scrape_exa</td><td class="px-3 py-2 text-muted">weekly Mon 08:00 UTC (planned)</td><td class="px-3 py-2 text-muted">2026-06-26 (manual)</td><td class="px-3 py-2"><span class="health-pill health-warn">not scheduled</span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">02_filter</td><td class="px-3 py-2 text-muted">weekly Mon 08:00 UTC (planned)</td><td class="px-3 py-2 text-muted">2026-06-26 (manual)</td><td class="px-3 py-2"><span class="health-pill health-warn">not scheduled</span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">03_resolve_companies</td><td class="px-3 py-2 text-muted">weekly Mon 08:00 UTC (planned)</td><td class="px-3 py-2 text-muted">2026-06-26 (manual)</td><td class="px-3 py-2"><span class="health-pill health-warn">not scheduled</span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">04_find_contacts</td><td class="px-3 py-2 text-muted">weekly Mon 08:00 UTC (planned)</td><td class="px-3 py-2 text-muted">2026-06-26 (manual)</td><td class="px-3 py-2"><span class="health-pill health-warn">not scheduled</span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">05_score_llm</td><td class="px-3 py-2 text-muted">weekly Mon 08:00 UTC (planned)</td><td class="px-3 py-2 text-muted">2026-06-26 (manual)</td><td class="px-3 py-2"><span class="health-pill health-warn">not scheduled</span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">06_push_supabase</td><td class="px-3 py-2 text-muted">weekly Mon 08:00 UTC (planned)</td><td class="px-3 py-2 text-muted">2026-06-26 (manual)</td><td class="px-3 py-2"><span class="health-pill health-warn">not scheduled</span></td></tr>
+              <tr><td class="px-3 py-2 font-mono text-[10.5px]">07_recalc_scores</td><td class="px-3 py-2 text-muted">weekly Mon 09:00 UTC (planned)</td><td class="px-3 py-2 text-muted">never run</td><td class="px-3 py-2"><span class="health-pill health-missing">not implemented</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="text-[10.5px] text-muted mt-2">
+          Next.js frontend redeploy and Exa→webhook monitor repoint are one-off cutover steps, not recurring jobs — tracked in TODO.txt, not here.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  const SETTINGS_SECTIONS = ['icpfilter', 'staleness', 'runs', 'health'];
+  function switchSettings(id) {
+    SETTINGS_SECTIONS.forEach(s => {
+      document.getElementById('panel-' + s).classList.toggle('active', s === id);
+      document.getElementById('nav-' + s).classList.toggle('active', s === id);
+    });
+  }
+
+  const RUNS = [
+    { script: '01_scrape_jobs', source: 'linkedin+stepstone+cadremploi', started: '2026-06-26 09:02', scraped: 612, passed: 41, pushed: 18, status: 'done' },
+    { script: '01_scrape_exa', source: 'exa (33 monitors)', started: '2026-06-26 09:04', scraped: 182, passed: 26, pushed: 11, status: 'done' },
+    { script: '02_filter', source: 'all', started: '2026-06-26 09:10', scraped: 794, passed: 67, pushed: null, status: 'done' },
+    { script: '03_resolve_companies', source: 'blitz', started: '2026-06-26 09:14', scraped: null, passed: 67, pushed: 226, status: 'done' },
+    { script: '04_find_contacts', source: 'blitz waterfall', started: '2026-06-26 09:22', scraped: null, passed: null, pushed: 106, status: 'done' },
+    { script: '05_score_llm', source: 'openrouter', started: '2026-06-26 09:31', scraped: null, passed: null, pushed: 399, status: 'done' },
+    { script: '06_push_supabase', source: 'all', started: '2026-06-26 09:40', scraped: null, passed: null, pushed: 399, status: 'done' },
+  ];
+  document.getElementById('runs-tbody').innerHTML = RUNS.map(r => (
+    '<tr class="row-hover border-b border-[#F4F4F5]">' +
+    '<td class="px-3 py-2 font-mono text-[10.5px]">' + r.script + '</td>' +
+    '<td class="px-3 py-2 text-muted">' + r.source + '</td>' +
+    '<td class="px-3 py-2 text-muted">' + r.started + '</td>' +
+    '<td class="px-3 py-2 text-right">' + (r.scraped ?? '—') + '</td>' +
+    '<td class="px-3 py-2 text-right">' + (r.passed ?? '—') + '</td>' +
+    '<td class="px-3 py-2 text-right font-semibold">' + (r.pushed ?? '—') + '</td>' +
+    '<td class="px-3 py-2"><span class="status-badge status-done">done</span></td>' +
+    '</tr>'
+  )).join('');
+</script>
+</body>
+</html>
