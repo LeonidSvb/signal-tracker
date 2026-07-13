@@ -3,7 +3,7 @@ param([switch]$SkipBuild)
 $KEY = "$env:USERPROFILE\.ssh\id_ed25519_hostinger"
 $SSH_HOST = "leonid@152.53.194.162"
 $APP_DIR = "/opt/apps/signal-tracker"
-$NEXTJS_DIR = "$PSScriptRoot\nextjs"
+$NEXTJS_DIR = "$PSScriptRoot\..\nextjs"
 
 # Step 1: Build (unless skipped)
 if (-not $SkipBuild) {
@@ -31,7 +31,7 @@ set -e
 cd $APP_DIR
 tar -xzf /tmp/st-app.tar.gz --overwrite
 mkdir -p .next && tar -xzf /tmp/st-static.tar.gz -C .next --overwrite
-printf 'PORT=3099\nNODE_ENV=production\nHOSTNAME=0.0.0.0\nNEXT_PUBLIC_SUPABASE_URL=https://supabase.pamelacoreypc.com\nNEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc3NDQ1MDc0LCJleHAiOjk5OTk5OTk5OTl9.7_gz6Kr2QyIfYNO9v1bvvYSHJUuusqgwxbsnqTfMDrQ\nNEXT_PUBLIC_CLIENT_SLUG=philippe-bosquillon\n' > .env
+printf 'PORT=3099\nNODE_ENV=production\nHOSTNAME=0.0.0.0\nNEXT_PUBLIC_SUPABASE_URL=https://supabase.pamelacoreypc.com\nNEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc3NDQ1MDc0LCJleHAiOjk5OTk5OTk5OTl9.7_gz6Kr2QyIfYNO9v1bvvYSHJUuusqgwxbsnqTfMDrQ\nSUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3Nzc0NDUwNzQsImV4cCI6OTk5OTk5OTk5OX0.bP8P8ivFjcvcf0bD_Nk4Zpq3lAd_OCb_tc8opZ91u8M\nNEXT_PUBLIC_CLIENT_SLUG=philippe-bosquillon\n' > .env
 echo '31ib*lH0WJKDC#qilDptlM0e' | sudo -S systemctl restart signal-tracker
 sleep 3 && systemctl is-active signal-tracker && echo 'SERVICE ACTIVE'
 curl -s http://localhost:3099 | head -c 60
