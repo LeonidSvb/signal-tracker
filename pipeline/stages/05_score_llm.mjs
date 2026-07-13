@@ -6,7 +6,7 @@
 import { readFileSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
-import { selectAll, insert } from '../lib/supabase.mjs';
+import { selectAll, insert, patch } from '../lib/supabase.mjs';
 import { getClientId, startRun, finishRun } from '../lib/log.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
@@ -73,7 +73,25 @@ function freshScore(pubDate) {
   return 0;
 }
 
-function calcScore(signal) {
+// News scoring bonus by signal_type — matches PRD's intended weighting (Sec. "Scoring формула"):
+// MA/CLEVEL are the strongest buy signals, EXPAND/INVEST next, the rest (CONTRACT/NICHE/SECTOR)
+// still worth a base bump for being a real news hit at all.
+function newsTypeScore(signalType) {
+  if (signalType === 'MA' || signalType === 'CLEVEL')   return 3;
+  if (signalType === 'EXPAND' || signalType === 'INVEST') return 2;
+  return 1;
+}
+
+// exec-keyword regex (execScore) only makes sense against a job-posting TITLE (e.g. "Plant
+// Manager — Neuburg site"). News headlines ("Rauch übernimmt Kloster Kitchen") almost never
+// contain an exec-level keyword, so every Exa signal was silently scoring ~1-4/10 regardless of
+// how strong the story actually was — found 2026-07-13, fixed by branching on source_type instead
+// of running the same regex over both.
+function calcScore(signal, multiSignalBonus = 0) {
+  if (signal.source_type === 'news') {
+    const signalType = (signal.raw_data?.signal_type || 'NICHE').toUpperCase();
+    return Math.min(10, 1 + freshScore(signal.pub_date) + newsTypeScore(signalType) + multiSignalBonus);
+  }
   const title = signal.raw_data?.title || signal.raw_data?.positionName || '';
   return Math.min(10, execScore(title) + freshScore(signal.pub_date));
 }
@@ -112,6 +130,42 @@ Write ONE sentence outreach angle for Philippe reaching out to this company. Be 
   } catch { return null; }
 }
 
+function parseJsonLoose(text) {
+  if (!text) return null;
+  const cleaned = text.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
+  try { return JSON.parse(cleaned); } catch { return null; }
+}
+
+// News signals never carry a structured company_name (Exa returns a headline, not an entity —
+// see docs/EXA_INTEGRATION.md) — found 2026-07-13: every Exa signal's company_name was landing
+// null, so resolveCompany() was searching against '' and 03_resolve_companies.mjs was skipping
+// them outright (`if (!name) continue`). One LLM call now extracts the company name AND writes
+// the angle at the same time, since both need the same headline anyway.
+async function extractCompanyAndAngle(signal, country) {
+  const title = signal.raw_data?.title || '';
+  if (!OPENROUTER_KEY || !title) return { companyName: '', angle: null };
+
+  const prompt = `Philippe Bosquillon is a food industry executive search specialist with 30+ years as a food executive himself. He places senior roles (GM, Plant Manager, HR Director, Commercial Director) at food companies in DE/FR/NL/BE.
+
+News headline: "${title}"
+Country: ${country || 'unknown'}
+Published: ${signal.pub_date || 'recently'}
+Signal category: ${(signal.raw_data?.signal_type || 'NICHE')}
+
+Respond with ONLY a JSON object, no other text: {"company": "<the single food/beverage company this news is primarily about, exact name as it would appear in a business database>", "angle": "<one sentence outreach angle for Philippe reaching out to this company, specific about the event and timing, no fluff>"}`;
+
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENROUTER_KEY}` },
+      body:    JSON.stringify({ model: MODEL, messages: [{ role: 'user', content: prompt }] }),
+    });
+    const data = await res.json();
+    const parsed = parseJsonLoose(data.choices?.[0]?.message?.content?.trim());
+    return { companyName: parsed?.company || '', angle: parsed?.angle || null };
+  } catch { return { companyName: '', angle: null }; }
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 export async function run() {
@@ -141,49 +195,91 @@ export async function run() {
   const stateCompanyIds  = new Set(existingState.map(s => s.company_id));
   const newCompanyIds    = new Set();
 
+  // Multi-signal bonus (PRD: "+2 если у компании 2+ сигналов") — only computable now that
+  // migration 004 preserves one raw_signals row per (monitor, url) instead of collapsing
+  // cross-monitor duplicates to whichever arrived first. Built from what's already in memory
+  // (rawSignals, this run's full passed_icp set), no extra query needed.
+  const monitorsByUrl = new Map();
+  for (const s of rawSignals) {
+    if (s.source !== 'exa' || !s.source_url) continue;
+    const set = monitorsByUrl.get(s.source_url) || new Set();
+    set.add(s.monitor_label);
+    monitorsByUrl.set(s.source_url, set);
+  }
+  function multiSignalBonus(s) {
+    if (s.source !== 'exa') return 0;
+    const set = monitorsByUrl.get(s.source_url);
+    return set && set.size > 1 ? 2 : 0;
+  }
+
   const signalRows   = [];
   const appStateRows = [];
+  const companyNameUpdates = []; // raw_signals.company_name backfill, so future runs skip re-extracting
 
   for (let i = 0; i < toProcess.length; i += CONCURRENCY) {
     const batch = toProcess.slice(i, i + CONCURRENCY);
 
-    const results = await Promise.all(batch.map(async s => {
-      const companyName = s.company_name || s.raw_data?.companyName || '';
-      const linkedinUrl = s.raw_data?.companyLinkedinUrl || null;
-      const company     = resolveCompany(companyName, linkedinUrl, companies);
+    // Step 1 — LLM calls run concurrently (I/O bound, no shared state touched here).
+    const analyzed = await Promise.all(batch.map(async s => {
+      const isNews = s.source_type === 'news';
+      const knownName = s.company_name || s.raw_data?.companyName || '';
 
-      const score = calcScore(s);
-      const angle = await generateAngle(s, companyName, s.country);
+      let companyName = knownName;
+      let angle = null;
+      if (isNews && !knownName) {
+        const extracted = await extractCompanyAndAngle(s, s.country);
+        companyName = extracted.companyName;
+        angle = extracted.angle;
+      } else {
+        angle = await generateAngle(s, companyName, s.country);
+      }
+
+      return { s, companyName, angle };
+    }));
+
+    // Step 2 — company resolution/creation runs sequentially so two signals in the same batch
+    // that both discover the same brand-new company don't race and create two stub rows for it.
+    for (const { s, companyName, angle } of analyzed) {
+      const linkedinUrl = s.raw_data?.companyLinkedinUrl || null;
+      let company = resolveCompany(companyName, linkedinUrl, companies);
+
+      if (!company && companyName) {
+        const [created] = await insert('companies', [{
+          client_id: clientId, name: companyName, hq_country: s.country || null,
+        }]);
+        if (created) { companies.push(created); company = created; }
+      }
+
+      if (companyName && companyName !== (s.company_name || '')) {
+        companyNameUpdates.push({ id: s.id, company_name: companyName });
+      }
+
+      const score = calcScore(s, multiSignalBonus(s));
       const title = s.raw_data?.title || s.raw_data?.positionName || null;
       const signalType = s.source_type === 'news'
         ? ((s.raw_data?.signal_type || 'NICHE').toUpperCase())
         : 'HIRING';
 
-      return {
-        signal: {
-          client_id:      clientId,
-          company_id:     company?.id || null,
-          raw_signal_id:  s.id,
-          signal_type:    signalType,
-          title,
-          source:         s.source,
-          source_url:     s.source_url,
-          pub_date:       s.pub_date,
-          days_ago:       daysAgo(s.pub_date),
-          country:        s.country,
-          score,
-          freshness_score: freshScore(s.pub_date),
-          status:         'active',
-          expires_at:     calcExpires(s),
-          narrative:      null,
-          angle,
-        },
-        companyId: company?.id || null,
-      };
-    }));
+      signalRows.push({
+        client_id:      clientId,
+        company_id:     company?.id || null,
+        raw_signal_id:  s.id,
+        signal_type:    signalType,
+        title,
+        source:         s.source,
+        source_url:     s.source_url,
+        pub_date:       s.pub_date,
+        days_ago:       daysAgo(s.pub_date),
+        country:        s.country,
+        score,
+        freshness_score: freshScore(s.pub_date),
+        status:         'active',
+        expires_at:     calcExpires(s),
+        narrative:      null,
+        angle,
+      });
 
-    for (const { signal, companyId } of results) {
-      signalRows.push(signal);
+      const companyId = company?.id || null;
       if (companyId && !stateCompanyIds.has(companyId) && !newCompanyIds.has(companyId)) {
         newCompanyIds.add(companyId);
         appStateRows.push({ client_id: clientId, company_id: companyId, status: 'new', updated_by: 'leo' });
@@ -194,6 +290,13 @@ export async function run() {
     await sleep(200);
   }
   console.log('');
+
+  if (companyNameUpdates.length) {
+    for (const { id, company_name } of companyNameUpdates) {
+      await patch('raw_signals', 'id', [id], { company_name });
+    }
+    console.log(`raw_signals.company_name backfilled: ${companyNameUpdates.length}`);
+  }
 
   const inserted = await insert('signals', signalRows);
   console.log(`signals created: ${inserted.length}`);

@@ -66,6 +66,7 @@ function normalizeItem(item, monitorLabel, clientId) {
     source: 'exa',
     source_type: 'news',
     external_id: item.id || item.url,
+    monitor_label: monitorLabel, // real column since migration 004 — dedup key includes this now
     company_name: null,
     source_url: item.url,
     pub_date: item.publishedDate ? item.publishedDate.slice(0, 10) : null,
@@ -76,6 +77,9 @@ function normalizeItem(item, monitorLabel, clientId) {
       author: item.author ?? null,
       image: item.image ?? null,
       publishedDate: item.publishedDate ?? null,
+      // Full page text (Markdown), present once contents.text:true is on — enabled on all 33
+      // monitors 2026-07-13, so absent on anything the monitor found before that date.
+      text: item.text ?? null,
       monitor_label: monitorLabel,
       signal_type: signalType,
     },
@@ -84,8 +88,11 @@ function normalizeItem(item, monitorLabel, clientId) {
 
 async function upsertRawSignals(rows) {
   if (!rows.length) return 0;
+  // on_conflict widened to include monitor_label (migration 004) — same story caught by several
+  // monitor categories at once now keeps one row per (monitor, url) instead of collapsing to
+  // whichever monitor's row landed first, discarding the others' category attribution.
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/raw_signals?on_conflict=client_id,source,external_id`,
+    `${SUPABASE_URL}/rest/v1/raw_signals?on_conflict=client_id,source,external_id,monitor_label`,
     {
       method: 'POST',
       headers: supabaseHeaders({ Prefer: 'return=representation,resolution=ignore-duplicates' }),
@@ -100,7 +107,7 @@ async function upsertRawSignals(rows) {
   return Array.isArray(inserted) ? inserted.length : 0;
 }
 
-async function logPipelineRun(clientId, label, { rowsScraped, rowsPushed, apiRuns, startedAt, errors }) {
+async function logPipelineRun(clientId, label, { rowsScraped, rowsPushed, apiRuns, startedAt, errors, digest, citations }) {
   const body = {
     client_id: clientId,
     script: 'exa_backfill',
@@ -113,6 +120,11 @@ async function logPipelineRun(clientId, label, { rowsScraped, rowsPushed, apiRun
     rows_pushed: rowsPushed,
     errors: errors.length ? errors : [],
     stats: { monitor_id: MONITORS[label], api_runs_seen: apiRuns },
+    // Most recent run's digest only — the backfill covers many runs per monitor but pipeline_runs
+    // here represents the whole backfill pass, not one run, so there's no single "the" digest;
+    // the latest one is the most useful snapshot to keep visible.
+    digest: digest ?? null,
+    digest_citations: citations ?? null,
   };
   const res = await fetch(`${SUPABASE_URL}/rest/v1/pipeline_runs`, {
     method: 'POST',
@@ -135,6 +147,7 @@ async function main() {
     const errors = [];
     let seen = 0, inserted = 0, apiRuns = 0;
 
+    let digest = null, citations = null;
     try {
       const res = await fetch(`https://api.exa.ai/monitors/${monitorId}/runs`, {
         headers: { 'x-api-key': EXA_API_KEY },
@@ -151,11 +164,19 @@ async function main() {
         .map(item => normalizeItem(item, label, clientId));
 
       inserted = await upsertRawSignals(rows);
+
+      // Most recent completed run's digest — one paragraph covers every result in that run, so it's
+      // stored per-run on pipeline_runs, not duplicated onto every raw_signals row.
+      const latestCompleted = runs.find(r => r.output?.content);
+      if (latestCompleted) {
+        digest = latestCompleted.output.content;
+        citations = latestCompleted.output.grounding ?? null;
+      }
     } catch (e) {
       errors.push(String(e.message || e));
     }
 
-    await logPipelineRun(clientId, label, { rowsScraped: seen, rowsPushed: inserted, apiRuns, startedAt, errors });
+    await logPipelineRun(clientId, label, { rowsScraped: seen, rowsPushed: inserted, apiRuns, startedAt, errors, digest, citations });
 
     grandSeen += seen;
     grandNew += inserted;

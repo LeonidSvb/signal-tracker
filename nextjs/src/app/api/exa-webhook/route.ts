@@ -52,22 +52,26 @@ const COUNTRY_MAP: Record<string, string | null> = {
 function normalizeExaItem(item: Record<string, unknown>, monitorLabel: string, clientId: string) {
   const [signalType, countryCode] = monitorLabel.split('|');
   return {
-    client_id:    clientId,
-    source:       'exa',
-    source_type:  'news',
-    external_id:  (item.id as string) || (item.url as string),
-    company_name: null,
-    source_url:   item.url as string,
-    pub_date:     item.publishedDate
+    client_id:     clientId,
+    source:        'exa',
+    source_type:   'news',
+    external_id:   (item.id as string) || (item.url as string),
+    monitor_label: monitorLabel, // real column since migration 004 — dedup key includes this now
+    company_name:  null,
+    source_url:    item.url as string,
+    pub_date:      item.publishedDate
       ? (item.publishedDate as string).substring(0, 10)
       : null,
-    country:      COUNTRY_MAP[countryCode] ?? null,
-    status:       'pending',
+    country:       COUNTRY_MAP[countryCode] ?? null,
+    status:        'pending',
     raw_data: {
       title:         item.title,
       author:        item.author,
       image:         item.image,
       publishedDate: item.publishedDate,
+      // Full page text (Markdown-formatted) — present since contents.text:true was enabled on all
+      // 33 monitors 2026-07-13. Absent (undefined) on anything captured before that.
+      text:          item.text ?? null,
       monitor_label: monitorLabel,
       signal_type:   signalType,
     },
@@ -97,8 +101,11 @@ async function getClientId(): Promise<string> {
 
 async function insertRaw(rows: object[]) {
   if (!rows.length) return 0;
+  // on_conflict widened to include monitor_label (migration 004) — the same real-world story often
+  // gets caught by several monitor categories at once (39 of 310 URLs did, in a live 2026-07-13
+  // check), so each (monitor, url) pair now keeps its own row instead of only the first arrival.
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/raw_signals?on_conflict=client_id,source,external_id`,
+    `${SUPABASE_URL}/rest/v1/raw_signals?on_conflict=client_id,source,external_id,monitor_label`,
     {
       method:  'POST',
       headers: await supabaseHeaders(),
@@ -111,6 +118,27 @@ async function insertRaw(rows: object[]) {
   }
   const inserted = await res.json() as unknown[];
   return Array.isArray(inserted) ? inserted.length : 0;
+}
+
+// pipeline_runs holds the per-RUN digest — Exa's AI-synthesized paragraph covers every result in
+// that run together, not one article each, so it doesn't belong on individual raw_signals rows.
+async function logRun(clientId: string, monitorLabel: string, resultsCount: number, insertedCount: number, digest: string | null, citations: unknown) {
+  await fetch(`${SUPABASE_URL}/rest/v1/pipeline_runs`, {
+    method:  'POST',
+    headers: await supabaseHeaders(),
+    body: JSON.stringify([{
+      client_id:       clientId,
+      script:          'exa_webhook',
+      source:          monitorLabel,
+      status:          'done',
+      started_at:      new Date().toISOString(),
+      finished_at:     new Date().toISOString(),
+      rows_scraped:    resultsCount,
+      rows_pushed:     insertedCount,
+      digest:          digest,
+      digest_citations: citations ?? null,
+    }]),
+  });
 }
 
 // POST /api/exa-webhook
@@ -140,7 +168,7 @@ async function insertRaw(rows: object[]) {
 // internal tool). Defense in depth instead: reject anything whose monitorId isn't one of our own.
 type ExaEvent = {
   type?: string;
-  data?: { monitorId?: string; output?: { results?: unknown[] } };
+  data?: { monitorId?: string; output?: { results?: unknown[]; content?: string; grounding?: unknown } };
 };
 
 export async function POST(req: NextRequest) {
@@ -159,6 +187,8 @@ export async function POST(req: NextRequest) {
 
   const monitorId = body.data?.monitorId;
   const results = body.data?.output?.results;
+  const digest = body.data?.output?.content ?? null;
+  const citations = body.data?.output?.grounding ?? null;
 
   if (!monitorId || !Array.isArray(results)) {
     return NextResponse.json({ error: 'missing data.monitorId or data.output.results' }, { status: 400 });
@@ -190,6 +220,12 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     console.error('[exa-webhook] insert failed:', e);
     return NextResponse.json({ error: 'db insert failed' }, { status: 500 });
+  }
+
+  try {
+    await logRun(clientId, monitorLabel, results.length, inserted, digest, citations);
+  } catch (e) {
+    console.error('[exa-webhook] pipeline_runs log failed (non-fatal):', e);
   }
 
   console.log(`[exa-webhook] ${monitorLabel} → ${results.length} received, ${inserted} inserted`);
