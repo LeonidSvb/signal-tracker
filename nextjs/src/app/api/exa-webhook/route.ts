@@ -114,19 +114,54 @@ async function insertRaw(rows: object[]) {
 }
 
 // POST /api/exa-webhook
-// Exa sends: { monitorId: string, results: Array<{ id, url, title, publishedDate, ... }> }
+//
+// Exa sends an event envelope, NOT a flat { monitorId, results } body — confirmed empirically
+// 2026-07-13 against a live test monitor (webhook.site capture), Exa's own docs don't show an
+// example payload:
+//
+//   { id: "event_...", object: "event", type: "monitor.run.completed",
+//     data: { id, monitorId, status, output: { results: [...], content, grounding } },
+//     createdAt }
+//
+// Other event types fire on the same URL too — "monitor.created" (on create/config change) and
+// "monitor.run.created" (status="running", output=null, when a run starts) — both must be
+// acknowledged with 200 and ignored, not treated as errors, or Exa will keep retrying them.
+//
+// This mismatch (route previously expected the flat shape) is why zero exa rows landed in
+// raw_signals between the 2026-06-22 webhook repoint and 2026-07-13, despite all 33 monitors
+// firing weekly the whole time — see exa/scripts/backfill_monitor_runs.mjs for the one-time
+// recovery of what was missed, and docs/EXA_INTEGRATION.md for the full incident writeup.
+//
+// Signature verification: Exa signs deliveries with an `exa-signature: t=<ts>,v1=<hmac>` header,
+// keyed by a per-monitor webhookSecret returned ONLY in the POST /monitors creation response.
+// The 33 production monitors were created 2026-06-02, before this route existed, and that secret
+// was never captured — PATCH does not re-issue it, so verification isn't currently possible
+// without deleting+recreating all 33 monitors (not worth the disruption for a single-user
+// internal tool). Defense in depth instead: reject anything whose monitorId isn't one of our own.
+type ExaEvent = {
+  type?: string;
+  data?: { monitorId?: string; output?: { results?: unknown[] } };
+};
+
 export async function POST(req: NextRequest) {
-  let body: { monitorId?: string; results?: unknown[] };
+  let body: ExaEvent;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'invalid JSON' }, { status: 400 });
   }
 
-  const { monitorId, results } = body;
+  if (body.type !== 'monitor.run.completed') {
+    // monitor.created / monitor.run.created / anything future — ack so Exa doesn't retry, do nothing.
+    console.log(`[exa-webhook] ignored event type: ${body.type}`);
+    return NextResponse.json({ ok: true, ignored: body.type });
+  }
+
+  const monitorId = body.data?.monitorId;
+  const results = body.data?.output?.results;
 
   if (!monitorId || !Array.isArray(results)) {
-    return NextResponse.json({ error: 'missing monitorId or results' }, { status: 400 });
+    return NextResponse.json({ error: 'missing data.monitorId or data.output.results' }, { status: 400 });
   }
 
   const monitorLabel = MONITOR_LABELS[monitorId];
