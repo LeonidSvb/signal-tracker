@@ -8,6 +8,45 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-07-14
+
+Exa Analytics mockup: daily-granularity charts + collapsible drill-down tables. No pipeline/schema changes this session.
+
+### Changed
+- `mockups/exa-analytics.html` — Weekly Activity bar chart replaced with two daily charts
+  (60-day window, 2026-05-16..2026-07-14), skeleton ported wholesale from
+  `outreach-cockpit/mockups/reply-agent/detailed-analytics.html` (persistent-DOM bars,
+  ctrl+wheel zoom, per-boundary tooltip anchoring, smooth-spline lines, full date-range
+  picker with presets + manual calendar range):
+  - **Daily Signal Quality** — stacked funnel per day (raw → passed ICP → company resolved
+    → contact found), Exa only, exclusive deltas computed from real cumulative counts.
+  - **Signal Volume by Source** — one line per source (Exa/LinkedIn/Indeed/StepStone/Xing/
+    Cadremploi) on the same day axis. Makes the 2026-06-22 job-board scraping cliff visible
+    next to Exa's own (separately backfilled) gap — all five job-board actors' last
+    `scraped_at` is 2026-06-22, i.e. `01_scrape_jobs.mjs` hasn't run since, unrelated to the
+    Exa webhook incident.
+  - Both **Monitor Performance** (Exa, 33 monitors) and new **Job Board Actors** (Apify,
+    5 actors) tables collapsed by default behind a computed 1-line summary. Job Board
+    Actors stays at actor granularity (not per-query — no per-query breakdown exists in
+    `raw_signals`), columns swapped to match what actually varies for Apify (status,
+    Apify key rotation, cadence) vs Exa (category, country). Drill-down lists each actor's
+    configured queries from `config.json`/`ACTOR_NOTES.txt` as reference, not fabricated
+    per-query counts.
+  - 6-color source-line palette validated via the dataviz skill's `validate_palette.js`
+    (CVD-safe, contrast pass).
+
+### Found (not yet acted on)
+- `04_find_contacts.mjs` (Blitz contact enrichment) has not run since 2026-06-26. Of the
+  130 distinct companies behind Exa signals, only 3 have a contact — all three predate
+  2026-06-26; every company recovered by the 2026-07-13 webhook-fix backfill (124 of them)
+  has zero contact-finding attempts.
+- Manual cross-reference (ad hoc SQL, not wired into any script) of the 130 Exa-signal
+  companies against the separate `sourcing` schema's 11,793-company TAM base (see the
+  outer Mastr_Leads repo's `clients/philippe-bosquillon/db/migrations/`) found 16
+  name-matches, 8 of which already have contacts there for free — e.g. VION Food Group (9
+  contacts), Crisp (9), Eurolysine (4). No code integration yet; `sourcing` and
+  `signal_monitoring` remain two separate schemas on the same Supabase instance.
+
 ## [0.7.0] - 2026-07-13
 
 Exa webhook incident (3-week silent outage) found and fixed, full-data-capture migration,
