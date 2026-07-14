@@ -40,24 +40,90 @@
   .legend-dot { width: 7px; height: 7px; border-radius: 2px; display: inline-block; }
   .disclaimer { font-size: 10px; color: #B7BECC; font-style: italic; }
 
-  .wk-chart { display: flex; align-items: flex-end; gap: 22px; height: 130px; padding-top: 34px; }
-  .wk-chart .wk-col { flex: 1; position: relative; height: 100%; min-width: 0; display: flex; justify-content: center; }
-  .wk-stack { position: absolute; bottom: 0; width: 34px; display: flex; flex-direction: column-reverse; }
-  .wk-seg:first-child { border-radius: 0 0 2px 2px; }
-  .wk-seg:last-child { border-radius: 2px 2px 0 0; }
-  .wk-tooltip { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); display: none; flex-direction: column; align-items: center; gap: 3px; margin-bottom: 6px; z-index: 20; }
-  .wk-col:hover .wk-tooltip { display: flex; }
-  .wk-tt-bubble { position: relative; padding: 3px 9px; border-radius: 6px; font-size: 10px; white-space: nowrap; text-align: center; line-height: 1.5; font-weight: 700; }
-  .wk-tt-bubble .lbl { font-size: 8px; font-weight: 600; opacity: 0.85; display: block; }
-  .wk-tt-bubble::after { content: ''; position: absolute; left: 50%; transform: translateX(-50%); top: 100%; border: 5px solid transparent; }
-  .wk-tt-total { background: #1F2430; color: white; }
-  .wk-tt-total::after { border-top-color: #1F2430; }
-  .wk-tt-passed { background: #4F5FD1; color: white; }
-  .wk-tt-passed::after { border-top-color: #4F5FD1; }
-  .wk-tt-filtered { background: #A6ACEE; color: #1F2430; }
-  .wk-tt-filtered::after { border-top-color: #A6ACEE; }
-  .wk-tt-pending { background: #C0CDD8; color: #1F2430; }
-  .wk-tt-pending::after { border-top-color: #C0CDD8; }
+  /* ── Daily bar chart (Signal Quality funnel) — ported wholesale from
+     outreach-cockpit/mockups/reply-agent/detailed-analytics.html, same class names, same
+     interaction model (persistent DOM cols, only heights change so the height transition
+     actually animates, ctrl+wheel zoom, per-boundary-anchored tooltip bubbles). Only the
+     segment count changed (2 → 4) and the data source (real signal_monitoring queries
+     instead of illustrative arrays). ── */
+  .legend-btn { display: flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; background: none; border: none; padding: 2px 4px; border-radius: 4px; font-size: 10px; color: #3D4457; }
+  .legend-btn:hover { background: #F5F6FA; }
+  .legend-btn .swatch { width: 8px; height: 8px; flex-shrink: 0; }
+  .legend-btn.off { color: #C4C9D6; }
+  .legend-btn.off .swatch { background: #D9DCE5 !important; }
+
+  .bar-chart-row { display: flex; }
+  .bar-yaxis { position: relative; width: 26px; flex-shrink: 0; height: 150px; margin-top: 34px; }
+  .bar-yaxis-label { position: absolute; right: 6px; transform: translateY(-50%); font-size: 9px; color: #7B8194; white-space: nowrap; }
+  .bar-chart-area { position: relative; flex: 1; min-width: 0; overflow: hidden; cursor: zoom-in; }
+  .bar-chart-zoom { transform-origin: bottom center; transition: transform 0.15s ease; }
+  .bar-gridlines { position: absolute; left: 0; right: 0; top: 34px; height: 150px; pointer-events: none; }
+  .bar-gridline { position: absolute; left: 0; right: 0; border-top: 1px dashed #E1E4EC; }
+  .bar-chart { position: relative; display: flex; align-items: flex-end; height: 150px; padding-top: 34px; }
+  .bar-chart .bar-col { flex: 1; position: relative; height: 100%; min-width: 0; }
+  .bar-visual { width: 62%; margin: 0 auto; height: 100%; position: relative; }
+  .bar-stack { position: absolute; bottom: 0; left: 0; right: 0; display: flex; flex-direction: column-reverse; transition: height 0.28s ease; }
+  .bar-seg { transition: height 0.28s ease; }
+  .bar-seg:first-child { border-radius: 0 0 2px 2px; }
+  .bar-seg:last-child { border-radius: 2px 2px 0 0; }
+  .bar-tooltip { display: none; }
+  .bar-col:hover .bar-tooltip { display: contents; }
+  .bar-tt-bubble { position: absolute; left: 50%; transform: translateX(-50%); padding: 3px 9px; border-radius: 6px; font-size: 10px; white-space: nowrap; text-align: center; color: white; box-shadow: 0 2px 6px rgba(31,36,48,0.18); transition: bottom 0.28s ease; z-index: 5; }
+  .bar-tt-bubble::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; }
+  .bar-tt-bubble .lbl { font-size: 8px; font-weight: 600; opacity: 0.85; display: block; }
+  .bar-tt-bubble .val { font-weight: 700; font-size: 11px; display: block; }
+
+  /* ── Smooth-line chart (Volume by Source) — ported from the same reference's "Daily
+     Metrics" chart. That one plots fixed 0-100% rates; this one plots raw daily counts, so
+     the y-axis is a dynamic "nice" max (same niceStep() helper the bar chart's own axis
+     uses) instead of a hardcoded 100. ── */
+  .dm-yaxis { position: relative; width: 26px; flex-shrink: 0; height: 150px; }
+  .dm-yaxis-label { position: absolute; right: 6px; transform: translateY(-50%); font-size: 9px; color: #7B8194; white-space: nowrap; }
+  .dm-dot { opacity: 0; transition: opacity 0.05s; }
+  #dm-guide { opacity: 0; }
+  #dm-tooltip { position: absolute; display: none; background: #1F2430; color: white; border-radius: 6px; padding: 6px 9px; font-size: 10px; line-height: 1.6; pointer-events: none; z-index: 30; white-space: nowrap; }
+  #dm-tooltip .row { display: flex; align-items: center; gap: 5px; }
+  #dm-tooltip .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  #dm-tooltip .date { font-weight: 700; margin-bottom: 2px; opacity: 0.9; }
+
+  /* ── Date range picker — 1:1 port, same behavior (presets + click-range calendar,
+     Cancel/Apply gate the commit), just re-themed to this page's TODAY (2026-07-14). ── */
+  .dr-wrap { position: relative; }
+  .dr-trigger { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; border: 1px solid #E1E4EC; border-radius: 6px; padding: 6px 10px; background: white; color: #3D4457; cursor: pointer; }
+  .dr-dropdown { position: absolute; top: calc(100% + 6px); left: 0; display: none; flex-direction: column; background: white; border: 1px solid #E1E4EC; border-radius: 10px; box-shadow: 0 16px 40px rgba(31,36,48,0.18); z-index: 300; overflow: visible; }
+  .dr-dropdown.open { display: flex; }
+  .dr-body { display: flex; }
+  .dr-presets { width: 148px; padding: 6px; border-right: 1px solid #F0F1F5; flex-shrink: 0; }
+  .dr-preset { padding: 8px 10px; margin: 1px 0; border-radius: 6px; font-size: 12px; color: #3D4457; cursor: pointer; }
+  .dr-preset:hover { background: #F5F6FA; }
+  .dr-preset.active { color: #4A55C4; font-weight: 700; background: #EEF0FE; }
+  .dr-cal { width: 306px; padding: 14px 16px 12px; flex-shrink: 0; }
+  .dr-cal-head { display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: 10px; }
+  .dr-cal-nav { color: #A6ACBD; cursor: pointer; padding: 3px; border-radius: 4px; display: flex; }
+  .dr-cal-nav:hover { color: #3D4457; background: #F5F6FA; }
+  .dr-cal-sel { position: relative; }
+  .dr-cal-sel-btn { display: flex; align-items: center; gap: 2px; font-size: 12.5px; font-weight: 700; color: #1F2430; cursor: pointer; padding: 3px 6px; border-radius: 5px; }
+  .dr-cal-sel-btn:hover { background: #F5F6FA; }
+  .dr-month-list { position: absolute; top: calc(100% + 2px); left: 0; background: white; border: 1px solid #E1E4EC; border-radius: 8px; box-shadow: 0 10px 28px rgba(0,0,0,0.16); max-height: 190px; overflow-y: auto; z-index: 310; width: 108px; padding: 4px; display: none; }
+  .dr-month-list.open { display: block; }
+  .dr-month-list .opt { padding: 5px 10px; font-size: 11.5px; color: #3D4457; cursor: pointer; border-radius: 4px; }
+  .dr-month-list .opt:hover { background: #F5F6FA; }
+  .dr-month-list .opt.active { background: #4F5FD1; color: white; font-weight: 700; }
+  .dr-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+  .dr-cal-dow { font-size: 9.5px; color: #B7BECC; text-align: center; padding-bottom: 6px; font-weight: 700; }
+  .dr-cal-day { position: relative; text-align: center; padding: 1px 0; }
+  .dr-cal-day .num { position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; width: 27px; height: 27px; margin: 0 auto; border-radius: 50%; font-size: 11.5px; color: #3D4457; cursor: pointer; border: 1px solid transparent; }
+  .dr-cal-day.muted .num { color: #D2D5DE; }
+  .dr-cal-day .num:hover { border-color: #B9C0D6; }
+  .dr-cal-day.in-range .num:hover { border-color: transparent; }
+  .dr-cal-day.in-range::before { content: ''; position: absolute; top: 2px; bottom: 2px; left: 0; right: 0; background: #4F5FD1; z-index: 1; }
+  .dr-cal-day.range-start::before { border-radius: 999px 0 0 999px; }
+  .dr-cal-day.range-end::before { border-radius: 0 999px 999px 0; }
+  .dr-cal-day.range-start.range-end::before { border-radius: 999px; }
+  .dr-cal-day.in-range .num { color: white; font-weight: 700; border-color: transparent; }
+  .dr-cal-footer { display: flex; justify-content: flex-end; align-items: center; gap: 16px; padding: 10px 16px; border-top: 1px solid #F0F1F5; }
+  .dr-cancel { font-size: 12px; color: #4A55C4; font-weight: 700; cursor: pointer; background: none; border: none; padding: 0; }
+  .dr-apply { font-size: 12px; font-weight: 700; color: white; background: #4F5FD1; border: none; border-radius: 6px; padding: 7px 18px; cursor: pointer; }
 
   .type-bar-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
   .type-bar-label { font-size: 10.5px; font-family: monospace; width: 82px; flex-shrink: 0; color: #3D4457; }
@@ -95,9 +161,49 @@
   <div class="flex items-center justify-between mb-4">
     <div>
       <div class="text-[14px] font-bold text-heading">Exa Analytics</div>
-      <div class="disclaimer mt-0.5">Real data — pulled live from signal_monitoring.raw_signals (source=exa) and the Exa Monitors API, 2026-07-13. Not illustrative.</div>
+      <div class="disclaimer mt-0.5">Real data — pulled live from signal_monitoring.raw_signals (all sources) and the Exa Monitors API, 2026-07-14. Daily granularity now, not weekly — both charts below redraw for whatever range you Apply.</div>
     </div>
     <a href="settings.html" class="icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></a>
+  </div>
+
+  <!-- DATE RANGE PICKER — shared by both charts below -->
+  <div class="flex items-center gap-2 mb-3">
+    <div class="dr-wrap" id="dr-wrap">
+      <button class="dr-trigger" id="dr-trigger" onclick="drToggle()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+        <span id="dr-trigger-label">Last 60 Days</span>
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="dr-dropdown" id="dr-dropdown">
+        <div class="dr-body">
+          <div class="dr-presets" id="dr-presets"></div>
+          <div class="dr-cal">
+            <div class="dr-cal-head">
+              <span class="dr-cal-nav" onclick="drNavMonth(-1)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></span>
+              <div class="dr-cal-sel">
+                <div class="dr-cal-sel-btn" onclick="drToggleMonthList()">
+                  <span id="dr-month-label">July</span>
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+                </div>
+                <div class="dr-month-list" id="dr-month-list"></div>
+              </div>
+              <div class="dr-cal-sel-btn" style="cursor:default;">
+                <span id="dr-year-label">2026</span>
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+              <span class="dr-cal-nav" onclick="drNavMonth(1)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></span>
+            </div>
+            <div class="dr-cal-grid" id="dr-cal-dow"></div>
+            <div class="dr-cal-grid" id="dr-cal-grid"></div>
+          </div>
+        </div>
+        <div class="dr-cal-footer">
+          <button class="dr-cancel" onclick="drCancel()">Cancel</button>
+          <button class="dr-apply" onclick="drApply()">Apply</button>
+        </div>
+      </div>
+    </div>
+    <span class="disclaimer">Presets are the same day-count queries re-sliced — no re-fetch, this mockup already has the full 60-day window loaded.</span>
   </div>
 
   <!-- STAT CARDS -->
@@ -158,19 +264,76 @@
     </div>
   </div>
 
-  <!-- WEEKLY ACTIVITY -->
+  <!-- DAILY SIGNAL QUALITY — the funnel: whole bar = raw Exa signals that day, each segment
+       below is how far that day's batch got: dropped at the ICP filter, passed but no company
+       resolved, company resolved but no contact found yet, or made it all the way to a contact.
+       Nested/cumulative counts (has_contact ⊆ has_company ⊆ passed_icp ⊆ raw) converted to
+       exclusive deltas so the segments actually sum to the bar height. -->
   <div class="border border-border rounded-lg px-4 py-3 mb-3 bg-white">
     <div class="flex items-center justify-between mb-1">
-      <div class="text-[12px] font-bold text-heading">Weekly Activity — raw signals by ICP outcome</div>
-      <div class="flex items-center gap-3 text-[10px] text-muted">
-        <span class="flex items-center gap-1"><span class="legend-dot" style="background:#4F5FD1;"></span>Passed</span>
-        <span class="flex items-center gap-1"><span class="legend-dot" style="background:#A6ACEE;"></span>Filtered</span>
-        <span class="flex items-center gap-1"><span class="legend-dot" style="background:#C0CDD8;"></span>Pending</span>
+      <div class="text-[12px] font-bold text-heading">Daily Signal Quality — Exa, raw → contact-ready</div>
+      <div class="flex items-center gap-3">
+        <button class="legend-btn" id="legend-dropped" onclick="toggleFunnelSeries('dropped')"><span class="swatch" style="background:#E4E7FB;border:1px solid #C3C9F5;"></span>Filtered/Pending</button>
+        <button class="legend-btn" id="legend-passedOnly" onclick="toggleFunnelSeries('passedOnly')"><span class="swatch" style="background:#B8C0F2;"></span>Passed ICP</button>
+        <button class="legend-btn" id="legend-companyOnly" onclick="toggleFunnelSeries('companyOnly')"><span class="swatch" style="background:#7E87E3;"></span>Company Found</button>
+        <button class="legend-btn" id="legend-contact" onclick="toggleFunnelSeries('contact')"><span class="swatch" style="background:#4F5FD1;"></span>Contact Found</button>
       </div>
     </div>
-    <div class="wk-chart" id="wk-chart"></div>
-    <div class="flex justify-between text-[9px] text-muted mt-1" id="wk-labels"></div>
-    <div class="disclaimer mt-1">Bucketed by ISO week of pub_date. 6 rows with no pub_date (Exa didn't supply one) are excluded from this chart but counted in the stat cards above.</div>
+    <div class="bar-chart-row">
+      <div class="bar-yaxis" id="funnel-yaxis"></div>
+      <div class="bar-chart-area" id="funnel-area">
+        <div class="bar-chart-zoom" id="funnel-zoom">
+          <div class="bar-gridlines" id="funnel-gridlines"></div>
+          <div class="bar-chart" id="funnel-chart"></div>
+        </div>
+      </div>
+    </div>
+    <div class="flex justify-between text-[9px] text-muted mt-1 pl-7" id="funnel-labels"></div>
+    <div class="disclaimer mt-1">By pub_date, source=exa. "Company Found" requires a resolved company with a domain or LinkedIn URL; "Contact Found" requires ≥1 row in signal_monitoring.contacts for that company. Ctrl+scroll (or pinch) to zoom the bars.</div>
+  </div>
+
+  <!-- SIGNAL VOLUME BY SOURCE — same day axis, one line per source, so you can see at a glance
+       that LinkedIn/Indeed/StepStone/Xing/Cadremploi all flatlined 2026-06-22 while Exa kept
+       going (with its own 3-week webhook gap backfilled after the fact — see stat cards). -->
+  <div class="border border-border rounded-lg px-4 py-3 mb-3 bg-white">
+    <div class="flex items-center gap-1 text-[12px] font-bold text-heading mb-1">
+      Signal Volume by Source
+      <div class="tip"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box">Raw signals per day by pub_date, one line per source. Click a legend item to hide/show that line.</span></div>
+    </div>
+    <div class="flex items-center gap-3 mb-1 flex-wrap">
+      <button class="legend-btn" id="legend-src-exa" onclick="toggleSourceSeries('exa')"><span class="swatch" style="border-radius:50%;background:#4F5FD1;"></span>Exa</button>
+      <button class="legend-btn" id="legend-src-linkedin" onclick="toggleSourceSeries('linkedin')"><span class="swatch" style="border-radius:50%;background:#0F8FA8;"></span>LinkedIn</button>
+      <button class="legend-btn" id="legend-src-indeed" onclick="toggleSourceSeries('indeed')"><span class="swatch" style="border-radius:50%;background:#9B5FE0;"></span>Indeed</button>
+      <button class="legend-btn" id="legend-src-stepstone" onclick="toggleSourceSeries('stepstone')"><span class="swatch" style="border-radius:50%;background:#D6478E;"></span>StepStone</button>
+      <button class="legend-btn" id="legend-src-xing" onclick="toggleSourceSeries('xing')"><span class="swatch" style="border-radius:50%;background:#3F8F5C;"></span>Xing</button>
+      <button class="legend-btn" id="legend-src-cadremploi" onclick="toggleSourceSeries('cadremploi')"><span class="swatch" style="border-radius:50%;background:#C05A2C;"></span>Cadremploi</button>
+    </div>
+    <div class="flex">
+      <div class="dm-yaxis" id="src-yaxis"></div>
+      <div class="relative flex-1">
+        <svg viewBox="0 0 700 150" class="w-full" style="height:150px" preserveAspectRatio="none" id="src-svg">
+          <line x1="0" y1="0" x2="700" y2="0" stroke="#E1E4EC" stroke-dasharray="4,4"/><line x1="0" y1="75" x2="700" y2="75" stroke="#E1E4EC" stroke-dasharray="4,4"/>
+          <line x1="0" y1="149" x2="700" y2="149" stroke="#E1E4EC" stroke-dasharray="4,4"/>
+          <path id="src-line-exa" fill="none" stroke="#4F5FD1" stroke-width="1.75"></path>
+          <path id="src-line-linkedin" fill="none" stroke="#0F8FA8" stroke-width="1.5"></path>
+          <path id="src-line-indeed" fill="none" stroke="#9B5FE0" stroke-width="1.5"></path>
+          <path id="src-line-stepstone" fill="none" stroke="#D6478E" stroke-width="1.5"></path>
+          <path id="src-line-xing" fill="none" stroke="#3F8F5C" stroke-width="1.5"></path>
+          <path id="src-line-cadremploi" fill="none" stroke="#C05A2C" stroke-width="1.5"></path>
+          <line id="src-guide" x1="0" y1="0" x2="0" y2="150" stroke="#8A91A3" stroke-dasharray="3,3"></line>
+          <circle id="src-dot-exa" class="dm-dot" r="3" fill="#4F5FD1" stroke="white" stroke-width="1.2"></circle>
+          <circle id="src-dot-linkedin" class="dm-dot" r="3" fill="#0F8FA8" stroke="white" stroke-width="1.2"></circle>
+          <circle id="src-dot-indeed" class="dm-dot" r="3" fill="#9B5FE0" stroke="white" stroke-width="1.2"></circle>
+          <circle id="src-dot-stepstone" class="dm-dot" r="3" fill="#D6478E" stroke="white" stroke-width="1.2"></circle>
+          <circle id="src-dot-xing" class="dm-dot" r="3" fill="#3F8F5C" stroke="white" stroke-width="1.2"></circle>
+          <circle id="src-dot-cadremploi" class="dm-dot" r="3" fill="#C05A2C" stroke="white" stroke-width="1.2"></circle>
+          <rect x="0" y="0" width="700" height="150" fill="transparent" id="src-hitbox"></rect>
+        </svg>
+        <div id="dm-tooltip"></div>
+      </div>
+    </div>
+    <div class="flex justify-between text-[9px] text-muted mt-1 pl-7" id="src-labels"></div>
+    <div class="disclaimer mt-1">The 2026-06-22 cliff on LinkedIn/Indeed/StepStone/Xing/Cadremploi is job-board scraping stopping (01_scrape_jobs.mjs, unrelated to the Exa incident) — not visible per-source dedup, this is the real gap.</div>
   </div>
 
   <div class="grid grid-cols-2 gap-3 mb-3">
@@ -188,12 +351,17 @@
     </div>
   </div>
 
-  <!-- MONITOR PERFORMANCE TABLE -->
+  <!-- MONITOR PERFORMANCE TABLE — Exa-specific (33 Exa Monitors, not the job-board actors),
+       collapsed by default: a 1-2 line summary up top, full table behind a click. -->
   <div class="border border-border rounded-lg overflow-hidden bg-white">
-    <div class="flex items-center justify-between px-4 pt-3 pb-2">
-      <div class="text-[12px] font-bold text-heading">Monitor Performance</div>
-      <span class="text-[10px] text-muted">Live from GET /monitors/{id}/runs — all 33, 2026-07-13. Click a row to drill into its signals.</span>
+    <div class="flex items-center justify-between px-4 pt-3 pb-2 cursor-pointer" onclick="toggleMonitorSection()">
+      <div class="flex items-center gap-1.5">
+        <span class="mon-chevron open" id="monitor-section-chevron"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 18l6-6-6-6"/></svg></span>
+        <div class="text-[12px] font-bold text-heading">Monitor Performance <span class="font-normal text-muted">— Exa only</span></div>
+      </div>
+      <span class="text-[10px] text-muted" id="monitor-section-summary">Live from GET /monitors/{id}/runs — all 33, 2026-07-13. Click a row to drill into its signals.</span>
     </div>
+    <div id="monitor-section-body">
     <table class="w-full">
       <thead>
         <tr class="text-[9px] font-bold uppercase tracking-wide text-muted border-b border-border">
@@ -228,48 +396,461 @@
       <tbody id="monitor-tbody" class="text-[11px]"></tbody>
     </table>
     <div class="disclaimer px-4 pb-3 pt-1">"Results seen" = all results the Exa API has ever returned for that monitor across every run (includes repeats across weekly reruns of the same article) — not the same as unique rows stored in raw_signals (310 total, after dedup on url). Drill-down shows up to 5 most recent real signals per monitor from raw_signals, newest first.</div>
+    </div>
+  </div>
+
+  <!-- JOB BOARD ACTORS TABLE — mirrors Monitor Performance's collapse/drill pattern, but at
+       ACTOR granularity (5 rows: LinkedIn/Indeed/StepStone/Xing/Cadremploi), not per-query —
+       Apify actors don't have a "runs seen" concept the way Exa monitors do, and there's no
+       per-query result breakdown stored anywhere (raw_signals only tags rows by source, not by
+       which of an actor's 2-6 configured queries produced them), so the drill-down lists the
+       actor's configured weekly/monthly queries as reference rather than inventing per-query
+       counts. Collapsed by default, same as the Exa table above. -->
+  <div class="border border-border rounded-lg overflow-hidden bg-white mt-3">
+    <div class="flex items-center justify-between px-4 pt-3 pb-2 cursor-pointer" onclick="toggleActorSection()">
+      <div class="flex items-center gap-1.5">
+        <span class="mon-chevron" id="actor-section-chevron"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 18l6-6-6-6"/></svg></span>
+        <div class="text-[12px] font-bold text-heading">Job Board Actors <span class="font-normal text-muted">— Apify only</span></div>
+      </div>
+      <span class="text-[10px] text-muted" id="actor-section-summary"></span>
+    </div>
+    <div id="actor-section-body" style="display:none;">
+      <table class="w-full">
+        <thead>
+          <tr class="text-[9px] font-bold uppercase tracking-wide text-muted border-b border-border">
+            <th class="text-left px-4 py-1.5" style="width:28px;"></th>
+            <th class="text-left px-4 py-1.5">Actor</th>
+            <th class="text-left px-4 py-1.5">
+              <span class="inline-flex items-center gap-1">Status
+                <span class="tip" onclick="event.stopPropagation()"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#C0CDD8;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box" style="width:220px;text-transform:none;font-weight:500;text-align:left;">Derived from days since last_scraped vs. that actor's own recommended cadence in ACTOR_NOTES.txt — not a live Apify health check.</span></span>
+              </span>
+            </th>
+            <th class="text-left px-4 py-1.5">Apify Key</th>
+            <th class="text-left px-4 py-1.5">Cadence</th>
+            <th class="text-right px-4 py-1.5">Results</th>
+            <th class="text-right px-4 py-1.5">Passed ICP</th>
+            <th class="text-right px-4 py-1.5">Last Scraped</th>
+          </tr>
+        </thead>
+        <tbody id="actor-tbody" class="text-[11px]"></tbody>
+      </table>
+      <div class="disclaimer px-4 pb-3 pt-1">"Results"/"Passed ICP" from signal_monitoring.raw_signals grouped by source — one bulk historical run per actor, not incremental (all five share the same 2026-06-22 scraped_at). Drill-down lists each actor's configured queries from job_boards/{actor}/config.json + ACTOR_NOTES.txt — reference only, not a per-query result breakdown (not tracked at that granularity).</div>
+    </div>
   </div>
 
 </div>
 
 <script>
-  // ── REAL DATA: signal_monitoring.raw_signals WHERE source='exa', grouped by ISO week of pub_date ──
-  // Pulled live 2026-07-13. 6 additional rows have pub_date=null (not shown here, counted in stat cards).
-  const WEEKS = [
-    { label: 'May 17', total: 12, passed: 4,  filtered: 8, pending: 0 },
-    { label: 'May 24', total: 43, passed: 43, filtered: 0, pending: 0 },
-    { label: 'May 31', total: 55, passed: 54, filtered: 0, pending: 1 },
-    { label: 'Jun 7',  total: 36, passed: 31, filtered: 0, pending: 5 },
-    { label: 'Jun 14', total: 50, passed: 15, filtered: 0, pending: 35 },
-    { label: 'Jun 21', total: 55, passed: 0,  filtered: 0, pending: 55 },
-    { label: 'Jun 28', total: 37, passed: 0,  filtered: 0, pending: 37 },
-    { label: 'Jul 5',  total: 15, passed: 0,  filtered: 0, pending: 15 },
-  ];
+  // ═══════════ Shared "today" for this mockup — 2026-07-14, this session's real current date ═══════════
+  const TODAY = new Date(2026, 6, 14);
 
-  const wkMax = Math.max(...WEEKS.map(w => w.total));
-  const wkChart = document.getElementById('wk-chart');
-  WEEKS.forEach(w => {
-    const totalPct = wkMax ? (w.total / wkMax) * 100 : 0;
-    const passedShare = w.total ? (w.passed / w.total) * 100 : 0;
-    const filteredShare = w.total ? (w.filtered / w.total) * 100 : 0;
-    const pendingShare = w.total ? (w.pending / w.total) * 100 : 0;
-    const col = document.createElement('div');
-    col.className = 'wk-col';
-    col.innerHTML = `
-      <div class="wk-stack" style="height:${totalPct}%">
-        <div class="wk-tooltip">
-          <div class="wk-tt-bubble wk-tt-total">${w.total}<span class="lbl">Total</span></div>
-          ${w.pending > 0 ? `<div class="wk-tt-bubble wk-tt-pending">${w.pending}<span class="lbl">Pending</span></div>` : ''}
-          ${w.filtered > 0 ? `<div class="wk-tt-bubble wk-tt-filtered">${w.filtered}<span class="lbl">Filtered</span></div>` : ''}
-          ${w.passed > 0 ? `<div class="wk-tt-bubble wk-tt-passed">${w.passed}<span class="lbl">Passed</span></div>` : ''}
-        </div>
-        <div class="wk-seg" style="height:${passedShare}%;background:#4F5FD1;"></div>
-        <div class="wk-seg" style="height:${filteredShare}%;background:#A6ACEE;"></div>
-        <div class="wk-seg" style="height:${pendingShare}%;background:#C0CDD8;"></div>
-      </div>`;
-    wkChart.appendChild(col);
+  // ── REAL DATA: signal_monitoring.raw_signals, one row per day, 2026-05-16..2026-07-14 (60 days,
+  // right-aligned to TODAY). Pulled live via SSH+psql against the production DB, not illustrative.
+  // RAW/PASSED/COMPANY/CONTACT are Exa-only (source='exa'), CUMULATIVE (has_contact ⊆ has_company
+  // ⊆ passed ⊆ raw) — converted to exclusive stack segments at render time. EXA/LINKEDIN/INDEED/
+  // STEPSTONE/XING/CADREMPLOI are per-source raw daily counts across ALL sources, for the volume
+  // chart below. ──
+  const FUNNEL_WINDOW = 60;
+  const RAW     = [0,0,0,1,3,4,2,2,0,0,10,15,10,18,1,0,11,7,20,11,13,0,1,9,7,6,5,11,1,1,17,14,7,15,9,0,0,12,17,11,10,14,0,1,5,8,13,16,2,0,0,14,4,0,0,0,0,0,0,0];
+  const PASSED  = [0,0,0,0,0,3,0,1,0,0,9,15,9,18,1,0,11,7,19,11,12,0,1,8,7,6,4,9,1,1,17,14,7,15,9,0,0,12,17,11,10,14,0,1,5,8,13,16,2,0,0,14,2,0,0,0,0,0,0,0];
+  const COMPANY = [0,0,0,0,0,0,0,0,0,0,0,2,2,0,0,0,0,1,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,1,0,2,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0];
+  const CONTACT = [0,0,0,0,0,0,0,0,0,0,0,2,2,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,1,0,2,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0];
+
+  const SOURCE_WINDOW = 60;
+  const SOURCE_RAW = {
+    exa:        [0,0,0,1,3,4,2,2,0,0,10,15,10,18,1,0,11,7,20,11,13,0,1,9,7,6,5,11,1,1,17,14,7,15,9,0,0,12,17,11,10,14,0,1,5,8,13,16,2,0,0,14,4,0,0,0,0,0,0,0],
+    linkedin:   [3,2,10,12,21,28,31,7,5,9,26,21,34,25,10,10,25,29,33,40,39,12,14,18,6,14,6,11,3,2,15,16,8,13,14,4,4,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    indeed:     [3,0,3,5,11,4,6,1,0,0,9,10,8,12,6,3,7,6,8,12,7,2,1,14,12,5,13,14,3,0,5,7,4,7,9,4,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    stepstone:  [0,1,0,0,0,3,1,0,2,5,14,7,25,21,2,6,9,22,20,18,24,24,5,43,4,1,3,1,0,0,3,4,3,4,5,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    xing:       [0,0,2,0,3,1,3,1,2,4,1,0,1,1,2,0,5,2,4,2,1,2,2,3,1,2,4,0,0,1,0,0,3,3,0,4,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    cadremploi: [0,0,0,0,1,2,1,0,2,0,1,4,0,2,0,0,2,1,1,1,8,7,3,2,2,0,0,0,0,0,2,0,2,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  };
+  const SOURCE_META = {
+    exa:        { color: '#4F5FD1', label: 'Exa' },
+    linkedin:   { color: '#0F8FA8', label: 'LinkedIn' },
+    indeed:     { color: '#9B5FE0', label: 'Indeed' },
+    stepstone:  { color: '#D6478E', label: 'StepStone' },
+    xing:       { color: '#3F8F5C', label: 'Xing' },
+    cadremploi: { color: '#C05A2C', label: 'Cadremploi' },
+  };
+
+  function dayLabels(days) {
+    const arr = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(TODAY); d.setDate(d.getDate() - i);
+      arr.push(d);
+    }
+    return arr;
+  }
+  // Slice the tail `days` entries off a 60-long, TODAY-ending array.
+  function tail(arr, days) { return arr.slice(arr.length - days); }
+
+  // "Nice" axis step (1/2/5/10 × power of ten) so gridline labels read as 0/10/20/30 instead
+  // of some ugly 0/8.7/17.4/26.1 — same helper both charts' y-axis use.
+  function niceStep(raw) {
+    raw = Math.max(raw, 1);
+    const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+    const n = raw / pow;
+    const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
+    return step * pow;
+  }
+
+  // ═══════════ Daily Signal Quality — stacked funnel bar ═══════════
+  const funnelVisible = { dropped: true, passedOnly: true, companyOnly: true, contact: true };
+  let funnelDays = 60;
+  let funnelCols = [];
+  let funnelGridMax = 1;
+
+  function renderFunnelChart(days) {
+    funnelDays = days || funnelDays;
+    const el = document.getElementById('funnel-chart');
+    el.innerHTML = '';
+    funnelCols = [];
+    for (let i = 0; i < funnelDays; i++) {
+      const col = document.createElement('div');
+      col.className = 'bar-col';
+      col.innerHTML = `
+        <div class="bar-visual">
+          <div class="bar-stack">
+            <div class="bar-seg" style="background:#4F5FD1;"></div>
+            <div class="bar-seg" style="background:#7E87E3;"></div>
+            <div class="bar-seg" style="background:#B8C0F2;"></div>
+            <div class="bar-seg" style="background:#E4E7FB;"></div>
+          </div>
+          <div class="bar-tooltip">
+            <div class="bar-tt-bubble" style="background:#1F2430;"><span class="lbl">Raw</span><span class="val"></span></div>
+            <div class="bar-tt-bubble" style="background:#7E87E3;"><span class="lbl">Company Found</span><span class="val"></span></div>
+            <div class="bar-tt-bubble" style="background:#4F5FD1;"><span class="lbl">Contact Found</span><span class="val"></span></div>
+          </div>
+        </div>`;
+      el.appendChild(col);
+      const stack = col.querySelector('.bar-stack');
+      const tooltip = col.querySelector('.bar-tooltip');
+      funnelCols.push({
+        col, stack,
+        contactSeg: stack.children[0], companyOnlySeg: stack.children[1],
+        passedOnlySeg: stack.children[2], droppedSeg: stack.children[3],
+        ttRaw: tooltip.children[0], ttCompany: tooltip.children[1], ttContact: tooltip.children[2],
+      });
+    }
+    const labels = document.getElementById('funnel-labels');
+    labels.innerHTML = '';
+    const step = Math.max(1, Math.ceil(funnelDays / 12));
+    dayLabels(funnelDays).forEach((d, i) => {
+      if (i % step !== 0) return;
+      const span = document.createElement('span');
+      span.textContent = d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+      labels.appendChild(span);
+    });
+    updateFunnelBars();
+  }
+
+  function updateFunnelBars() {
+    const raw = tail(RAW, funnelDays), passed = tail(PASSED, funnelDays),
+          company = tail(COMPANY, funnelDays), contact = tail(CONTACT, funnelDays);
+    const rawMax = Math.max(1, ...raw);
+    funnelGridMax = niceStep(rawMax / 4) * 4;
+    renderFunnelAxis();
+    funnelCols.forEach((refs, i) => {
+      const r = raw[i], p = funnelVisible.passedOnly || funnelVisible.dropped ? passed[i] : 0;
+      const co = funnelVisible.companyOnly || funnelVisible.contact ? company[i] : 0;
+      const ct = funnelVisible.contact ? contact[i] : 0;
+      // exclusive deltas, bottom to top: contact, company-only, passed-only, dropped
+      const contactV = ct;
+      const companyOnlyV = funnelVisible.companyOnly ? Math.max(0, co - ct) : 0;
+      const passedOnlyV = funnelVisible.passedOnly ? Math.max(0, p - co) : 0;
+      const droppedV = funnelVisible.dropped ? Math.max(0, r - p) : 0;
+      const total = contactV + companyOnlyV + passedOnlyV + droppedV;
+      const totalPct = (total / funnelGridMax) * 100;
+      refs.stack.style.height = totalPct + '%';
+      refs.contactSeg.style.height = (total ? (contactV / total) * 100 : 0) + '%';
+      refs.companyOnlySeg.style.height = (total ? (companyOnlyV / total) * 100 : 0) + '%';
+      refs.passedOnlySeg.style.height = (total ? (passedOnlyV / total) * 100 : 0) + '%';
+      refs.droppedSeg.style.height = (total ? (droppedV / total) * 100 : 0) + '%';
+      refs.ttRaw.style.bottom = totalPct + '%';
+      refs.ttRaw.querySelector('.val').textContent = r;
+      const companyBoundaryPct = ((contactV + companyOnlyV) / funnelGridMax) * 100;
+      refs.ttCompany.style.bottom = companyBoundaryPct + '%';
+      refs.ttCompany.style.display = co > 0 ? '' : 'none';
+      refs.ttCompany.querySelector('.val').textContent = co;
+      refs.ttContact.style.bottom = '0%';
+      refs.ttContact.style.display = ct > 0 ? '' : 'none';
+      refs.ttContact.querySelector('.val').textContent = ct;
+    });
+  }
+  function renderFunnelAxis() {
+    const yaxis = document.getElementById('funnel-yaxis');
+    const gridlines = document.getElementById('funnel-gridlines');
+    yaxis.innerHTML = ''; gridlines.innerHTML = '';
+    for (let i = 0; i <= 4; i++) {
+      const topPct = i * 25;
+      const val = Math.round(funnelGridMax * (4 - i) / 4);
+      const label = document.createElement('div');
+      label.className = 'bar-yaxis-label'; label.style.top = topPct + '%'; label.textContent = val;
+      yaxis.appendChild(label);
+      const line = document.createElement('div');
+      line.className = 'bar-gridline'; line.style.top = topPct + '%';
+      gridlines.appendChild(line);
+    }
+  }
+  function toggleFunnelSeries(key) {
+    funnelVisible[key] = !funnelVisible[key];
+    document.getElementById('legend-' + key).classList.toggle('off', !funnelVisible[key]);
+    updateFunnelBars();
+  }
+  let funnelZoom = 1;
+  const funnelZoomEl = document.getElementById('funnel-zoom');
+  document.getElementById('funnel-area').addEventListener('wheel', e => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    funnelZoom = Math.min(2, Math.max(0.6, funnelZoom - e.deltaY * 0.01));
+    funnelZoomEl.style.transform = `scale(${funnelZoom})`;
+  }, { passive: false });
+
+  // ═══════════ Signal Volume by Source — smooth spline, one line per source, y-axis is a
+  // dynamic "nice" count (not a fixed 0-100% like a rate chart would use) ═══════════
+  const srcVisible = { exa: true, linkedin: true, indeed: true, stepstone: true, xing: true, cadremploi: true };
+  let srcDays = 60;
+  let srcMax = 1, srcX = [], srcPts = {}, srcData = {};
+
+  function smoothPath(pts) {
+    if (pts.length < 2) return '';
+    let d = `M${pts[0][0]},${pts[0][1]}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+      const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += ` C${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`;
+    }
+    return d;
+  }
+  function srcToY(v) { return 150 - (v / srcMax) * 150; }
+
+  function renderSourceChart(days) {
+    srcDays = days || srcDays;
+    srcData = {};
+    let rawMax = 1;
+    for (const key in SOURCE_RAW) { srcData[key] = tail(SOURCE_RAW[key], srcDays); rawMax = Math.max(rawMax, ...srcData[key]); }
+    srcMax = niceStep(rawMax / 4) * 4;
+    srcX = Array.from({ length: srcDays }, (_, i) => (i / Math.max(1, srcDays - 1)) * 700);
+    srcPts = {};
+    for (const key in SOURCE_RAW) srcPts[key] = srcData[key].map((v, i) => [srcX[i], srcToY(v)]);
+    for (const key in SOURCE_RAW) {
+      const lineEl = document.getElementById('src-line-' + key);
+      const on = srcVisible[key];
+      lineEl.style.display = on ? '' : 'none';
+      if (on) lineEl.setAttribute('d', smoothPath(srcPts[key]));
+    }
+    renderSourceAxis();
+    const labelsEl = document.getElementById('src-labels');
+    labelsEl.innerHTML = '';
+    const step = Math.max(1, Math.ceil(srcDays / 12));
+    dayLabels(srcDays).forEach((d, i) => {
+      if (i % step !== 0) return;
+      const span = document.createElement('span');
+      span.textContent = d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+      labelsEl.appendChild(span);
+    });
+  }
+  function renderSourceAxis() {
+    const yaxis = document.getElementById('src-yaxis');
+    yaxis.innerHTML = '';
+    for (let i = 0; i <= 2; i++) {
+      const topPct = i * 50;
+      const val = Math.round(srcMax * (2 - i) / 2);
+      const label = document.createElement('div');
+      label.className = 'dm-yaxis-label'; label.style.top = topPct + '%'; label.textContent = val;
+      yaxis.appendChild(label);
+    }
+  }
+  function toggleSourceSeries(key) {
+    srcVisible[key] = !srcVisible[key];
+    document.getElementById('legend-src-' + key).classList.toggle('off', !srcVisible[key]);
+    renderSourceChart();
+  }
+  const srcSvg = document.getElementById('src-svg');
+  const srcHitbox = document.getElementById('src-hitbox');
+  const srcGuide = document.getElementById('src-guide');
+  const srcDots = {};
+  for (const key in SOURCE_META) srcDots[key] = document.getElementById('src-dot-' + key);
+  const dmTooltip = document.getElementById('dm-tooltip');
+  function srcNearestIndex(relX) {
+    let best = 0, bestDist = Infinity;
+    for (let i = 0; i < srcX.length; i++) { const dist = Math.abs(srcX[i] - relX); if (dist < bestDist) { bestDist = dist; best = i; } }
+    return best;
+  }
+  function srcShowAt(idx) {
+    const x = srcX[idx];
+    srcGuide.setAttribute('x1', x); srcGuide.setAttribute('x2', x); srcGuide.style.opacity = 1;
+    let rows = '';
+    for (const key in SOURCE_META) {
+      if (!srcVisible[key]) { srcDots[key].style.opacity = 0; continue; }
+      const y = srcPts[key][idx][1];
+      srcDots[key].setAttribute('cx', x); srcDots[key].setAttribute('cy', y); srcDots[key].style.opacity = 1;
+      rows += `<div class="row"><span class="dot" style="background:${SOURCE_META[key].color}"></span>${SOURCE_META[key].label}: <b>${srcData[key][idx]}</b></div>`;
+    }
+    const d = dayLabels(srcDays)[idx];
+    dmTooltip.innerHTML = `<div class="date">${d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</div>${rows}`;
+    dmTooltip.style.display = 'block';
+    const pct = x / 700;
+    const svgRect = srcSvg.getBoundingClientRect();
+    let left = pct * svgRect.width + 12;
+    if (left + 140 > svgRect.width) left = pct * svgRect.width - 152;
+    dmTooltip.style.left = `${left}px`; dmTooltip.style.top = '4px';
+  }
+  srcHitbox.addEventListener('mousemove', e => {
+    const rect = srcSvg.getBoundingClientRect();
+    const relX = ((e.clientX - rect.left) / rect.width) * 700;
+    srcShowAt(srcNearestIndex(relX));
   });
-  document.getElementById('wk-labels').innerHTML = WEEKS.map(w => `<span>${w.label}</span>`).join('');
+  srcHitbox.addEventListener('mouseleave', () => {
+    srcGuide.style.opacity = 0;
+    for (const key in srcDots) srcDots[key].style.opacity = 0;
+    dmTooltip.style.display = 'none';
+  });
+
+  // ═══════════ Date range picker — 1:1 port from detailed-analytics.html, wired to redraw
+  // both charts above on Apply ═══════════
+  const DR_PRESETS = [
+    { id: 'w1', label: 'Last 1 Week' },
+    { id: 'w2', label: 'Last 2 Weeks' },
+    { id: 'month', label: 'Current Month' },
+    { id: 'm1', label: 'Last 1 Month' },
+    { id: 'all', label: 'Last 60 Days' },
+  ];
+  const DR_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  let drViewYear = 2026, drViewMonth = 6;
+  let drPendingPreset = 'all', drPendingRange = null;
+  let drCommittedPreset = 'all', drCommittedRange = null;
+  let drManualAnchor = null;
+  let drOpen = false;
+
+  function drStripTime(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function drPresetRange(id) {
+    const end = drStripTime(TODAY);
+    if (id === 'w1') { const s = new Date(TODAY); s.setDate(s.getDate() - 6); return [drStripTime(s), end]; }
+    if (id === 'w2') { const s = new Date(TODAY); s.setDate(s.getDate() - 13); return [drStripTime(s), end]; }
+    if (id === 'month') return [new Date(TODAY.getFullYear(), TODAY.getMonth(), 1), end];
+    if (id === 'm1') { const s = new Date(TODAY); s.setMonth(s.getMonth() - 1); return [drStripTime(s), end]; }
+    if (id === 'all') { const s = new Date(TODAY); s.setDate(s.getDate() - 59); return [drStripTime(s), end]; }
+    return null;
+  }
+  function drFormatShort(d) { return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }); }
+  function drRangeDays(range) { return Math.round((range[1] - range[0]) / 86400000) + 1; }
+
+  function drRenderPresets() {
+    const el = document.getElementById('dr-presets');
+    el.innerHTML = DR_PRESETS.map(p =>
+      `<div class="dr-preset${p.id === drPendingPreset ? ' active' : ''}" onclick="event.stopPropagation(); drPickPreset('${p.id}')">${p.label}</div>`
+    ).join('');
+  }
+  function drRenderMonthList() {
+    const el = document.getElementById('dr-month-list');
+    el.innerHTML = DR_MONTHS.map((m, i) =>
+      `<div class="opt${i === drViewMonth ? ' active' : ''}" onclick="event.stopPropagation(); drPickMonth(${i})">${m}</div>`
+    ).join('');
+  }
+  function drRenderCalendar() {
+    document.getElementById('dr-month-label').textContent = DR_MONTHS[drViewMonth];
+    document.getElementById('dr-year-label').textContent = drViewYear;
+    const dowEl = document.getElementById('dr-cal-dow');
+    if (!dowEl.childElementCount) {
+      dowEl.innerHTML = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => `<div class="dr-cal-dow">${d}</div>`).join('');
+    }
+    const first = new Date(drViewYear, drViewMonth, 1);
+    const startOffset = first.getDay();
+    const daysInMonth = new Date(drViewYear, drViewMonth + 1, 0).getDate();
+    const daysInPrevMonth = new Date(drViewYear, drViewMonth, 0).getDate();
+    const cells = [];
+    for (let i = startOffset - 1; i >= 0; i--) cells.push({ day: daysInPrevMonth - i, muted: true, date: new Date(drViewYear, drViewMonth - 1, daysInPrevMonth - i) });
+    for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d, muted: false, date: new Date(drViewYear, drViewMonth, d) });
+    let next = 1;
+    while (cells.length % 7 !== 0) { cells.push({ day: next, muted: true, date: new Date(drViewYear, drViewMonth + 1, next) }); next++; }
+
+    const range = drPendingRange;
+    const gridEl = document.getElementById('dr-cal-grid');
+    gridEl.innerHTML = '';
+    for (let row = 0; row < cells.length / 7; row++) {
+      const rowCells = cells.slice(row * 7, row * 7 + 7);
+      let rowStart = -1, rowEnd = -1;
+      if (range) {
+        rowCells.forEach((c, i) => {
+          const inRange = c.date >= range[0] && c.date <= range[1];
+          c.inRange = inRange;
+          if (inRange) { if (rowStart === -1) rowStart = i; rowEnd = i; }
+        });
+      }
+      rowCells.forEach((c, i) => {
+        const classes = ['dr-cal-day'];
+        if (c.muted) classes.push('muted');
+        if (c.inRange) {
+          classes.push('in-range');
+          if (i === rowStart) classes.push('range-start');
+          if (i === rowEnd) classes.push('range-end');
+        }
+        const div = document.createElement('div');
+        div.className = classes.join(' ');
+        const num = document.createElement('span');
+        num.className = 'num'; num.textContent = c.day;
+        num.onclick = (e) => { e.stopPropagation(); drDayClick(c.date); };
+        div.appendChild(num);
+        gridEl.appendChild(div);
+      });
+    }
+  }
+  function drDayClick(date) {
+    date = drStripTime(date);
+    if (!drManualAnchor) { drManualAnchor = date; drPendingRange = [date, date]; }
+    else {
+      const range = date < drManualAnchor ? [date, drManualAnchor] : [drManualAnchor, date];
+      drPendingRange = range; drManualAnchor = null;
+    }
+    drPendingPreset = null;
+    drRenderPresets(); drRenderCalendar();
+  }
+  function drToggle() {
+    drOpen = !drOpen;
+    document.getElementById('dr-dropdown').classList.toggle('open', drOpen);
+    if (drOpen) {
+      drPendingPreset = drCommittedPreset; drPendingRange = drCommittedRange; drManualAnchor = null;
+      drRenderPresets(); drRenderCalendar();
+      document.getElementById('dr-month-list').classList.remove('open');
+    }
+  }
+  function drPickPreset(id) {
+    drPendingPreset = id; drPendingRange = drPresetRange(id); drManualAnchor = null;
+    if (drPendingRange) { drViewYear = drPendingRange[1].getFullYear(); drViewMonth = drPendingRange[1].getMonth(); }
+    drRenderPresets(); drRenderCalendar();
+  }
+  function drToggleMonthList() { drRenderMonthList(); document.getElementById('dr-month-list').classList.toggle('open'); }
+  function drPickMonth(i) { drViewMonth = i; document.getElementById('dr-month-list').classList.remove('open'); drRenderCalendar(); }
+  function drNavMonth(delta) {
+    drViewMonth += delta;
+    if (drViewMonth < 0) { drViewMonth = 11; drViewYear--; }
+    if (drViewMonth > 11) { drViewMonth = 0; drViewYear++; }
+    drRenderCalendar();
+  }
+  function drCancel() { drPendingPreset = drCommittedPreset; drPendingRange = drCommittedRange; drToggle(); }
+  function drApply() {
+    drCommittedPreset = drPendingPreset; drCommittedRange = drPendingRange;
+    const preset = DR_PRESETS.find(p => p.id === drCommittedPreset);
+    document.getElementById('dr-trigger-label').textContent = preset
+      ? preset.label
+      : (drCommittedRange ? `${drFormatShort(drCommittedRange[0])} – ${drFormatShort(drCommittedRange[1])}` : 'Custom');
+    drOpen = false;
+    document.getElementById('dr-dropdown').classList.remove('open');
+    const days = drCommittedRange ? Math.max(2, Math.min(60, drRangeDays(drCommittedRange))) : 60;
+    renderFunnelChart(days);
+    renderSourceChart(days);
+  }
+  document.addEventListener('click', e => { if (drOpen && !e.target.closest('#dr-wrap')) drToggle(); });
+
+  // ── Init ──
+  drRenderPresets();
+  drPendingRange = drPresetRange('all');
+  drRenderCalendar();
+  renderFunnelChart(60);
+  renderSourceChart(60);
 
   // ── REAL DATA: by signal_type, from raw_signals->raw_data->>signal_type ──
   // Single accent color, magnitude conveyed by bar length only — not a rainbow of category colors.
@@ -619,6 +1200,25 @@
     renderMonitors();
   }
 
+  // Collapsed by default — a computed 1-line summary (not hardcoded, so it can't drift from
+  // MONITORS the way the old always-visible table's caption text could).
+  let monitorSectionOpen = false;
+  function renderMonitorSummary() {
+    const totalResults = MONITORS.reduce((s, m) => s + m.results, 0);
+    const totalRuns = MONITORS.reduce((s, m) => s + m.runs, 0);
+    const zero = MONITORS.filter(m => m.results === 0).length;
+    document.getElementById('monitor-section-summary').textContent =
+      `${MONITORS.length} monitors · ${totalRuns} runs seen · ${totalResults} results seen` +
+      (zero ? ` · ${zero} returning nothing` : '') + ' — click to expand';
+  }
+  function toggleMonitorSection() {
+    monitorSectionOpen = !monitorSectionOpen;
+    document.getElementById('monitor-section-body').style.display = monitorSectionOpen ? '' : 'none';
+    document.getElementById('monitor-section-chevron').classList.toggle('open', monitorSectionOpen);
+    if (!monitorSectionOpen) renderMonitorSummary();
+    else document.getElementById('monitor-section-summary').textContent = 'Live from GET /monitors/{id}/runs — all 33, 2026-07-13. Click a row to drill into its signals.';
+  }
+
   document.querySelectorAll('thead th[data-col]').forEach(th => {
     th.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -631,6 +1231,126 @@
     });
   });
   renderMonitors();
+  document.getElementById('monitor-section-body').style.display = 'none';
+  renderMonitorSummary();
+
+  // ═══════════ JOB BOARD ACTORS — real per-source counts from signal_monitoring.raw_signals
+  // (pulled live via psql), configured queries from job_boards/{actor}/config.json +
+  // ACTOR_NOTES.txt "РЕКОМЕНДАЦИЯ ДЛЯ ПРОДАКШНА" sections. Status/cadence are the honest story:
+  // every actor's own notes recommend weekly (or monthly, for Indeed) reruns, but all five
+  // share one identical last_scraped date — 2026-06-22, the day 01_scrape_jobs.mjs stopped
+  // running — so every row currently reads "Stopped", not "Active". ═══════════
+  const ACTORS = [
+    {
+      name: 'LinkedIn', actorId: 'curious_coder/linkedin-jobs-scraper', key: 'KAD2',
+      cadence: 'Weekly', results: 953, passed: 18, lastScraped: '2026-06-22',
+      queries: [
+        { q: 'de_specific_sectors', note: '5 DE sub-sector URLs, count=100 — ~$0.10' },
+        { q: 'fr_specific_sectors', note: '4 FR sub-sector URLs, count=100 — ~$0.10' },
+        { q: 'split_nl_be', note: '4 NL+BE URLs, count=100 — ~$0.10' },
+      ],
+    },
+    {
+      name: 'Indeed', actorId: 'misceres/indeed-scraper', key: 'KAD2',
+      cadence: 'Monthly', results: 511, passed: 55, lastScraped: '2026-06-22',
+      queries: [
+        { q: 'directeur usine agroalimentaire', note: 'FR, country=FR, maxItems=50 — ~$0.25' },
+        { q: 'directeur general agroalimentaire', note: 'FR, country=FR, maxItems=50 — ~$0.25' },
+      ],
+    },
+    {
+      name: 'StepStone', actorId: 'memo23/stepstone-search-cheerio-ppr', key: 'KAD2',
+      cadence: 'Weekly', results: 285, passed: 128, lastScraped: '2026-06-22',
+      queries: [
+        { q: 'Geschäftsführer Lebensmittel', note: 'DE, maxItems=50 — ~$0.02' },
+        { q: 'Werksleiter Lebensmittel Bäckerei', note: 'DE, maxItems=50 — ~$0.02' },
+        { q: 'Geschäftsführer Getränke Brauerei', note: 'DE, maxItems=50 — ~$0.02' },
+      ],
+    },
+    {
+      name: 'Xing', actorId: 'shahidirfan/Xing-Jobs-Scraper', key: 'KAD2',
+      cadence: 'Weekly', results: 84, passed: 8, lastScraped: '2026-06-22',
+      queries: [
+        { q: 'Geschäftsführer Lebensmittel Molkerei', note: 'DE — ~$0.02' },
+        { q: 'Direktor Fleisch Nahrungsmittel', note: 'DE — ~$0.02' },
+        { q: 'Managing Director food manufacturing', note: 'DE (EN keyword) — ~$0.02' },
+        { q: 'Geschäftsführer Getränke Brauerei', note: 'DE — ~$0.02' },
+      ],
+    },
+    {
+      name: 'Cadremploi', actorId: 'blackfalcondata/cadremploi-scraper', key: 'KAD2',
+      cadence: 'Weekly', results: 48, passed: 21, lastScraped: '2026-06-22',
+      queries: [
+        { q: 'directeur agroalimentaire', note: 'maxItems=50 — ~$0.02' },
+        { q: 'directeur usine alimentaire', note: 'maxItems=50 — ~$0.02' },
+        { q: 'directeur general industrie alimentaire', note: 'maxItems=50 — ~$0.02' },
+      ],
+    },
+  ].map((a, i) => {
+    const daysSince = Math.round((TODAY - new Date(a.lastScraped)) / 86400000);
+    const cadenceDays = a.cadence === 'Weekly' ? 7 : 30;
+    return { ...a, num: i + 1, daysSince, stale: daysSince > cadenceDays };
+  });
+
+  function actorStatusPill(a) {
+    if (a.stale) return `<span class="status-mini" style="background:#FCEAF0;color:#B25577;">Stopped · ${a.daysSince}d</span>`;
+    return `<span class="status-mini passed">On schedule</span>`;
+  }
+
+  let openActor = null;
+  function renderActors() {
+    document.getElementById('actor-tbody').innerHTML = ACTORS.map(a => {
+      const isOpen = openActor === a.name;
+      const mainRow = `
+        <tr class="row-hover border-b border-[#F4F4F5]" onclick="toggleActor('${a.name}')">
+          <td class="px-4 py-1.5"><span class="mon-num">${a.num}</span></td>
+          <td class="px-4 py-1.5"><span class="mon-chevron${isOpen ? ' open' : ''}">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 18l6-6-6-6"/></svg></span>
+            <span class="font-semibold">${a.name}</span></td>
+          <td class="px-4 py-1.5">${actorStatusPill(a)}</td>
+          <td class="px-4 py-1.5 font-mono text-[10.5px] text-muted">${a.key}</td>
+          <td class="px-4 py-1.5 text-muted">${a.cadence}</td>
+          <td class="px-4 py-1.5 text-right font-semibold">${a.results}</td>
+          <td class="px-4 py-1.5 text-right">${a.passed}</td>
+          <td class="px-4 py-1.5 text-right text-muted">${a.lastScraped}</td>
+        </tr>`;
+      const drillRow = `
+        <tr class="drill-row" style="display:${isOpen ? 'table-row' : 'none'};">
+          <td colspan="8">
+            <div class="drill-body">
+              <div class="text-[9.5px] text-muted font-semibold mb-1">${a.actorId} — configured queries (reference, not run since ${a.lastScraped}):</div>
+              ${a.queries.map(qq => `
+                <div class="drill-item">
+                  <span class="drill-title">${qq.q}</span>
+                  <span class="text-muted text-[10px]">${qq.note}</span>
+                </div>`).join('')}
+            </div>
+          </td>
+        </tr>`;
+      return mainRow + drillRow;
+    }).join('');
+  }
+  function toggleActor(name) {
+    openActor = (openActor === name) ? null : name;
+    renderActors();
+  }
+
+  let actorSectionOpen = false;
+  function renderActorSummary() {
+    const totalResults = ACTORS.reduce((s, a) => s + a.results, 0);
+    const totalPassed = ACTORS.reduce((s, a) => s + a.passed, 0);
+    const stopped = ACTORS.filter(a => a.stale).length;
+    document.getElementById('actor-section-summary').textContent =
+      `${ACTORS.length} actors · ${totalResults} results seen · ${totalPassed} passed ICP` +
+      (stopped ? ` · ${stopped}/${ACTORS.length} stopped since last scrape` : '') + ' — click to expand';
+  }
+  function toggleActorSection() {
+    actorSectionOpen = !actorSectionOpen;
+    document.getElementById('actor-section-body').style.display = actorSectionOpen ? '' : 'none';
+    document.getElementById('actor-section-chevron').classList.toggle('open', actorSectionOpen);
+  }
+  renderActors();
+  renderActorSummary();
 </script>
 </body>
 </html>
