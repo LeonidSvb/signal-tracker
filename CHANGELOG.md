@@ -8,6 +8,57 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-07-18
+
+Backend-hardening Phase 1 complete (docs/PLAN_2026-07-18_backend_hardening.md,
+items 1-8): honest run logging, validation-in-pipeline, weekly/daily orchestrator,
+health page, live discovery numbers. Split execution: Fable items 1-2+6, Sonnet
+items 3-5+7-8. No live spend this phase.
+
+### Fixed
+- Dry runs no longer write `pipeline_runs` rows (`resolve_companies`,
+  `classify_company`, `find_contacts_exa` had unconditional startRun/finishRun —
+  root cause of the "6-second success" resolve_companies mystery from 2026-07-15:
+  that row was a dry run logged as a real pass, meaning a live resolve_companies
+  has in fact NEVER run). `route_email`/`rank_leads` were already correct.
+- `lib/log.mjs` finishRun now persists the full `stats` jsonb (column existed,
+  was always null — nothing ever wrote it).
+
+### Added
+- `db/migrations/006_email_validation.sql` — `contacts.email_validated_at` +
+  `email_validation_detail` (NOT yet applied — needs the SSH tunnel + Leo's go).
+- `pipeline/lib/emailValidationPolicy.mjs` — pure `needsValidation()` rule
+  (90-day re-check, `invalid` terminal), shared by both validating stages.
+- `pipeline/stages/validate_contacts.mjs` — dedicated weekly fleet-wide email
+  validation stage over the proven MV+BounceBan cascade. Dry-run by default.
+- `nextjs /health` page + `/api/health` route — latest pipeline_runs per stage +
+  live email-validation coverage (approved scope exception, PLAN C-D6).
+- `scripts/discovery/2026-07-18-layer0-hitrate.mjs` (F-1) — measured live:
+  Layer-0 hit-rate 69.7% (398/571 free via sourcing.companies; 224 pass / 174
+  reject among hits), 173 companies (30.3%) would need fresh Blitz/Exa spend.
+- `scripts/discovery/2026-07-18-blitz-tam-backlog.mjs` (F-2, scope corrected:
+  0_blitz/002+003 are Philippe's OWN harvest, not another niche's) — the 07-15
+  "6,566 unscored" backlog is already essentially closed: 003 fully in
+  sourcing.companies (3627/3627), 002 at 3970/4016, only 46 domains left.
+  Backlog-scoring work removed from the plan.
+
+### Changed
+- `pipeline/run.mjs` rewritten into the cron orchestrator: `--weekly` / `--daily`
+  chains, `--live` gate, stages spawned as child processes (the old import-based
+  version made every stage parse the orchestrator's argv at module load). Weekly
+  chain starts with scrape_jobs, which already triggers Apify actors itself via
+  apify-key-pool rotation — no native Apify Schedules (Leo's key-rotation call).
+  Rehearsal mode skips inherently-live stages entirely, runs flagged stages dry
+  (verified live on the daily chain: rank_leads 87.7s + build_linkedin_queue 6.9s,
+  zero spend). Orchestrator writes its own run_weekly/run_daily pipeline_runs row
+  with per-stage status/duration in stats jsonb. 2h hard timeout per stage.
+- `pipeline/stages/route_email.mjs` — trusts a fresh validate_contacts verdict
+  (skips inline re-validation for `verified` + <90d contacts), stamps
+  `email_validated_at` only when its own run actually called the cascade.
+
+### Tests
+- 39/39 (33 pre-existing + 6 new emailValidationPolicy).
+
 ## [0.16.0] - 2026-07-17/18
 
 Full redesign of the client-facing outreach flow: LinkedIn and email split into

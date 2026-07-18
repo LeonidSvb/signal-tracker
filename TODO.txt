@@ -5,6 +5,23 @@ Exa architecture + incident history: docs/EXA_INTEGRATION.md
 Scoring/routing spec: clients/philippe-bosquillon/docs/HANDOFF_2026-07-15_scoring_two_channel.md
 Client-facing outreach flow (final): clients/philippe-bosquillon/docs/linkedin_email_flow_philippe_2026-07-17.html
 
+=== STATUS 2026-07-18 (evening) — BACKEND HARDENING PHASE 1 DONE ===
+Plan: clients/philippe-bosquillon/docs/PLAN_2026-07-18_backend_hardening.md
+(Fable's answer to HANDOFF_2026-07-18_backend_hardening.md). Phase 1 (all 8 code
+items, zero spend) is COMPLETE — see CHANGELOG [0.17.0]. Highlights:
+- Dry runs no longer pollute pipeline_runs; the 07-15 "resolve_companies success"
+  was a dry run — a LIVE resolve_companies has never actually run.
+- validate_contacts.mjs stage + migration 006 (NOT applied yet) + /health page.
+- run.mjs = cron orchestrator (--weekly/--daily, child-process stages, rehearsal
+  mode verified live on the daily chain).
+- F-1 measured: Layer-0 69.7% free; F-2: the "6,566 unscored backlog" is already
+  closed (003: 3627/3627 in sourcing, 002: 3970/4016) — dropped from the plan.
+NEXT = Phase 2 (all [ЗАПУСКАЙ]): apply migration 006 at the tunnel, then E1-E6
+job-board catch-up (scrape → filter → FIRST-EVER live resolve_companies capped,
+Fable supervises → find_contacts → find_contacts_exa → validate_contacts backfill
+→ rank_leads). Then Phase 3: VPS deploy + crontab (Sonnet). Then Phase 4: stopgap
+report v2.
+
 === STATUS 2026-07-18 ===
 Copy/outreach-flow design work (see CHANGELOG [0.16.0]) is DONE and ready to send
 to Philippe — LinkedIn 3-step structure + email mirror, bilingual EN/DE. This did
