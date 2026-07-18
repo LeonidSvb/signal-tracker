@@ -159,7 +159,10 @@ export async function run() {
   console.log(`\n=== resolve_companies.mjs === mode=${LEGACY ? 'LEGACY' : (LIVE ? 'LIVE (spends money)' : 'DRY RUN (no spend)')}`);
 
   const clientId = await getClientId(CLIENT_SLUG);
-  const runId = await startRun({ clientId, script: 'resolve_companies', source: LEGACY ? 'raw_signals_legacy' : 'raw_signals_job_boards' });
+  // Dry runs must NOT write pipeline_runs rows — a dry run logged as 'success'
+  // is exactly what made the 2026-07-15 run look like a real (broken) live pass.
+  // finishRun() no-ops on a null runId, so gating startRun alone is sufficient.
+  const runId = (LIVE || LEGACY) ? await startRun({ clientId, script: 'resolve_companies', source: LEGACY ? 'raw_signals_legacy' : 'raw_signals_job_boards' }) : null;
 
   if (LEGACY) return runLegacy(clientId, runId);
 

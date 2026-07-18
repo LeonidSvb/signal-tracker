@@ -45,7 +45,8 @@ export async function run() {
   console.log(`\n=== classify_company.mjs === mode=${LIVE ? 'LIVE (spends money)' : 'DRY RUN (no spend)'}`);
 
   const clientId = await getClientId(CLIENT_SLUG);
-  const runId = await startRun({ clientId, script: 'classify_company', source: 'exa_finder+llm' });
+  // Dry runs don't log to pipeline_runs (finishRun no-ops on null runId).
+  const runId = LIVE ? await startRun({ clientId, script: 'classify_company', source: 'exa_finder+llm' }) : null;
 
   let sourcingClientId = null, sourcingRunId = null;
   if (LIVE) {

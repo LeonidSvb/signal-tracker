@@ -42,6 +42,7 @@ export async function finishRun(runId, { status = 'success', stats = {}, errors 
       rows_scraped:    stats.scraped    ?? 0,
       rows_passed_icp: stats.passed     ?? 0,
       rows_pushed:     stats.pushed     ?? 0,
+      stats,
       errors,
     }),
   });

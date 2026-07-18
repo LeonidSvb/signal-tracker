@@ -186,7 +186,8 @@ export async function run() {
   if (LIVE && (!EXA_KEY || !BLITZ_KEY)) throw new Error('EXA_API_KEY or BLITZ_API_KEY not set');
 
   const clientId = await getClientId(CLIENT_SLUG);
-  const runId = await startRun({ clientId, script: 'find_contacts_exa', source: 'exa' });
+  // Dry runs don't log to pipeline_runs (finishRun no-ops on null runId).
+  const runId = LIVE ? await startRun({ clientId, script: 'find_contacts_exa', source: 'exa' }) : null;
 
   const [companies, contacts, signals] = await Promise.all([
     selectAll('companies', { client_id: clientId }),
