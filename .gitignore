@@ -23,5 +23,9 @@ exa/results/
 career_pages/data/
 enrichment/
 
+# Pipeline run artifacts (triada config/checkpoint/manifest + raw output) — contain
+# real contact PII (validation CSVs with emails) and logs, regenerated every run.
+pipeline/runs/
+
 # Old stuff
 _archive/

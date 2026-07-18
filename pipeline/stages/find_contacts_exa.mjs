@@ -189,10 +189,13 @@ export async function run() {
   // Dry runs don't log to pipeline_runs (finishRun no-ops on null runId).
   const runId = LIVE ? await startRun({ clientId, script: 'find_contacts_exa', source: 'exa' }) : null;
 
+  // 120s timeout: these three parallel pulls compete for the box's variable
+  // throughput (F1 note) — the default 30s aborted twice and crashed the stage
+  // live 2026-07-18. Signals slimmed to the one column this stage reads.
   const [companies, contacts, signals] = await Promise.all([
-    selectAll('companies', { client_id: clientId }),
-    selectAll('contacts', { client_id: clientId }),
-    selectAll('signals', { client_id: clientId, source: 'exa' }),
+    selectAll('companies', { client_id: clientId }, { timeoutMs: 120_000 }),
+    selectAll('contacts', { client_id: clientId }, { timeoutMs: 120_000 }),
+    selectAll('signals', { client_id: clientId, source: 'exa' }, { select: 'company_id', timeoutMs: 120_000 }),
   ]);
   const exaCompanyIds = new Set(signals.filter(s => s.company_id).map(s => s.company_id));
   const contactsByCompany = new Map();

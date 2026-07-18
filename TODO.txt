@@ -5,6 +5,28 @@ Exa architecture + incident history: docs/EXA_INTEGRATION.md
 Scoring/routing spec: clients/philippe-bosquillon/docs/HANDOFF_2026-07-15_scoring_two_channel.md
 Client-facing outreach flow (final): clients/philippe-bosquillon/docs/linkedin_email_flow_philippe_2026-07-17.html
 
+=== SONNET TASK (queued 2026-07-18, does NOT block Phase 2/3) — TAM 004 bulk pre-classification + contact pre-scrape ===
+Goal (Leo's 2-month-horizon economics): squeeze the paid Blitz subscription NOW so it
+becomes cancellable — pre-load verdicts + contacts into our own DB, pipeline then runs
+off Layer-0 lookups alone. Steps:
+1. FREE: pass-rate-by-industry analysis of 003's local verdicts
+   (0_blitz/003_tam_industry_nf/new_companies_scored.jsonl, 3627 rows) as priors.
+2. ~$2 [ЗАПУСКАЙ]: LLM-sample 200 random of the 20,098 unscored TAM-004 rows in
+   sourcing (first_seen_via=blitz_tam_004) via classifyCompany() — real pass-rate
+   per industry AT SIZE 11-50 (key unknown: does 11-50 pass the "can afford senior
+   hires" bar at all?). Histogram already done (see chat 2026-07-18): 10.8k core
+   food mfg / 5.0k Farming / 4.0k F&B Services / 250 Caterers (blacklist!) / 0.8k
+   Consumer Goods.
+3. Rules from sample: ~0%-pass industries bulk-rejected FREE via one PATCH;
+   the rest LLM-scored [ЗАПУСКАЙ] — expected $30-60 instead of $160 naive.
+4. FREE (subscription, time only): bulk find_contacts waterfall over ALL
+   icp_status=pass sourcing companies (existing ~4.5k + new pass from step 3),
+   parallelized to ~10 companies at once (Blitz ceiling 50 rps, waterfall is
+   sequential per company). Overnight run, checkpoint per company.
+5. After 4: Blitz subscription is cancellable; email validation stays on-demand
+   at send time (do NOT bulk-validate 30k emails — that's real MV/BB money for
+   mostly-unused rows).
+
 === STATUS 2026-07-18 (evening) — BACKEND HARDENING PHASE 1 DONE ===
 Plan: clients/philippe-bosquillon/docs/PLAN_2026-07-18_backend_hardening.md
 (Fable's answer to HANDOFF_2026-07-18_backend_hardening.md). Phase 1 (all 8 code
