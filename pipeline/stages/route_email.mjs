@@ -29,6 +29,7 @@ import { getClientId, startRun, finishRun } from '../lib/log.mjs';
 import { loadChannelActions, indexChannelActions, channelActionKey, upsertChannelAction, isRetryable } from '../lib/channelActions.mjs';
 import { eventClass } from '../lib/eventClass.mjs';
 import { validateBatch } from '../lib/validateEmail.mjs';
+import { needsValidation } from '../lib/emailValidationPolicy.mjs';
 import { fill as fillCopy, langForCountry, marketFocusForCountry } from '../lib/copyEngine.mjs';
 import { addLeadsToCampaign } from '../lib/plusvibe.mjs';
 
@@ -145,12 +146,26 @@ export async function run() {
   }
 
   // D2 validation cascade (LIVE only — per A5, exception granted for this flow specifically).
+  // B-D3 (PLAN_2026-07-18_backend_hardening.md): validate_contacts.mjs is now the
+  // primary weekly validator — trust its recent verdict instead of re-spending here.
+  // This inline path is a safety net for contacts it hasn't reached yet (created
+  // mid-week, or the weekly stage hasn't run since migration 006 landed).
   let verdicts = new Map();
+  let freshlyValidatedIds = new Set();
   if (LIVE) {
-    const emails = candidates.map(c => c.contact.email.toLowerCase().trim());
-    console.log(`\n[validation] running MV+BounceBan cascade on ${emails.length} emails...`);
-    const { verdicts: v } = await validateBatch(emails, join(RUN_DIR, 'validation'));
-    verdicts = v;
+    const trusted = candidates.filter(c => c.contact.email_status === 'verified' && !needsValidation(c.contact));
+    const toCheck = candidates.filter(c => !trusted.includes(c));
+    for (const c of trusted) verdicts.set(c.contact.email.toLowerCase().trim(), 'sendable');
+
+    if (toCheck.length) {
+      const emails = toCheck.map(c => c.contact.email.toLowerCase().trim());
+      console.log(`\n[validation] ${trusted.length} trusted from validate_contacts.mjs, running MV+BounceBan cascade on ${emails.length} fresh/stale emails...`);
+      const { verdicts: v } = await validateBatch(emails, join(RUN_DIR, 'validation'));
+      for (const [email] of v) freshlyValidatedIds.add(email);
+      verdicts = new Map([...verdicts, ...v]);
+    } else {
+      console.log(`\n[validation] all ${trusted.length} candidates already trusted from validate_contacts.mjs — no spend.`);
+    }
   }
 
   const plan = [];
@@ -174,12 +189,20 @@ export async function run() {
 
     if (!LIVE) continue;
 
+    // Only stamp email_validated_at when THIS run actually called the cascade —
+    // a trusted (already-recent) verdict shouldn't get its timestamp bumped for
+    // free, that would defeat validate_contacts.mjs's 90-day re-check window.
+    const validatedHere = freshlyValidatedIds.has(email);
+    const validationPatch = validatedHere
+      ? { email_validated_at: new Date().toISOString(), email_validation_detail: { verdict, cascade: 'mv+bounceban', run_id: runId } }
+      : {};
+
     if (verdict !== 'sendable') {
       await upsertChannelAction({
         clientId, companyId: company.id, contactId: contact.id, eventKey: signal.event_key,
         channel: 'email', status: 'skipped_validation', detail: { verdict, email }, existing: existingAction,
       });
-      await patch('contacts', 'id', [contact.id], { email_status: verdict === 'dead' ? 'invalid' : 'pending' });
+      await patch('contacts', 'id', [contact.id], { email_status: verdict === 'dead' ? 'invalid' : 'pending', ...validationPatch });
       manifestRows.push({ ...row, action: 'skipped_validation' });
       continue;
     }
@@ -222,7 +245,7 @@ export async function run() {
       channel: 'email', status: 'pushed',
       detail: { campaignId, templateKey, variant: copy.variantUsed, lang, pv: pushResult }, existing: existingAction,
     });
-    await patch('contacts', 'id', [contact.id], { email_status: 'verified' });
+    await patch('contacts', 'id', [contact.id], { email_status: 'verified', ...validationPatch });
     manifestRows.push({ ...row, action: 'pushed', pvUploaded: pushResult.uploaded });
   }
 
