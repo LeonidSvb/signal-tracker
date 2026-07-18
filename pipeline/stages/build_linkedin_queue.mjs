@@ -18,7 +18,7 @@
 //           Without --live: read-only preview, reuses whatever's already snapshotted,
 //           shows [NEEDS COPY] for anything that would need a fresh LLM call.
 
-import { writeFileSync } from 'fs';
+import { writeFileSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 
@@ -28,11 +28,17 @@ import { loadChannelActions, indexChannelActions, channelActionKey, recordChanne
 import { fill as fillCopy, langForCountry, marketFocusForCountry } from '../lib/copyEngine.mjs';
 import { isStale } from '../lib/staleness.mjs';
 
+const __dir = dirname(fileURLToPath(import.meta.url));
 const CLIENT_SLUG = process.env.NEXT_PUBLIC_CLIENT_SLUG || 'philippe-bosquillon';
 const args = process.argv.slice(2);
 const LIVE = args.includes('--live');
 const outArg = args.find(a => a.startsWith('--out='));
-const OUT_PATH = outArg ? outArg.split('=')[1] : `C:/Users/79818/Downloads/philippe_linkedin_queue_${new Date().toISOString().slice(0, 10)}.html`;
+// Cross-platform default: was hardcoded to Leo's Windows Downloads folder, which
+// doesn't exist on the VPS cron target — found live 2026-07-18 during the Phase 3
+// deploy smoke test. Repo-relative pipeline/runs/ works on any OS; --out= still
+// overrides for a manual local run that wants it in Downloads directly.
+const DEFAULT_OUT_DIR = join(__dir, '../runs/linkedin_queue');
+const OUT_PATH = outArg ? outArg.split('=')[1] : join(DEFAULT_OUT_DIR, `philippe_linkedin_queue_${new Date().toISOString().slice(0, 10)}.html`);
 
 function esc(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -214,6 +220,7 @@ export async function run() {
   ${rowsHtml || '<p>No rows — depends on migration 005 + rank_leads.mjs, see console output.</p>'}
 </div></body></html>`;
 
+  mkdirSync(dirname(OUT_PATH), { recursive: true });
   writeFileSync(OUT_PATH, html, 'utf8');
   console.log(`\nwritten: ${OUT_PATH}`);
   console.log('=== DONE ===');

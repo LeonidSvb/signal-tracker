@@ -11,14 +11,19 @@
 //
 // Run: node --env-file=nextjs/.env.local pipeline/stages/build_signal_report.mjs [--out=path]
 
-import { writeFileSync } from 'fs';
+import { writeFileSync, mkdirSync } from 'fs';
+import { dirname, join } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { selectAll } from '../lib/supabase.mjs';
 import { getClientId } from '../lib/log.mjs';
 
+const __dir = dirname(fileURLToPath(import.meta.url));
 const CLIENT_SLUG = process.env.NEXT_PUBLIC_CLIENT_SLUG || 'philippe-bosquillon';
 const outArg = process.argv.find(a => a.startsWith('--out='));
-const OUT_PATH = outArg ? outArg.split('=')[1] : `C:/Users/79818/Downloads/philippe_exa_signals_${new Date().toISOString().slice(0, 10)}.html`;
+// Cross-platform default — was hardcoded to Leo's Windows Downloads folder, broke
+// on the VPS cron target (found live 2026-07-18, same bug class as
+// build_linkedin_queue.mjs). --out= still overrides for a manual local run.
+const OUT_PATH = outArg ? outArg.split('=')[1] : join(__dir, '../runs/signal_report', `philippe_exa_signals_${new Date().toISOString().slice(0, 10)}.html`);
 
 function esc(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -160,6 +165,7 @@ export async function run() {
   ${rowsHtml}
 </div></body></html>`;
 
+  mkdirSync(dirname(OUT_PATH), { recursive: true });
   writeFileSync(OUT_PATH, html, 'utf8');
   console.log(`\nwritten: ${OUT_PATH}`);
   console.log('=== DONE ===');

@@ -5,6 +5,28 @@ Exa architecture + incident history: docs/EXA_INTEGRATION.md
 Scoring/routing spec: clients/philippe-bosquillon/docs/HANDOFF_2026-07-15_scoring_two_channel.md
 Client-facing outreach flow (final): clients/philippe-bosquillon/docs/linkedin_email_flow_philippe_2026-07-17.html
 
+=== STATUS 2026-07-18 (night) — PHASE 3 DONE: VPS deploy + crontab live ===
+Pipeline now runs on the VPS (152.53.194.162), NOT Leo's Windows machine:
+/opt/apps/projects/philippe-signals-pipeline/ mirrors the outer Mastr_Leads
+relative-path structure the pipeline needs (.env, blitz/.env,
+scripts/utils/apify-key-pool.mjs, scripts/validation/, clients/philippe-bosquillon/
+{signals,copy}/) — deployed via tar+scp (no rsync on this box, no git push to
+GitHub per standing no-push rule). Crontab: weekly full Mon 08:00 UTC,
+daily light every day 10:00 UTC (offset 2h from weekly to avoid Monday overlap —
+weekly's chain does NOT include build_linkedin_queue, only daily does, so both
+need to run Monday). Logs: /home/leonid/logs/philippe-pipeline-{weekly,daily}.log.
+Both rehearsal modes (--weekly, --daily, no --live) verified live on the VPS —
+clean run, real preview data (73 email leads previewed, 100 LinkedIn queue rows).
+First LIVE cron firing is UNSUPERVISED — Monday 08:00 UTC weekly is the real test;
+check the log file after.
+Found + fixed along the way: build_linkedin_queue.mjs and build_signal_report.mjs
+both hardcoded Leo's Windows Downloads path as their default output — broke
+immediately on Linux. Now default to pipeline/runs/{linkedin_queue,signal_report}/
+(--out= still overrides). Also found deploy.ps1 has a plaintext sudo password —
+flagged, not fixed this session (pre-existing, separate from pipeline work).
+NEXT: first unsupervised Monday run — check logs Monday evening; then Phase 4
+(stopgap report v2, minimal effort per Leo's "temporary crutch" framing).
+
 === SONNET TASK (queued 2026-07-18, does NOT block Phase 2/3) — TAM 004 bulk pre-classification + contact pre-scrape ===
 Goal (Leo's 2-month-horizon economics): squeeze the paid Blitz subscription NOW so it
 becomes cancellable — pre-load verdicts + contacts into our own DB, pipeline then runs
