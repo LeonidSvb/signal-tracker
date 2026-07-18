@@ -46,7 +46,7 @@ enrichment/          — исторические CSV + llm_cache.json (КРИТ
 ## Rate limits внешних API (проверять здесь перед выбором concurrency)
 
 - **Blitz:** 50 req/sec (Enterprise + "+45 RPS" аддон) — используй ~40/sec с запасом. Источник: `docs/blitz-api/blitz-api-test-results.md`
-- **Exa:** RPS не задокументирован публично; free tier 20,000 req/месяц (`exa.ai/pricing`), содержимое (`contents.text`) — отдельная статья расходов $1/1k страниц сверх поиска $7/1k
+- **Exa:** **10 req/sec ЖЁСТКИЙ лимит** (проверено живьём 2026-07-18: 429 с текстом лимита при concurrency 20; exaFinder.mjs теперь ретраит 429 с бэкоффом, стадии держат concurrency ≤8). Содержимое (`contents.text`) — отдельная статья расходов $1/1k страниц сверх поиска $7/1k
 - **OpenRouter (gpt-oss-120b):** лимиты не проверялись — если скрипт на этой модели идёт медленно, сначала проверить, не в OpenRouter ли узкое место
 
 ## Job boards — как запускать

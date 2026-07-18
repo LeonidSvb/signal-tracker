@@ -38,7 +38,11 @@ const LIVE = args.includes('--live');
 const LEGACY = args.includes('--legacy');
 const limitArg = args.find(a => a.startsWith('--limit='));
 const LIMIT = limitArg ? parseInt(limitArg.split('=')[1], 10) : Infinity;
-const CONCURRENCY = 5; // matches classify_company.mjs's convention
+// The binding ceiling is EXA: 10 req/sec hard limit (verified live 2026-07-18 — a
+// CONCURRENCY=20 burst 429'd ~46 companies before exaFinder grew 429 backoff). Blitz
+// (50 rps) and OpenRouter (50 concurrent) never flinched at 20. 8 parallel companies
+// keeps Exa bursts under its ceiling even before the backoff kicks in.
+const CONCURRENCY = 8;
 
 const CACHE_DOMAIN = join(__dir, '../../exa/cache/company_resolve_cache.json');
 const CACHE_ABOUT  = join(__dir, '../../exa/cache/company_about_cache.json');

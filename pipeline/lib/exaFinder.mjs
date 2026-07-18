@@ -44,15 +44,28 @@ function ownHost(url) {
   } catch { return null; }
 }
 
+// Exa's hard ceiling is 10 req/sec (verified live 2026-07-18 — the 429 body states it
+// verbatim; also recorded in signals/CLAUDE.md rate limits). fetchRetry only retries
+// network aborts, so 429 needs its own backoff here or a concurrency burst kills the
+// whole company (found live: ~46 companies errored out of one resolve run at
+// CONCURRENCY=20 before this existed).
 async function exaSearch(body) {
-  const res = await fetchRetry('https://api.exa.ai/search', {
-    method: 'POST',
-    headers: { 'x-api-key': EXA_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const json = await res.json();
-  if (!res.ok) throw new Error(`[exa] search ${res.status}: ${JSON.stringify(json).slice(0, 200)}`);
-  return json;
+  const MAX_429_RETRIES = 4;
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetchRetry('https://api.exa.ai/search', {
+      method: 'POST',
+      headers: { 'x-api-key': EXA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    if (res.ok) return json;
+    if (res.status === 429 && attempt < MAX_429_RETRIES) {
+      const waitMs = 1000 * (attempt + 1) + Math.floor(Math.random() * 500);
+      await new Promise(r => setTimeout(r, waitMs));
+      continue;
+    }
+    throw new Error(`[exa] search ${res.status}: ${JSON.stringify(json).slice(0, 200)}`);
+  }
 }
 
 export function cacheKey(name, country) {
