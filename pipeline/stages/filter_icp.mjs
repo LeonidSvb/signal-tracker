@@ -89,7 +89,9 @@ async function main() {
   const clientId = await getClientId(CLIENT_SLUG);
   console.log(`client_id: ${clientId}`);
 
-  const rows = await selectAll('raw_signals', { client_id: clientId, status: 'pending' });
+  // Full rows needed (filterNews/filterHiring read raw_data) — allow 120s per page,
+  // the post-scrape pending pull is the heaviest read in the pipeline (F1 note).
+  const rows = await selectAll('raw_signals', { client_id: clientId, status: 'pending' }, { timeoutMs: 120_000 });
   console.log(`\npending: ${rows.length}`);
 
   const groups = {};

@@ -166,9 +166,15 @@ export async function run() {
 
   if (LEGACY) return runLegacy(clientId, runId);
 
-  let sourcingClientId = null, sourcingRunId = null;
+  // sourcingClientId + the sourcing.companies pull are free reads and needed in BOTH
+  // modes — the dry run's whole point is an honest "would spend on N" estimate, which
+  // requires knowing the Layer-0 hits (was LIVE-gated by mistake, making every dry
+  // run report layer0Hit=0 and overcount the spend estimate; the header always said
+  // "zero spend beyond the initial selectAllSourcing pull"). Found 2026-07-18 during
+  // the supervised-first-live-run baseline. Only startSourcingRun (a write) is LIVE-only.
+  const sourcingClientId = await getSourcingClientId(CLIENT_SLUG);
+  let sourcingRunId = null;
   if (LIVE) {
-    sourcingClientId = await getSourcingClientId(CLIENT_SLUG);
     sourcingRunId = await startSourcingRun(sourcingClientId, {
       run_type: 'resolve_companies_job_boards',
       run_tag: `resolve_jobs_${new Date().toISOString().slice(0, 19).replace(/[-:]/g, '')}`,
@@ -192,7 +198,7 @@ export async function run() {
   const companyByCoreName = new Map(companies.map(c => [coreName(c.name), c]));
 
   console.log('[setup] fetching sourcing.companies (lightweight columns)...');
-  const sourcing = LIVE ? await selectAllSourcing('companies', `client_id=eq.${sourcingClientId}&select=id,company_name,domain,icp_status,icp_reason,employees,hq_country,industry`) : [];
+  const sourcing = await selectAllSourcing('companies', `client_id=eq.${sourcingClientId}&select=id,company_name,domain,icp_status,icp_reason,employees,hq_country,industry`);
   const sourcingByDomain = new Map();
   const sourcingByCoreName = new Map();
   for (const c of sourcing) {

@@ -120,13 +120,17 @@ export async function upsert(table, rows, onConflict) {
 
 // opts.select — optional PostgREST column list (e.g. 'id,source_url,pub_date') so
 // callers that don't need raw_data jsonb stop paying 7 MB/page transfer (F1 note).
+// opts.timeoutMs — per-call override of the 30s default. Heavy full-row pulls
+// (raw_signals with raw_data right after a scrape) legitimately exceed 30s at this
+// box's worst-case ~0.2 MB/s throughput (F1 note) — found live 2026-07-18 when
+// filter_icp timed out twice in a row on a routine post-scrape pull.
 export async function select(table, filters = {}, opts = {}) {
   const parts = Object.entries(filters).map(([k, v]) => `${k}=eq.${encodeURIComponent(v)}`);
   if (opts.select) parts.push(`select=${opts.select}`);
   const qs = parts.join('&');
   const res = await sbFetch(`${BASE}/${table}${qs ? '?' + qs : ''}`, {
     headers: { ...HEADERS, 'Prefer': 'return=representation' },
-  });
+  }, opts.timeoutMs ?? TIMEOUT_MS);
   if (!res.ok) throw new Error(`[supabase] SELECT ${table} → ${res.status}`);
   return JSON.parse(res.bodyText);
 }
@@ -141,7 +145,7 @@ export async function selectAll(table, filters = {}, opts = {}) {
     parts.push(`limit=${PAGE}`, `offset=${offset}`);
     const res = await sbFetch(`${BASE}/${table}?${parts.join('&')}`, {
       headers: { ...HEADERS, 'Prefer': 'return=representation' },
-    });
+    }, opts.timeoutMs ?? TIMEOUT_MS);
     if (!res.ok) throw new Error(`[supabase] SELECT ${table} → ${res.status}`);
     const batch = JSON.parse(res.bodyText);
     all.push(...batch);
@@ -157,7 +161,11 @@ export async function patch(table, filterCol, filterVals, data) {
   let total = 0;
   for (let i = 0; i < filterVals.length; i += PATCH_BATCH) {
     const batch = filterVals.slice(i, i + PATCH_BATCH);
-    const qs = `${filterCol}=in.(${batch.join(',')})`;
+    // select=id: return=representation without it echoes FULL updated rows —
+    // for raw_signals that's the raw_data jsonb too, megabytes per 80-row batch,
+    // which blew the 30s window live 2026-07-18 (filter_icp post-scrape PATCH).
+    // Row count semantics are unchanged, callers only ever .length the result.
+    const qs = `${filterCol}=in.(${batch.join(',')})&select=id`;
     const res = await sbFetch(`${BASE}/${table}?${qs}`, {
       method: 'PATCH',
       headers: { ...HEADERS, 'Prefer': 'return=representation' },
