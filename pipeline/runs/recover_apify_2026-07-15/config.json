@@ -1,0 +1,12 @@
+{
+  "date_recovered": "2026-07-15T09:41:38.875Z",
+  "target_date": "2026-07-15",
+  "mode": "live",
+  "sources": [
+    "linkedin",
+    "stepstone",
+    "xing",
+    "cadremploi",
+    "indeed"
+  ]
+}

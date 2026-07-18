@@ -15,7 +15,7 @@ in Supabase — that is the only destination.
 33 Exa Monitors (interval trigger, every 7 days, Exa-managed schedule — not our cron)
   → webhook POST → https://philippe.pamelacoreypc.com/api/exa-webhook (Next.js API route)
   → normalizes into signal_monitoring.raw_signals (source='exa', status='pending')
-  → 02_filter.mjs (not yet run on exa rows post-fix) → status='passed_icp' | 'filtered_out'
+  → filter_icp.mjs (not yet run on exa rows post-fix) → status='passed_icp' | 'filtered_out'
 ```
 
 No polling, no manual step, no intermediate storage. One monitor = one persistent query Exa
@@ -143,7 +143,7 @@ Requires `EXA_API_KEY` (root `Mastr_Leads/.env`) and `NEXT_PUBLIC_SUPABASE_URL` 
 - **310 total rows** (157 pre-existing from the original 2026-06-22 manual push + 153 from this
   backfill)
 - Status breakdown: `pending` 153 · `passed_icp` 148 · `filtered_out` 9 — the 153 pending rows are
-  everything the backfill just inserted; `02_filter.mjs` hasn't run over them yet
+  everything the backfill just inserted; `filter_icp.mjs` hasn't run over them yet
 - By `signal_type`: MA 63 · CLEVEL 61 · EXPAND 57 · SECTOR 40 · INVEST 36 · NICHE 35 · CONTRACT 18
 - Newest `pub_date` in the table: 2026-07-07 (e.g. "Palacios Alimentación acquires Ñaming",
   monitor `MA|EU`; "Fortifi expands... acquisition of Deighton Manufacturing", `NICHE|FOODBEV`)

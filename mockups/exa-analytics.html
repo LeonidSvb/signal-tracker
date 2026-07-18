@@ -217,7 +217,7 @@
     </div>
     <div class="stat-card">
       <div class="flex items-center justify-between"><span class="stat-card-icon" style="background:#EEF0FE;color:#4F5FD1;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg></span>
-        <div class="tip tip-r"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box">status='passed_icp' — cleared 02_filter.mjs, promotable to signals[]</span></div>
+        <div class="tip tip-r"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box">status='passed_icp' — cleared filter_icp.mjs, promotable to signals[]</span></div>
       </div>
       <div class="text-[9px] text-muted font-semibold">Passed ICP</div>
       <div class="flex items-baseline gap-1"><span class="text-[21px] font-bold text-accent-text leading-none">148</span><span class="text-[9px] text-muted">47.7%</span></div>
@@ -231,7 +231,7 @@
     </div>
     <div class="stat-card">
       <div class="flex items-center justify-between"><span class="stat-card-icon" style="background:#EEF0FE;color:#4F5FD1;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
-        <div class="tip tip-r"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box">status='pending' — 153 of these are the 2026-07-13 backfill, not yet run through 02_filter.mjs</span></div>
+        <div class="tip tip-r"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box">status='pending' — 153 of these are the 2026-07-13 backfill, not yet run through filter_icp.mjs</span></div>
       </div>
       <div class="text-[9px] text-muted font-semibold">Pending Review</div>
       <div class="flex items-baseline gap-1"><span class="text-[21px] font-bold text-accent-text leading-none">153</span><span class="text-[9px] text-muted">49.4%</span></div>
@@ -333,7 +333,7 @@
       </div>
     </div>
     <div class="flex justify-between text-[9px] text-muted mt-1 pl-7" id="src-labels"></div>
-    <div class="disclaimer mt-1">The 2026-06-22 cliff on LinkedIn/Indeed/StepStone/Xing/Cadremploi is job-board scraping stopping (01_scrape_jobs.mjs, unrelated to the Exa incident) — not visible per-source dedup, this is the real gap.</div>
+    <div class="disclaimer mt-1">The 2026-06-22 cliff on LinkedIn/Indeed/StepStone/Xing/Cadremploi is job-board scraping stopping (scrape_jobs.mjs, unrelated to the Exa incident) — not visible per-source dedup, this is the real gap.</div>
   </div>
 
   <div class="grid grid-cols-2 gap-3 mb-3">
@@ -1238,7 +1238,7 @@
   // (pulled live via psql), configured queries from job_boards/{actor}/config.json +
   // ACTOR_NOTES.txt "РЕКОМЕНДАЦИЯ ДЛЯ ПРОДАКШНА" sections. Status/cadence are the honest story:
   // every actor's own notes recommend weekly (or monthly, for Indeed) reruns, but all five
-  // share one identical last_scraped date — 2026-06-22, the day 01_scrape_jobs.mjs stopped
+  // share one identical last_scraped date — 2026-06-22, the day scrape_jobs.mjs stopped
   // running — so every row currently reads "Stopped", not "Active". ═══════════
   const ACTORS = [
     {

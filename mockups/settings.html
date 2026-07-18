@@ -118,7 +118,7 @@
       <div id="panel-icpfilter" class="settings-panel active">
         <div class="mb-4">
           <div class="font-bold text-heading text-[16px]">ICP Filter</div>
-          <div class="text-[11.5px] text-muted mt-0.5">Single source of truth for targeting — maps to <code>pipeline/config/icp_filter.json</code>, read by <code>02_filter.mjs</code>.</div>
+          <div class="text-[11.5px] text-muted mt-0.5">Single source of truth for targeting — maps to <code>pipeline/config/icp_filter.json</code>, read by <code>filter_icp.mjs</code>.</div>
         </div>
         <div class="flex items-center gap-1.5 mb-4">
           <span class="tip tip-wide">
@@ -289,7 +289,7 @@
               <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">app_state</td><td class="px-3 py-2 text-muted">Leads tracker (CRM status)</td><td class="px-3 py-2 text-muted">2026-06-26</td><td class="px-3 py-2"><span class="health-pill health-ok">OK</span></td></tr>
               <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">notes</td><td class="px-3 py-2 text-muted">Leads tracker (append-only notes)</td><td class="px-3 py-2 text-muted">2026-06-26</td><td class="px-3 py-2"><span class="health-pill health-ok">OK</span></td></tr>
               <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">tam_companies</td><td class="px-3 py-2 text-muted">Database page (TAM cache)</td><td class="px-3 py-2 text-muted">—</td><td class="px-3 py-2"><span class="tip"><span class="health-pill health-missing">not migrated</span><span class="tip-box">Proposed in this session's Database page design — migration not written yet. Would hold the ~2,952 deduped companies currently sitting in db/blitz_all_scored.jsonl / tam_companies.jsonl.</span></span></td></tr>
-              <tr><td class="px-3 py-2 font-mono text-[10.5px]">tam_contacts</td><td class="px-3 py-2 text-muted">Database page (contact cache)</td><td class="px-3 py-2 text-muted">—</td><td class="px-3 py-2"><span class="tip"><span class="health-pill health-missing">not migrated</span><span class="tip-box">Would hold db/master_contacts.jsonl (~3,930 rows) + db/apollo_contacts.jsonl (1,307 rows) — lets 03_resolve_companies/04_find_contacts check this table before paying for another Blitz/Apollo API call.</span></span></td></tr>
+              <tr><td class="px-3 py-2 font-mono text-[10.5px]">tam_contacts</td><td class="px-3 py-2 text-muted">Database page (contact cache)</td><td class="px-3 py-2 text-muted">—</td><td class="px-3 py-2"><span class="tip"><span class="health-pill health-missing">not migrated</span><span class="tip-box">Would hold db/master_contacts.jsonl (~3,930 rows) + db/apollo_contacts.jsonl (1,307 rows) — lets resolve_companies/find_contacts check this table before paying for another Blitz/Apollo API call.</span></span></td></tr>
             </tbody>
           </table>
         </div>
@@ -313,10 +313,10 @@
             </thead>
             <tbody class="text-[11.5px]">
               <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">Exa (33 monitors)</td><td class="px-3 py-2 text-muted">News signals (MA/CLEVEL/EXPAND/INVEST)</td><td class="px-3 py-2 text-muted">unknown</td><td class="px-3 py-2"><span class="tip"><span class="health-pill health-unknown">unverified</span><span class="tip-box">monitor_ids.json last touched 2026-06-02. Feed still routes through n8n workflow 0WmBVaYBGDUMfPSl → Sheets/Telegram, not into this DB. No local file proves whether the monitors are still firing; check the Exa dashboard or n8n directly.</span></span></td></tr>
-              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">Apify — LinkedIn / StepStone / Cadremploi</td><td class="px-3 py-2 text-muted">Job-board hiring signals (01_scrape_jobs)</td><td class="px-3 py-2 text-muted">2026-06-26</td><td class="px-3 py-2"><span class="health-pill health-ok">OK</span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">Apify — LinkedIn / StepStone / Cadremploi</td><td class="px-3 py-2 text-muted">Job-board hiring signals (scrape_jobs)</td><td class="px-3 py-2 text-muted">2026-06-26</td><td class="px-3 py-2"><span class="health-pill health-ok">OK</span></td></tr>
               <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">Apify — Xing / Indeed</td><td class="px-3 py-2 text-muted">Job-board hiring signals (DE/AT coverage)</td><td class="px-3 py-2 text-muted">—</td><td class="px-3 py-2"><span class="tip"><span class="health-pill health-missing">key blocked</span><span class="tip-box">APIFY_KEY_KAD1_BLOCKED still referenced in job_boards/xing/ACTOR_NOTES.txt and job_boards/indeed/ACTOR_NOTES.txt. Configs need to switch to APIFY_KEY_KAD2 before these two sources produce anything.</span></span></td></tr>
               <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">Blitz API</td><td class="px-3 py-2 text-muted">Company resolution + contact waterfall</td><td class="px-3 py-2 text-muted">2026-06-29 (bulk TAM build)</td><td class="px-3 py-2"><span class="health-pill health-ok">OK</span></td></tr>
-              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">OpenRouter (gpt-oss-120b)</td><td class="px-3 py-2 text-muted">Narrative + angle + score (05_score_llm)</td><td class="px-3 py-2 text-muted">2026-06-26</td><td class="px-3 py-2"><span class="health-pill health-ok">OK</span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">OpenRouter (gpt-oss-120b)</td><td class="px-3 py-2 text-muted">Narrative + angle + score (score_signals)</td><td class="px-3 py-2 text-muted">2026-06-26</td><td class="px-3 py-2"><span class="health-pill health-ok">OK</span></td></tr>
               <tr><td class="px-3 py-2 font-mono text-[10.5px]">mails.so</td><td class="px-3 py-2 text-muted">Email deliverability validation</td><td class="px-3 py-2 text-muted">2026-06-29</td><td class="px-3 py-2"><span class="health-pill health-ok">OK</span></td></tr>
             </tbody>
           </table>
@@ -340,11 +340,11 @@
               </tr>
             </thead>
             <tbody class="text-[11.5px]">
-              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">01_scrape_jobs / 01_scrape_exa</td><td class="px-3 py-2 text-muted">weekly Mon 08:00 UTC (planned)</td><td class="px-3 py-2 text-muted">2026-06-26 (manual)</td><td class="px-3 py-2"><span class="health-pill health-warn">not scheduled</span></td></tr>
-              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">02_filter</td><td class="px-3 py-2 text-muted">weekly Mon 08:00 UTC (planned)</td><td class="px-3 py-2 text-muted">2026-06-26 (manual)</td><td class="px-3 py-2"><span class="health-pill health-warn">not scheduled</span></td></tr>
-              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">03_resolve_companies</td><td class="px-3 py-2 text-muted">weekly Mon 08:00 UTC (planned)</td><td class="px-3 py-2 text-muted">2026-06-26 (manual)</td><td class="px-3 py-2"><span class="health-pill health-warn">not scheduled</span></td></tr>
-              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">04_find_contacts</td><td class="px-3 py-2 text-muted">weekly Mon 08:00 UTC (planned)</td><td class="px-3 py-2 text-muted">2026-06-26 (manual)</td><td class="px-3 py-2"><span class="health-pill health-warn">not scheduled</span></td></tr>
-              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">05_score_llm</td><td class="px-3 py-2 text-muted">weekly Mon 08:00 UTC (planned)</td><td class="px-3 py-2 text-muted">2026-06-26 (manual)</td><td class="px-3 py-2"><span class="health-pill health-warn">not scheduled</span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">scrape_jobs / scrape_exa</td><td class="px-3 py-2 text-muted">weekly Mon 08:00 UTC (planned)</td><td class="px-3 py-2 text-muted">2026-06-26 (manual)</td><td class="px-3 py-2"><span class="health-pill health-warn">not scheduled</span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">filter_icp</td><td class="px-3 py-2 text-muted">weekly Mon 08:00 UTC (planned)</td><td class="px-3 py-2 text-muted">2026-06-26 (manual)</td><td class="px-3 py-2"><span class="health-pill health-warn">not scheduled</span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">resolve_companies</td><td class="px-3 py-2 text-muted">weekly Mon 08:00 UTC (planned)</td><td class="px-3 py-2 text-muted">2026-06-26 (manual)</td><td class="px-3 py-2"><span class="health-pill health-warn">not scheduled</span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">find_contacts</td><td class="px-3 py-2 text-muted">weekly Mon 08:00 UTC (planned)</td><td class="px-3 py-2 text-muted">2026-06-26 (manual)</td><td class="px-3 py-2"><span class="health-pill health-warn">not scheduled</span></td></tr>
+              <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">score_signals</td><td class="px-3 py-2 text-muted">weekly Mon 08:00 UTC (planned)</td><td class="px-3 py-2 text-muted">2026-06-26 (manual)</td><td class="px-3 py-2"><span class="health-pill health-warn">not scheduled</span></td></tr>
               <tr class="border-b border-[#F4F4F5]"><td class="px-3 py-2 font-mono text-[10.5px]">06_push_supabase</td><td class="px-3 py-2 text-muted">weekly Mon 08:00 UTC (planned)</td><td class="px-3 py-2 text-muted">2026-06-26 (manual)</td><td class="px-3 py-2"><span class="health-pill health-warn">not scheduled</span></td></tr>
               <tr><td class="px-3 py-2 font-mono text-[10.5px]">07_recalc_scores</td><td class="px-3 py-2 text-muted">weekly Mon 09:00 UTC (planned)</td><td class="px-3 py-2 text-muted">never run</td><td class="px-3 py-2"><span class="health-pill health-missing">not implemented</span></td></tr>
             </tbody>
@@ -369,12 +369,12 @@
   }
 
   const RUNS = [
-    { script: '01_scrape_jobs', source: 'linkedin+stepstone+cadremploi', started: '2026-06-26 09:02', scraped: 612, passed: 41, pushed: 18, status: 'done' },
+    { script: 'scrape_jobs', source: 'linkedin+stepstone+cadremploi', started: '2026-06-26 09:02', scraped: 612, passed: 41, pushed: 18, status: 'done' },
     { script: '01_scrape_exa', source: 'exa (33 monitors)', started: '2026-06-26 09:04', scraped: 182, passed: 26, pushed: 11, status: 'done' },
-    { script: '02_filter', source: 'all', started: '2026-06-26 09:10', scraped: 794, passed: 67, pushed: null, status: 'done' },
-    { script: '03_resolve_companies', source: 'blitz', started: '2026-06-26 09:14', scraped: null, passed: 67, pushed: 226, status: 'done' },
-    { script: '04_find_contacts', source: 'blitz waterfall', started: '2026-06-26 09:22', scraped: null, passed: null, pushed: 106, status: 'done' },
-    { script: '05_score_llm', source: 'openrouter', started: '2026-06-26 09:31', scraped: null, passed: null, pushed: 399, status: 'done' },
+    { script: 'filter_icp', source: 'all', started: '2026-06-26 09:10', scraped: 794, passed: 67, pushed: null, status: 'done' },
+    { script: 'resolve_companies', source: 'blitz', started: '2026-06-26 09:14', scraped: null, passed: 67, pushed: 226, status: 'done' },
+    { script: 'find_contacts', source: 'blitz waterfall', started: '2026-06-26 09:22', scraped: null, passed: null, pushed: 106, status: 'done' },
+    { script: 'score_signals', source: 'openrouter', started: '2026-06-26 09:31', scraped: null, passed: null, pushed: 399, status: 'done' },
     { script: '06_push_supabase', source: 'all', started: '2026-06-26 09:40', scraped: null, passed: null, pushed: 399, status: 'done' },
   ];
   document.getElementById('runs-tbody').innerHTML = RUNS.map(r => (

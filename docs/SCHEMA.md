@@ -1,6 +1,6 @@
 # Database Schema
 Schema: `signal_monitoring` | Supabase self-hosted на 152.53.194.162
-Last updated: 2026-06-26
+Last updated: 2026-07-15 (migration 005 — event_key / tier / channel_actions; статус: SQL написан, НЕ применён к живой базе)
 
 ---
 
@@ -13,6 +13,7 @@ clients
   │     └── contacts    (company_id FK)
   │     └── app_state   (company_id FK, UNIQUE per client+company)
   │     └── notes       (company_id FK, append-only)
+  │     └── channel_actions (company_id FK, UNIQUE per client+company+channel+event_key)
   └── raw_signals       (client_id FK, run_id FK)
   └── pipeline_runs     (client_id FK)
 ```
@@ -40,7 +41,7 @@ clients
 |---------|-----|---------|
 | id | uuid PK | |
 | client_id | uuid FK | |
-| script | text | 01_scrape_jobs, 02_filter, ... |
+| script | text | scrape_jobs, filter_icp, ... |
 | source | text | linkedin, exa, stepstone, ... |
 | status | text | running / done / error |
 | started_at | timestamptz | |
@@ -50,6 +51,8 @@ clients
 | rows_pushed | int | Записано в signals |
 | errors | jsonb | Список ошибок если были |
 | stats | jsonb | Произвольные метрики прогона |
+| digest | text | (004) Exa AI-дайджест прогона (plain text, [n] цитаты) |
+| digest_citations | jsonb | (004) Список цитат дайджеста |
 
 ---
 
@@ -73,9 +76,10 @@ clients
 | country | text | DE / FR / NL / BE / LU / CH / AT |
 | status | text | pending / passed_icp / filtered_out |
 | filter_reason | text | Причина отфильтрования |
+| monitor_label | text | (004) Категория Exa-монитора (MA\|DE, INVEST\|EU, ...), '' для не-Exa |
 | scraped_at | timestamptz | |
 
-UNIQUE: (client_id, source, external_id) — дедуп по источнику и ID
+UNIQUE: (client_id, source, external_id, monitor_label) — с 004: одна статья, пойманная 5 разными мониторами = 5 строк
 
 ---
 
@@ -97,6 +101,10 @@ UNIQUE: (client_id, source, external_id) — дедуп по источнику 
 | about | text | Краткое описание компании |
 | blitz_data | jsonb | Кэш ответа Blitz API |
 | meta | jsonb | Экспериментальные поля |
+| tier | text | (005) T1 / T2 / T3 / NULL — пишет rank_leads.mjs (A2 формула) |
+| rank | int | (005) 0–11, порядок внутри тира |
+| tier_reason | text | (005) обоснование: 'class A event: ...' / 'icp_reject' / 'needs_screen' / 'no_fresh_event' |
+| ranked_at | timestamptz | (005) когда rank_leads последний раз пересчитал |
 | created_at / updated_at | timestamptz | |
 
 UNIQUE: (client_id, linkedin_url)
@@ -128,7 +136,10 @@ UNIQUE: (client_id, linkedin_url)
 | narrative | text | LLM: что этот сигнал означает для executive search |
 | angle | text | LLM: угол захода для outreach |
 | meta | jsonb | Экспериментальные поля |
+| event_key | text | (005) id события: наименьший uuid сигнала в группе. Несколько строк = одно реальное событие → один event_key. Пишет rank_leads.mjs |
 | created_at / updated_at | timestamptz | |
+
+INDEX: (client_id, event_key)
 
 ---
 
@@ -168,6 +179,28 @@ CRM статус — одна строка на пару (client, company).
 | updated_by | text | leo / philippe / client_name |
 
 UNIQUE: (client_id, company_id)
+
+---
+
+## channel_actions (005 — SQL написан, ещё не применён)
+
+Состояние обоих каналов outreach: одна строка на (company, channel, event).
+Идемпотентность: одно событие никогда не стреляет дважды в один канал;
+НОВОЕ событие той же компании стреляет снова — так задумано (A7).
+
+| Колонка | Тип | Описание |
+|---------|-----|---------|
+| id | uuid PK | |
+| client_id | uuid FK | |
+| company_id | uuid FK | → companies |
+| contact_id | uuid FK nullable | → contacts (on delete set null) |
+| event_key | text | Событие-триггер |
+| channel | text | email / linkedin (check constraint) |
+| status | text | email: validated / pushed / skipped_no_email / skipped_validation; linkedin: queued / exported / done / skipped |
+| detail | jsonb | Вердикты валидации, PV campaign id, снапшот сгенерированного копи |
+| created_at / updated_at | timestamptz | |
+
+UNIQUE: (client_id, company_id, channel, event_key)
 
 ---
 

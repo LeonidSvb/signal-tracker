@@ -1,7 +1,537 @@
 SIGNAL SYSTEM — Philippe Bosquillon
-Updated: 2026-07-14
+Updated: 2026-07-18
 Full plan: signals/PRD.md | Architecture: docs/OVERVIEW.md | DB: docs/SCHEMA.md
 Exa architecture + incident history: docs/EXA_INTEGRATION.md
+Scoring/routing spec: clients/philippe-bosquillon/docs/HANDOFF_2026-07-15_scoring_two_channel.md
+Client-facing outreach flow (final): clients/philippe-bosquillon/docs/linkedin_email_flow_philippe_2026-07-17.html
+
+=== STATUS 2026-07-18 ===
+Copy/outreach-flow design work (see CHANGELOG [0.16.0]) is DONE and ready to send
+to Philippe — LinkedIn 3-step structure + email mirror, bilingual EN/DE. This did
+NOT touch the pipeline's runtime behavior (route_email.mjs / build_linkedin_queue.mjs
+still read pipeline/config/copy_templates.json's email variants A/B/C, which were
+NOT part of this redesign — only the li_connection_note/li_first_message fields
+were touched previously, on 2026-07-17 part 2). Adapting the EMAIL variants to the
+same qualify-then-call shape is still open, see below.
+Real backend gaps, unrelated to copy: job-board scraping (item 24) hasn't run
+since the one-time 2026-07-15 recovery — no recurring cadence re-established.
+NOTHING is on a production cron yet (items 17-18) — every pipeline run so far has
+been manually triggered from Leo's Windows machine. That's the biggest "is this
+actually running" gap, not a design gap.
+
+=== STATUS 2026-07-17 (read this FIRST — everything below "HANDOFF TO FABLE" is now
+stale/historical; it describes the state BEFORE the 2026-07-15 evening build session,
+which was never written up here at the time. This block is that write-up. ===
+
+The 2026-07-15 evening session (17:37-19:35 local) actually EXECUTED most of
+HANDOFF_2026-07-15_scoring_two_channel.md. None of it was committed to git and none
+of it was reflected in this file or CHANGELOG.md until now (found + reconstructed
+2026-07-17 from file timestamps, run manifests, and reading the actual code).
+
+WHAT'S REALLY BUILT AND LIVE:
+- migration 005 applied to production Supabase: signals.event_key, companies.tier/
+  rank/tier_reason/ranked_at, channel_actions table — all confirmed live (rank_leads
+  manifest shows real tier values written).
+- rank_leads.mjs run --live: 597 signals -> 535 events -> tier T1:57/T2:51/T3:15 (of
+  412 companies with signals). DMK Group event-grouping checked by hand 2026-07-17
+  (see docs/REVIEW_2026-07-17_dmk_and_copy.txt part 1): 10 signals -> 6 events, but
+  at least 2 of those 6 are really the SAME €25m lactoferrin investment reported by
+  different outlets with different headlines a few days apart — the Jaccard word-
+  overlap clustering doesn't catch semantically-same-but-lexically-different
+  headlines. Not fixed, tier outcome for DMK unaffected (still correctly T1), rank/
+  multi-event bonus slightly inflated. Low priority.
+- 989 unpersisted job-board rows (old item 24) recovered for free via Apify dataset
+  re-read (no re-scrape cost): 590 inserted.
+- resolve_companies.mjs rewritten on the classify_company.mjs pattern (Layer0/Blitz/
+  LLM cascade for job-board/hiring companies) — code done, UNCONFIRMED whether a
+  --live run actually happened (no local run manifest; startRun/finishRun logs to
+  Supabase pipeline_runs, not checked yet).
+- route_email.mjs built + run --live --limit=20 (2026-07-15 19:33) — this was a REAL
+  spend, not a dry run: MV-via-Apify + BounceBan cascade actually validated 20 real
+  emails (~$0.016 Apify + 2 BounceBan credits, confirmed 2026-07-17 against live
+  account balances — Apify $4.10/$3.86/$5.00/$3.87 across 4 working keys, BounceBan
+  3094 credits remaining, both healthy). Verdicts: 17 sendable, 2 unknown, 1 dead.
+  NO PlusVibe push happened (campaign_map is empty {} in pipeline/clients/
+  philippe-bosquillon.json, PV_API_KEY/PV_WORKSPACE_ID not even in
+  nextjs/.env.local — D5 campaign creation was never done). So zero real emails sent
+  to anyone — safe.
+  BUG FOUND AND FIXED 2026-07-17: the 20 channel_actions rows this run wrote
+  (17 skipped_no_campaign, 3 skipped_validation) would have permanently blocked
+  those companies from ever being reconsidered by route_email.mjs, even after
+  PlusVibe campaigns exist, because the candidate filter excluded on ANY existing
+  channel_actions row regardless of status. Fixed: pipeline/lib/channelActions.mjs
+  now has isRetryable()/upsertChannelAction() — only 'skipped_no_campaign' is
+  retryable (it's an environment gap, not a fact about the lead); everything else
+  (pushed, skipped_validation, done, skipped) stays terminal. route_email.mjs
+  updated to use it. No DB cleanup needed — the 17 stuck rows will self-heal to
+  'pushed' next live run once D5 lands. Syntax-checked, not live-tested yet (needs
+  a real re-run after D5).
+- build_linkedin_queue.mjs built, coded to the same channel_actions pattern but its
+  own filter (only 'done'/'skipped' block retry) was already correct — NOT yet run
+  even once, no output file exists in Downloads.
+- copyEngine.mjs + pipeline/config/copy_templates.json — full email+LinkedIn copy
+  playbook transcribed verbatim from copy/copy_signals_v2.txt (email) +
+  copy/copy_signals_linkedin.txt (LinkedIn, NEW file drafted by Fable 2026-07-15,
+  Leo has NOT read/approved it yet). Human-readable combined review (every signal
+  type: email + LinkedIn note + first message side by side) saved to
+  docs/REVIEW_2026-07-17_dmk_and_copy.txt part 2 — read that before trusting any
+  auto-sent copy.
+- plusvibe.mjs (D1) + validateEmail.mjs (D2, thin wrapper over the existing
+  mv-then-bounceban.py cascade — confirmed working live above) — both built, both
+  used for real in the route_email run above.
+- F1 (Supabase intermittent multi-minute hangs) — root-caused for REAL (not the
+  IPv6 guess from the original handoff): raw_signals pages are ~7MB uncompressed,
+  AND every fetch call was clearing its abort timer before reading the response
+  body, turning a slow-but-fine transfer into a silent unbounded hang. Fixed in
+  pipeline/lib/supabase.mjs (body read moved inside the timeout window, retry-once
+  on AbortError, opts.select support to avoid pulling raw_data jsonb when unneeded).
+
+WHAT'S STILL OPEN / NOT DONE:
+- D5 — PlusVibe campaign creation (SIG-A/B/C, paused). Needs from Leo: which email
+  accounts, schedule window (suggested Europe/Berlin 08:00-18:00 Mon-Fri),
+  daily_limit (suggested 50). Also needs PV_API_KEY/PV_WORKSPACE_ID added to
+  nextjs/.env.local (copy from Desktop/PV-campaign-manager/.env).
+- copy_signals_linkedin.txt — Leo has not reviewed/approved it yet. Read
+  docs/REVIEW_2026-07-17_dmk_and_copy.txt part 2 (or the .txt file directly at
+  clients/philippe-bosquillon/copy/copy_signals_linkedin.txt) before it's trusted
+  for real sends.
+- resolve_companies.mjs --live run status unconfirmed — check Supabase
+  pipeline_runs for a 'resolve_companies' entry from 2026-07-15 evening before
+  assuming job-board companies got real Blitz/classifier screening.
+- build_linkedin_queue.mjs has never been run even once (not even --live=false
+  preview) — first run still pending, will need a real output check in Downloads.
+- Everything below "HANDOFF TO FABLE 2026-07-15" is the PRE-build-session state —
+  most of Q1-Q12's open questions are effectively superseded by what's described
+  above, but kept for narrative history. Don't treat that block as current status.
+
+=== HANDOFF TO FABLE 2026-07-15 (historical — superseded by the STATUS block above) ===
+STATUS 2026-07-15 (Fable, same day): PLAN WRITTEN — all open design questions in this
+block are resolved in clients/philippe-bosquillon/docs/HANDOFF_2026-07-15_scoring_two_channel.md
+(event-based dedup for multi-signal counting, signal-class tier model T1-T3, dual-channel
+routing, MV+BB validation cascade with LeadsFriday ruled out after checking its real API,
+3-evergreen-PlusVibe-campaign structure, LinkedIn queue as HTML export, plus fixes for the
+Supabase hangs / Q8 / resolve_companies drift / 989 unpersisted rows). Sonnet executes from
+that file, not from this block.
+Leo's process: Sonnet (this session) asked Leo the open design questions below, Leo
+answered inline where he could and left some genuinely open. Sonnet is now handing
+this block + the rest of the file to Fable to turn into a detailed implementation
+plan. Leo will bring that plan back to a Sonnet session to build. Do not start
+building from this block alone — resolve the open sub-questions into a concrete
+design first, the way Fable did earlier today for the classifier merge (see
+[0.8.0] in CHANGELOG.md for what a good "Fable plan -> Sonnet build" handoff looks
+like in this project).
+
+--- SCORING / TIERING SYSTEM (net new, not built yet) ---
+Goal: rank signals/companies so the freshest+strongest surface first, decide which
+leads go on full auto-pilot (email, evergreen PlusVibe) vs which need Philippe's own
+LinkedIn touch, and re-rank on a recurring basis as signals age and new ones arrive.
+
+Decided:
+- Job-board staleness: periodic re-scrape of the same queries (already the pattern —
+  scrape_jobs.mjs dedupes by external_id, a vacancy that's gone just stops
+  reappearing). No separate URL-liveness checker needed.
+- Exa signals decay gradually (staleness_days per signal_type in icp_filter.json
+  already does this) but are never treated as "closed" the way a job posting can be
+  — a merger doesn't un-happen.
+
+Open, needs Fable's design:
+- ICP/priority tier: Leo's instinct is signal-TYPE strength as the primary axis
+  (MA/CLEVEL = strong signal, plain job-board posting = weaker) rather than (or in
+  addition to) company-fit tiering — but explicitly unresolved, needs real design.
+  Tier definitions for Philippe (Tier 1/2/3 or similar) are NOT documented anywhere
+  in his materials (checked copy/posts_useful_philippe.txt, copy/copy_broad.txt —
+  no ICP-tier language found) — this is genuinely new design work, not extraction
+  from existing material. NOTE: Blitz docs' only "tier" language
+  (docs/blitz-api/contact-finding.md:110, "< 100 employees: Owner/Founder/CEO tier
+  dominates") is about which job-title CASCADE to search, unrelated to lead
+  priority — already correctly used in find_contacts.mjs's EMP_THRESHOLD split, not
+  a source for the priority-tier design.
+- Multi-signal companies: Leo asked whether this is even real and how much it should
+  matter. Checked live 2026-07-15: 58 of 230 exa-origin companies (25%) have 2+
+  signals, distribution {1:172, 2:38, 3:8, 4:3, 5:4, 6:2, 7:1, 9:1, 12:1}. BUT: the
+  9-signal case (DMK Group) is NOT 9 distinct real-world events — it's ONE event
+  (a €25m lactoferrin plant investment) tagged SECTOR/EXPAND/INVEST/NICHE by
+  different Exa monitor categories simultaneously (the same cross-category overlap
+  documented in CHANGELOG session 11 / migration 004 — "39 of 310 URLs caught by 2+
+  monitor categories"). Same pattern in the Nestlé/yfood and Schiller Fleisch/
+  Gausepohl examples in that list. Conclusion: raw signal COUNT per company
+  overstates real event density — needs de-duplication/clustering across monitor
+  categories (Q6's near-dup clustering targets different-OUTLET-same-event, NOT
+  this different-MONITOR-CATEGORY-same-story case — may need extending, or may
+  already partially work via classify_company.mjs's exact-title dedup if the
+  headlines are byte-identical across categories, unverified either way) BEFORE any
+  "more signals = hotter lead" tier logic gets built on top of the raw count.
+- Re-scoring cadence: Leo wants signals/companies re-ranked periodically (freshness
+  decay + new signals arriving) — no cadence or mechanism decided yet.
+- Volume/cadence reality check for Philippe's manual LinkedIn work (~30-40 min/day
+  budget, his own estimate): today's one-time catch-up work found 116 companies
+  with a validated-ish (Blitz-inferred) email and 172 with any contact, built up
+  over ~1.5 months of Exa monitoring plus one big backfill session — this is NOT
+  the steady-state weekly rate. Earlier TODO estimate (Q9, pre-dates today's Exa
+  fallback work): ~15-30 new unique Exa companies/week historically. Real weekly
+  new-lead velocity for Philippe's manual queue needs computing from raw_signals
+  pub_date distribution once job-board volume is back online too (today's 989
+  job-board rows aren't in the DB yet — see item 24) — don't design the daily
+  workload assumption on today's backlog-clearing numbers.
+
+--- TWO-CHANNEL ROUTING (net new) ---
+Channel A — EMAIL, full automation, evergreen PlusVibe campaign:
+  Decided by Leo: allow programmatic email validation specifically for this flow
+  (Million Verifier API for real-time single-address checks — the ml-validate skill
+  already documents Apify-based MV usage; adapt to per-address API instead) +
+  BounceBan for catch-all resolution, OR route catch-alls through LeadsFriday if it
+  has the right endpoint (Leo mentioned it does — scripts/enrichment/
+  leadsfriday_email_finder.py currently only exposes waterfall_email_finder and
+  personal_email_finder, NOT a validation endpoint — needs checking against
+  LeadsFriday's actual API surface, not assumed). This is a DELIBERATE exception to
+  the standing CLAUDE.md rule ("validation only via manual dashboard upload") —
+  scoped to this one evergreen auto-add flow only, not a blanket rule change.
+  Leo also flagged cost: avoid BounceBan's ~$34/mo subscription for a low-volume
+  campaign if catch-all volume is small enough to just accept the risk and send
+  anyway ("нагрузка по всей инфре размазана") — needs a real cost/volume comparison
+  before deciding BounceBan vs LeadsFriday vs accept-catch-all-as-sendable.
+  Once validated: auto-add to a PlusVibe evergreen campaign — no PlusVibe API
+  integration for THIS (adding leads to a running campaign programmatically, not a
+  one-time CSV upload) exists in this project yet, needs building. Check
+  pv-campaign-manager skill for what's already possible via PlusVibe's API first.
+
+Channel B — LinkedIN, Philippe personally, Leo owns everything after the reply:
+  Decided by Leo (confirmed against the real Angelo Ferrara/Holle Baby Food
+  conversation — Philippe rambled a wall of text on a positive reply and nearly
+  blew it; Leo already offered and Philippe accepted Leo handling replies going
+  forward, including booking calls via Philippe's Calendly
+  https://calendly.com/philippe-de-jarcy): Philippe's ONLY job is the LinkedIn
+  connection request + first message. Every reply after that — qualifying
+  questions, positive-reply handling, call booking — is Leo/the system, not
+  Philippe. This means NO follow-up-message MD guide for Philippe is needed (the
+  earlier framing of "how does he write message 2, 3..." is moot under this model).
+  copy_signals_v2.txt already has separate LinkedIn-specific message variants
+  alongside the email ones per signal type (shorter, more casual, see "LINKEDIN
+  MESSAGE" blocks) — reuse that existing structure, don't design a new prompt/
+  template system for LinkedIn from scratch.
+  Open: how Philippe actually works the queue day to day (opens LinkedIn, sees a
+  ranked list, sends connection+opener, moves on) — this is explicitly a FRONTEND
+  design question, parked with the rest of the frontend redesign (see item 5 in the
+  2026-07-15 end-of-day plan above... [context: search CHANGELOG/this file for that
+  block]). Also open: InMail budget (playbook says 50/month limit, Score 6-10 only)
+  vs connection-request-then-message flow — does InMail apply to the new tier
+  system or only to the old score field on signals?
+
+--- KNOWN BUGS / ROUGH EDGES TO FIX (found during 2026-07-15 session, not yet all resolved) ---
+- Supabase REST calls (pipeline/lib/supabase.mjs, sourcing.mjs) intermittently hang
+  3-5 minutes before completing or throwing AbortError, despite a 30s
+  AbortController timeout on every call. Observed repeatedly today on this Windows
+  machine, inconsistent (same query type sometimes instant, sometimes minutes) —
+  not obviously correlated with payload size (happened on both the 11.9k-row
+  sourcing.companies pagination AND small ~5-row selectAll calls). No clear
+  DNS/TLS error surfaced in any case — it just eventually completes or the 30s
+  abort fires. Root cause not diagnosed (no low-level network tooling used this
+  session). Worth investigating: Windows/Node undici keepalive behavior, IPv6
+  resolution flakiness, corporate network path, or something Supabase-side. This
+  blocked/slowed multiple live runs today and needs a real fix, not just longer
+  timeouts.
+- Q8: hiring/job-board signals get zero LLM/Blitz classification after
+  filter_icp.mjs's hard employee-count reject was removed — no equivalent of
+  classify_company.mjs's screening exists for the job-board path.
+- resolve_companies.mjs (the job-board-signal company resolver) has not been
+  checked against today's classifier merge — unclear whether it uses the old
+  per-file logic or needs the same Q1-Q4 treatment classify_company.mjs got.
+  Needs a real read-through, not an assumption either way.
+- item 24 below: scrape_jobs.mjs's on_conflict bug is fixed in code but the fix has
+  not been re-run live yet — today's 989 scraped job-board rows are unpersisted.
+- calcExpires() in score_signals.mjs still hardcodes 30d staleness for all news,
+  ignoring icp_filter.json's per-type windows (see item further below).
+- Q11's residual: 51 pre-2026-07-15 contacts still have title="unknown" in the DB,
+  not backfilled (would need a fresh per-person Blitz call, judged low-value at the
+  time — revisit if Fable's plan touches contact data quality more broadly).
+
+=== OPEN QUESTIONS FOR NEXT SESSION (read this first) ===
+Leo is handing this off to a fresh session/model (Fable) — everything below is unresolved
+design work from the 2026-07-14/15 "Resolution Layer" build. Read SESSION 13 in the history
+block further down for full narrative context on WHY each of these matters before touching code.
+
+STATUS UPDATE 2026-07-15 (Fable session, verified in a Sonnet follow-up same day):
+Q1+Q2+Q3+Q4 BUILT AND REGRESSION-TESTED — see CHANGELOG.md [0.8.0] for full detail.
+  - One decision path: companyClassifier.mjs classifyCompany() replaced deterministicClassify()
+    and classifyIcp(). Blacklist stays a free deterministic pre-check (categorical, not numeric).
+  - classify_company.mjs resolves ALL plausible candidates (cap 4) BEFORE choosing (Q4).
+    Not-chosen candidates write back to sourcing as 'unscored' instead of being discarded.
+  - blitzEnrich.mjs blitzEmployees(): size-bracket midpoint PRIMARY (Grolsch fix, Q2).
+  - Cached-case regression (2026-07-15, zero Blitz/Exa spend, OpenRouter only): 4/4 passed —
+    Grolsch -> pass (was wrongly reject), Dry4Good -> pass, synthetic Emma-mismatch (Nantes
+    bakery headline vs Emma The Sleep Company evidence) -> entity_mismatch=true + reject,
+    Bleu-Blanc-Coeur (association) -> reject. Classifier is trusted for live use now.
+
+REAL TAM/CONTACT GAP AUDIT (2026-07-15, live DB query — see CHANGELOG.md [0.8.0]):
+  sourcing.companies = 11,941 total, 4,485 'pass' (the real usable TAM). Contact gap: 2,371
+  pass-companies have ZERO contacts (2,355 already have linkedin_url, ready for find_contacts
+  with no further enrichment). Exa-signal-origin specifically: 180 companies, 57 pass, 44 of
+  those lack a contact. BIGGER FINDING: 0_blitz/002 has ~4,434 and 003 has ~2,132 already-
+  scraped-but-never-ICP-scored companies sitting in local CSV/JSONL — this is a bigger, cheaper
+  (LLM-only cost, zero new Blitz calls) win than any new Blitz harvest. Revised priority order
+  for the Blitz work below (was: "go scrape a new bracket" — now: "process what's already
+  fetched first").
+
+TODAY'S PRIORITY (2026-07-15, Leo's explicit ask): enrich ALL Exa signals end-to-end
+(company resolved -> LinkedIn -> contact -> email) and hand Philippe a report (plain HTML,
+not the frontend, for speed). In progress this session — see chat for live status.
+
+  Blitz full harvest + ops fixes (Q10 backfill, find_contacts Layer-0/triada, VPS cron) +
+  contact backlog are specced for a Sonnet session:
+  clients/philippe-bosquillon/docs/HANDOFF_2026-07-15_sonnet_workplan.md — WP1.1 (new bracket
+  scrape) is now DEPRIORITIZED below scoring the existing local backlog (see audit above).
+
+[ ] Q1. MERGE deterministicClassify() (pipeline/lib/blitzEnrich.mjs) and classifyIcp()
+        (pipeline/lib/companyClassifier.mjs) into ONE decision path. Right now there are two
+        separate classifiers doing the same job two different ways:
+          - deterministicClassify: hard numeric employee-count cutoff (reject if outside
+            min_employees-max_employees), used when Blitz found real data + name matched.
+          - classifyIcp: permissive LLM judgment (just rewritten 2026-07-15 to be budget-aware,
+            not headcount-gated), used only when Blitz has no data.
+        Leo's explicit direction (2026-07-15): no hard numeric cutoffs anywhere in ICP judgment,
+        AI should always make the call, permissive when uncertain (accept ~10-15% false
+        positives rather than lose real targets to a wrong reject). deterministicClassify's
+        employee-count hard-reject contradicts this directly and was NOT changed yet — it still
+        auto-rejects Blitz-verified small companies exactly like the Grolsch case below.
+        PROPOSED FIX (not yet built): always call ONE LLM classify function; feed it Blitz's
+        real employees/industry/size when available (much stronger grounding than about-text),
+        fall back to Exa about-text when Blitz has nothing. Single code path, no duplicate
+        classify logic — this also directly satisfies "no duplicate functions, stupid simple."
+[ ] Q2. BUG FOUND, NOT FIXED: deterministicClassify() prefers `employees_on_linkedin` over the
+        `size` bracket whenever employees_on_linkedin > 0, even when it's tiny relative to size.
+        Real example from the 2026-07-14 live reclassify run: Grolsch (grolsch.nl) — LinkedIn
+        `size: "501-1000"` (Recruiter-estimated real headcount) but `employees_on_linkedin: 37`
+        (only people who tagged that specific LinkedIn page) — got REJECTED because the code
+        trusted 37 over the 501-1000 bracket. employees_on_linkedin under-counts systematically
+        (not everyone is on LinkedIn, especially production/blue-collar staff) — `size` is
+        usually the more honest number. Fix: trust `size` bracket midpoint as primary signal,
+        employees_on_linkedin as corroborating evidence only, not the reverse. Likely folds into
+        Q1's merge (this logic moves into whatever replaces deterministicClassify).
+[ ] Q3. BUG FOUND, NOT FIXED: no geography gate anywhere in the Blitz-driven classification path.
+        deterministicClassify() checks employees + industry but never checks `hqCountry` (which
+        Blitz DOES return) against ICP_CFG.countries (DE/FR/NL/BE/LU/CH/AT). A correctly-sized,
+        correctly-industried company outside the target region would currently pass. Cheap fix,
+        should just be done — not a cost/accuracy tradeoff, just a missing check.
+[ ] Q4. ARCHITECTURE GAP: "resolve everyone mentioned, THEN decide" is not built yet — current
+        pipeline picks ONE primary_target from the headline BEFORE any real data exists, and
+        only that one company ever gets a domain/Blitz/classification lookup. Real measurement
+        2026-07-15: across 320 LLM-extracted signals this session, the model's companies[] list
+        named 538 total distinct company mentions, but the pipeline only ever resolved 315
+        "chosen" primary targets — 223 mentioned-but-not-chosen entities (41% of all mentions)
+        were never looked up at all. Leo's explicit ask: resolve ALL mentioned entities (domain +
+        Blitz/Exa data) BEFORE the LLM picks which one is the real outreach target, instead of
+        guessing blind on the headline alone and never revisiting it. Cost impact: moderate, not
+        extreme — 53% of signals are multi-entity (real measured number, not the earlier 24%
+        regex-based estimate), so this roughly 1.5-2x's the domain-resolution Exa spend on
+        multi-entity signals specifically, not across the board. Leo's direction: Exa spend
+        should be "moderate, not stingy, not reckless" for this — this redesign fits that.
+        This is the single biggest remaining accuracy gap in the whole pipeline (see SESSION 13
+        step-by-step audit in the history block below for the full per-step numbers).
+[x] Q5. RESOLVED 2026-07-15 via a one-off LLM adjudication pass (one call per mismatch, asked
+        "is this the same real-world company, accounting for rebrands/subsidiaries/franchise-vs-
+        parent?") over the 15 name-mismatches from that day's reclassify_via_blitz.mjs run.
+        6 confirmed as the SAME entity and reclassified with real Blitz data: ABB Growers ->
+        pass; Mondelez Benelux (->Cadbury Nigeria Plc, real subsidiary but wrong geography),
+        GFF (->The Global Financing Facility Gff, real but wrong industry), McDonald's France
+        (->a single franchise page, real but too small/retail), Sodexo (->Pluxee France, a real
+        2024 rebrand of Sodexo's benefits division, blacklisted), Fisherman's Friend (->Lofthouse
+        Of Fleetwood Ltd, the real legal manufacturer, but outside target geography) all -> reject
+        for independent reasons once real data was in hand. 9 confirmed genuinely different
+        entities, correctly left untouched: OSI/US Air Force, DF Holding/UN Global Compact,
+        St. Paul/Newfoundland municipalities, MUTTE GmbH/M-U-T Gmbh (close-looking names, real
+        LLM catch that they're unrelated), Cultivated X/RespectFarms, Sopexa/Hopscotch Season,
+        Napema/Nap Automotive, OP Saint-Père/Web-Agri, ITM Entreprises/Groupement Mousquetaires
+        (this last one is worth a second look by a human familiar with French retail groups —
+        ITM is commonly known as the holding behind the Mousquetaires network, so the LLM's
+        "unrelated" call here is plausibly wrong; low stakes either way, domain never got Blitz
+        data applied). Script was a one-off (hardcoded list, not reusable) — deleted after running.
+[x] Q6. BUILT 2026-07-15 — near-dup clustering in classify_company.mjs, after exact-title dedup:
+        free heuristic first (word-overlap Jaccard >= 0.3 on significant title words, pub_date
+        within 4 days) groups plausible candidates without any LLM cost, THEN one sameEvent()
+        call (companyClassifier.mjs) per CLUSTER (not per pair) confirms/splits which headlines
+        in that cluster are really the same event vs coincidentally sharing words. Confirmed
+        same-event members get folded into the exact-title dedup group so they extract once and
+        share the resolved company, identical mechanism to the exact-title path. Syntax-checked
+        and live-tested against the day's last 9 pending signals (no crash, 0 clusters found —
+        expected, sample too small to have real near-dupes). NOT YET behaviorally validated on a
+        real multi-outlet-same-event case (e.g. a future Schouten/Bobeldijk-style pair) — will
+        naturally exercise on the next weekly batch of new signals; worth a manual check then.
+[ ] Q7. classifyIcp/companyClassifier.mjs prompt was just rewritten 2026-07-15 to remove the
+        hard employee-range language and merge the tone of clients/philippe-bosquillon/prompts/
+        icp_check_v3_small.txt (50-200 bracket) and icp_check_v4_micro.txt (15-50 bracket) into
+        one permissive, budget-aware prompt applied to ALL signal types (was previously only
+        relaxed for INVEST-type signals). NOT YET RE-TESTED against real signals — the prompt
+        change is live in the file but no live batch has been run through it yet to confirm the
+        new wording actually produces the intended more-permissive behavior without over-passing
+        garbage. Should test on a small batch before trusting it at scale.
+[ ] Q8. filter_icp.mjs's hard employee-count reject for LinkedIn-sourced hiring signals (the
+        `wrong_size` filter_reason) was REMOVED 2026-07-15 — this was the most dangerous rule
+        because it was TERMINAL (a filtered_out raw_signal never reaches classify_company.mjs's
+        judgment at all, unlike the Exa/news path which always gets a real evaluation). Not yet
+        verified this doesn't let obvious junk through unchecked — hiring signals still get no
+        LLM/Blitz classification pass at all downstream (that only happens in the news/Exa path
+        via classify_company.mjs) — worth checking whether hiring-signal companies need the same
+        classify_company.mjs treatment now that the early size gate is gone, or whether that's
+        intentionally out of scope for LinkedIn job-board signals.
+[x] Q9. BUILT AND RUN 2026-07-15 — see Q12(a) for full detail (find_contacts_exa.mjs).
+[ ] Q9-orig (kept for history). Step 7 (contact-finding for Exa-sourced companies) cost estimate computed 2026-07-15:
+        ~15 new unique Exa companies/week (130 over ~8.5 weeks historical) → ~65/month → at
+        Exa People Search's ~$0.035-0.042/company (validated 2026-06-29 test, 14/14 hit rate) →
+        ~$2.3-2.7/month. Leo's reaction: negligible cost, turn it on. NOT YET BUILT — Exa People
+        Search is currently only a manual test script (exa/test_finder.cjs), never wired into
+        pipeline/stages/find_contacts.mjs as a production path. find_contacts.mjs currently only
+        does Blitz waterfall contact-finding (separate $50/mo subscription, manual-trigger-only
+        by Leo's standing rule). Needs: production find_contacts_exa.mjs (or extend
+        find_contacts.mjs with an Exa fallback path) using the validated 2026-06-29 recipe
+        (category:"linkedin profile" search, 3 seniority tiers) — LinkedIn URL output only, no
+        email; still needs Blitz or pattern-inference for email after.
+[x] Q10. company_linkedin_url sync gap — FIXED 2026-07-15 via new
+        pipeline/stages/backfill_linkedin_sync.mjs (one-time, idempotent, joins
+        signal_monitoring.companies to sourcing.companies by normalized domain, backfills
+        linkedin_url/employees/industry/about/hq_country where missing). Result: 79/571 -> 255/571
+        signal_monitoring.companies now have linkedin_url. Ran find_contacts.mjs immediately after
+        on the newly-unblocked 214 companies -> 275 contacts pushed (96 exa-origin companies now
+        have >=1 contact, was 4).
+
+[x] Q11. Contact-finding QUALITY gap — title-parsing FIXED 2026-07-15 in find_contacts.mjs:
+        flipped priority to curExp.job_title (Blitz's structured field) over raw headline, and
+        split on more separators (@ , |, •) not just " at ". Fixes going forward only — the 51
+        pre-existing "unknown"-titled contacts in the DB were NOT backfilled (would need a fresh
+        per-person Blitz call to re-derive, low value for just cleaning text). Original finding:
+        title field was "unknown"/empty for 51 contacts (find_contacts.mjs's old
+        `(person.headline || curExp.job_title || '').split(' at ')[0]` fell back to a raw,
+        sometimes-empty LinkedIn headline) — and several stored titles were noisy compound
+        headlines ("CEO Office @Circus Group | ex-TIER, ex-1KOMMA5° | Project Lead & AI-
+        Enthusiast") where the cascade's title-keyword match landed on a substring inside a
+        self-written bio, not a clean current job title.
+        Contact-count distribution across the 96 companies (2026-07-15): 1 contact: 35 companies,
+        2: 15, 3: 18, 4+: 28 (up to 9 on some) — no artificial per-company cap exists, the
+        cascade just naturally finds more people at bigger/more senior-heavy companies. Leo's
+        tiering idea (more contacts for top-ICP companies, fewer for tier-2) is not built —
+        would need icp_status/icp_score available on signal_monitoring.companies (currently only
+        in sourcing.companies, see the Q10 fix's join pattern) before find_contacts.mjs could
+        branch MAX_PER_LEVEL by tier.
+
+[x] Q12(a). Exa People Search fallback — BUILT AND RUN 2026-07-15: pipeline/stages/
+        find_contacts_exa.mjs (category:'linkedin profile' search, 3 tiers, Blitz email retry,
+        disk-cached like the rest of the pipeline). Two real bugs caught and fixed during the
+        first test batch, both worth remembering:
+        - Before running: cross-referenced the 84 zero-contact companies against sourcing
+          icp_status and found 48 were already 'reject' — running reclassify_via_blitz.mjs first
+          (see Q1 STATUS UPDATE — this was the first time the new merged classifier was actually
+          applied live, not just regression-tested) flipped 46 of 181 companies' verdicts
+          including the flagship Grolsch fix, dropping the real Exa-worth target list to 50/84.
+          Spending on all 84 blind would have wasted ~55% of the budget on rejects.
+        - First live batch (15 companies) inserted 202 contacts with a schema bug (`tier` column
+          doesn't exist on contacts — folded into `source` as `exa_{tier}` instead) AND a parsing
+          bug (title was read from Exa's `.title` field, which is almost always just the person's
+          name — the real headline/title lives in `.text` right after the markdown heading).
+          Result: title was null for ~95% of contacts. Deleted the 202 bad rows, fixed both bugs,
+          added a company-name-mentioned-in-headline noise filter (catches literal-name
+          collisions like "Acomo" matching a Ugandan school founder named Acomo Alice), reran the
+          same 15 for free (results were cached this time) — 100% had a real title.
+        Final result across the full 50-company pass-filtered target list: 48/50 companies got
+        >=1 contact (96% hit rate, matches the original 14/14 validation), 310 contacts, 88 with
+        email. Overall exa-signal contact coverage: 96 -> 144 of 230 companies (62.6%, was 42%).
+        KNOWN RESIDUAL NOISE: companies with a generic/common name (seen live: "Starck" pulled in
+        an unrelated tungsten-chemicals company "H.C. Starck", "Direct Source International"
+        pulled in 3-4 unrelated "Source"-named companies, "Traiteur de Paris" pulled in a couple
+        other caterers) — the headline-mention filter catches person-name collisions but not
+        different-company-same-word collisions. Residual noise rate estimated ~15-20% on
+        generic-named companies specifically, near-zero on distinctive names (Culinor, Eurolysine,
+        Zertus, Kim's Chocolates, Epacco, Froneri were all clean). Accepted as-is per the
+        pipeline's existing philosophy (human reviews the shortlist before outreach anyway) —
+        not blocking, but worth a sharper company-identity check (e.g. require the domain or a
+        second distinguishing word) if this gets rerun at larger scale later.
+        NOT YET RUN: the remaining 34 rejected companies are correctly excluded — do not run
+        Exa on them without a fresh classifier look first.
+        (b) 50 companies (22% of the 230): no company linkedin_url at all — UNRESEARCHED whether
+            Exa People Search / Exa company-search helps here. Domain-resolution-failure sample
+            (2026-07-15): Agrial (domain=null, well-known FR co-op, real resolution bug worth its
+            own look), Vandemoortele USA (parent "Vandemoortele" likely exists in Blitz under a
+            different exact name — nameSimilar's coreName() doesn't strip "USA"/geo suffixes,
+            possible fixable false-negative), CHR Group, Sticomax Group, Berentzen Group and
+            others that may just genuinely be outside Blitz's index. Needs a small test batch
+            (~10 companies) through Exa's category:'company' search (same recipe as
+            testCompanySearch in exa/test_finder.cjs) before deciding whether this segment is
+            worth production spend or is mostly Blitz-index gaps Exa can't fix either.
+        (c) Email gap: 38 of the 96 contact-having companies have a LinkedIn contact but no email
+            — Blitz's own /v2/enrichment/email pattern-inference already tried and failed for
+            these (find_contacts.mjs calls it per-person already). Two already-working fallback
+            options, neither wired in for philippe: LeadsFriday waterfall_email_finder
+            (scripts/enrichment/leadsfriday_email_finder.py, real production tool already used in
+            the recruiting niche — 2026-07-04 run: 600/1738 found, 34.5% hit rate, async/paid,
+            submit-then-poll-hours-later) OR re-resolving the person via Exa profile search +
+            retrying Blitz email on the Exa-found URL (validated 2026-06-29 in
+            exa/results/blitz_email_test_2026-06-29.json — confirmed Blitz can sometimes find an
+            email for a person Exa found that Blitz's OWN search never surfaced, e.g. Dirk Balzer
+            @ Hügli -> dirk.balzer@bellfoodgroup.com). LeadsFriday pricing not documented anywhere
+            in docs/ yet — needs checking before relying on it at volume.
+
+=== RESOLUTION PIPELINE — BUILT 2026-07-14/15 (see SESSION 13 for full narrative) ===
+
+[x] 25. pipeline/stages/classify_company.mjs — new stage, 3-layer cost cascade for signal→
+        company resolution: Layer 0 (free, match sourcing.companies by name) → Layer 1 (Exa
+        domain-resolve, then Blitz-first real-data classify, LLM-about-text as fallback) →
+        Layer 2 (permanent write-back to sourcing.companies). Batched concurrency (5 at a time,
+        analyze-phase parallel / write-phase sequential to avoid duplicate-company races).
+[x] 26. pipeline/lib/exaFinder.mjs, companyClassifier.mjs, sourcing.mjs, httpRetry.mjs,
+        exaCache.mjs, blitzEnrich.mjs — new supporting libs (domain resolution, multi-entity
+        extraction + ICP prompt, outer-repo sourcing schema client, retry/timeout wrapper,
+        disk-cached JSON helper, Blitz-by-domain enrichment + deterministic classify + fuzzy
+        name-match gate).
+[x] 27. Multi-entity extraction (extractEntities) — a headline can name 2+ companies (measured:
+        53% of 320 signals did); LLM lists all of them with roles + picks one primary_target
+        with explicit reasoning + needs_review flag. Two fallbacks: Fallback A (retry other
+        named entities if the picked one won't resolve/looks wrong), Fallback B (fetch full
+        article text via Exa /contents when the headline alone names nobody). Both validated
+        live: Fallback A recovered Natur Food GmbH after ECH SAS (the wrong acquirer side)
+        failed to resolve; Fallback B recovered Circular Grain from an Amazon press release
+        that never named the company in its headline.
+[x] 28. entity_mismatch detection — LLM self-flags when the fetched about-page describes a
+        different entity than the news headline (caught "Bleu-Blanc-Coeur" resolving to an
+        industry association instead of a producer, and an early "Emma" mis-resolution to a
+        mattress company instead of a Nantes bakery).
+[x] 29. Exa cost fix — resolveDomain() was requesting contents.text on 5 results per call but
+        never reading the text (pure waste, ~$1/1k pages per Exa's real pricing, confirmed via
+        exa.ai/pricing: search=$7/1k, contents=$1/1k SEPARATE line items). Removed.
+[x] 30. Exact-title dedup — signals sharing a byte-identical normalized headline (e.g. the same
+        story picked up by 3 monitors) now extract once, not once-per-duplicate. Caught 12
+        dupes in the last full run alone.
+[x] 31. Blitz integration (the major addition) — pipeline/lib/blitzEnrich.mjs: domain →
+        enrichment/domain-to-linkedin → enrichment/company chain gets REAL LinkedIn-sourced
+        employees/industry/size, replacing LLM guesswork. Audited 2026-07-14: only 32% of the
+        LLM's employee-count claims were actually grounded in the fed about-text (rest = model's
+        own pretrained/world knowledge, unverifiable) — this is why Blitz-first matters.
+        nameSimilar() gate (Jaccard word-overlap + German/Dutch compound-morphology prefix
+        tolerance, rewritten once after v1 was too strict) stops Blitz's real data from being
+        trusted when the LinkedIn company name doesn't actually match what we were looking for
+        — caught real wrong-domain cases (OSI → US Air Force's osi.af.mil; DF Holding →
+        unglobalcompact.org) that would otherwise have silently corrupted the database with
+        real-but-irrelevant employee counts.
+[x] 32. reclassify_via_blitz.mjs — applied Blitz-verified real data to all 179 already-resolved
+        companies from this session. Results: 126/179 (70%) found in Blitz, 14 name-mismatches
+        correctly left untouched (see Q5), 101 companies actually reclassified with real data,
+        43 of those (43%) had their pass/reject status CHANGE from the original LLM guess —
+        i.e. the LLM was measurably wrong on nearly half its borderline calls. CONCURRENCY=20
+        (Blitz's real documented rate limit is 50 req/sec per docs/blitz-api/blitz-api-test-
+        results.md — checked properly this time) cut a ~10-minute sequential run to ~50 seconds.
+[x] 33. Process-execution lesson learned the hard way, twice: `run_in_background` on the Bash
+        tool has its own timeout ceiling (up to 600s) independent of how long the underlying
+        script needs — two live runs got silently killed mid-flight at that ceiling. Fix that
+        stuck: launch long external-API scripts via PowerShell `Start-Process` (fully detached
+        OS process, immune to the Bash tool's own timeout), redirect output to a log file, poll
+        the log file separately. Documented in the global rate-limit rule below (item 34).
+[x] 34. Rate-limit / concurrency rule added to CLAUDE.md (both global ~/.claude/CLAUDE.md and
+        this repo's CLAUDE.md) — Blitz's real limit (50 req/sec) was already documented in
+        docs/blitz-api/blitz-api-test-results.md the whole time; the first verify_via_blitz.mjs
+        version ran fully sequential (1 req at a time) without checking it. New standing rule:
+        before writing a script against any external API, find its REAL rate limit first
+        (docs/account page/live test), never copy another script's concurrency by convention.
+[x] 35. Permissive ICP rewrite 2026-07-15 (Leo's explicit direction, see Q1/Q7 above) —
+        companyClassifier.mjs's employee guidance no longer gates on a hard number for any
+        signal type; filter_icp.mjs's terminal hard employee-count reject for LinkedIn hiring
+        signals removed entirely. NOT yet re-tested live (Q7) — do that before trusting at scale.
 
 === DONE: DB + PIPELINE SCRIPTS ===
 
@@ -9,16 +539,26 @@ Exa architecture + incident history: docs/EXA_INTEGRATION.md
 [x] 2. Run historical import (2038 raw_signals, 71 companies, 44 contacts, 21 signals)
 [x] 3. Verify data in Supabase
 [x] 4. Apify keys — KAD2 working for all job boards
-[x] 5. pipeline/stages/01_scrape_jobs.mjs — LinkedIn/StepStone/Xing/Cadremploi/Indeed + key rotation
-[x] 6. pipeline/stages/02_filter.mjs — ICP filter, writes passed_icp / filtered_out
-[x] 7. pipeline/stages/03_resolve_companies.mjs — match signals → companies, create stubs
-[x] 8. pipeline/stages/04_find_contacts.mjs — Blitz waterfall per company
-[x] 9. pipeline/stages/05_score_llm.mjs — rule-based score + OpenRouter angle
+[x] 5. pipeline/stages/scrape_jobs.mjs — LinkedIn/StepStone/Xing/Cadremploi/Indeed + key rotation
+[x] 6. pipeline/stages/filter_icp.mjs — ICP filter, writes passed_icp / filtered_out
+[x] 7. pipeline/stages/resolve_companies.mjs — match signals → companies, create stubs
+[x] 8. pipeline/stages/find_contacts.mjs — Blitz waterfall per company
+[x] 9. pipeline/stages/score_signals.mjs — rule-based score + OpenRouter angle
+        (renamed 2026-07-14, dropped numeric prefixes: 01_scrape_jobs→scrape_jobs,
+        02_filter→filter_icp, 03_resolve_companies→resolve_companies,
+        04_find_contacts→find_contacts, 05_score_llm→score_signals)
 [x] 10. pipeline/run.mjs — orchestrator (03→04→05, --all flag для 01→05)
 [x] 11. First full run: 378 passed_icp → 399 signals, 106 contacts, 226 companies
         Blitz key updated: blitz-019f0220-e113-7a16-b722-dce52f40a4fc
 
 === CURRENT PHASE: FRONTEND ===
+
+STATUS 2026-07-15 (Leo): current Next.js frontend (nextjs/) is being thrown out — a
+redesign has already started, see the mockups/ folder. Items 13-14 below are stale, do
+NOT build them against the current frontend. Do not delete nextjs/ without Leo's explicit
+go-ahead (it's still the live prod deploy at philippe.pamelacoreypc.com until the
+replacement ships) — but new frontend work should target the mockups/ direction, not
+useLeads.ts/page.tsx.
 
 [x] 12. Rewrite useLeads.ts for new schema (companies + signals + contacts)
         Done 2026-06-24: queries signal_monitoring schema, assembles Lead client-side
@@ -48,9 +588,21 @@ Exa architecture + incident history: docs/EXA_INTEGRATION.md
         extraction added, 195/198 resolved in first live run) + exec-keyword regex
         scoring news headlines (never matched) → signal_type-based scoring +
         multi-signal bonus.
-[ ]     Still open: calcExpires() in 05_score_llm.mjs hardcodes 30d for all news,
+[ ]     Still open: calcExpires() in score_signals.mjs hardcodes 30d for all news,
         ignoring icp_filter.json's per-type staleness windows (MA:90/CLEVEL:30/
-        EXPAND:60/INVEST:60) that 02_filter.mjs already respects correctly.
+        EXPAND:60/INVEST:60) that filter_icp.mjs already respects correctly.
+[ ]     CHECK 2026-07-1x: raw_data.text (full article Markdown, contents.text:true enabled on
+        all 33 monitors 2026-07-13, code confirmed present in nextjs/src/app/api/exa-webhook/
+        route.ts's normalizeExaItem) is NOT YET showing up in real data — checked live
+        2026-07-15, 0 of 346 current passed_icp exa signals have raw_data.text populated
+        (all raw_data keys are just image/title/author/signal_type/monitor_label/
+        publishedDate). Infrastructure is deployed correctly; either monitors haven't re-fired
+        with the new config yet (weekly cadence, plausible) or something's actually broken —
+        recheck in a few days once more monitor cycles have run. Once real: (a) could make
+        filter_icp.mjs's news filter smarter than pure staleness; (b) classify_company.mjs's
+        Fallback B (fetchArticleText) currently PAYS Exa to re-fetch article text when a
+        headline alone doesn't name a company — redundant once raw_data.text already has it
+        for free from the monitor capture, check raw_data.text before calling fetchArticleText.
 
 [x] 16. Deploy updated Next.js — done 2026-07-13. Also fixed deploy.ps1 itself:
         $NEXTJS_DIR pointed at scripts/nextjs (never existed, broken since the
@@ -63,28 +615,68 @@ Exa architecture + incident history: docs/EXA_INTEGRATION.md
 
 === FOUND 2026-07-14, NOT YET ACTED ON ===
 
-[ ] 22. 04_find_contacts.mjs hasn't run since 2026-06-26. Of the 130 distinct companies
+[ ] 22. find_contacts.mjs hasn't run since 2026-06-26. Of the 130 distinct companies
         behind Exa signals, only 3 have a contact (all predate 06-26) — the 124 companies
         recovered by the 07-13 webhook-fix backfill have ZERO contact-finding attempts.
-        Run 04_find_contacts.mjs (or its equivalent) on the new-company backlog.
+        Run find_contacts.mjs (or its equivalent) on the new-company backlog.
 [ ] 23. Before spending Blitz credits on #22: cross-reference against the outer
         Mastr_Leads repo's `sourcing` schema (11,793-company TAM base, separate from
         signal_monitoring) by domain — ad hoc manual check 2026-07-14 found 16 name
         matches among the 130 Exa companies, 8 already have contacts there for free
         (VION Food Group, Crisp, Eurolysine, Vandemoortele, Verley, DMK, Olga,
         Schwarzwaldmilch, Culinor). No code does this lookup automatically yet — would
-        need 03_resolve_companies.mjs (or a new stage) to check `sourcing.companies`
-        before creating a stub / before 04 spends a credit on it. Bigger question this
-        raises: should signal_monitoring.companies and sourcing.companies eventually
-        merge into one client-scoped companies table so a "known reject" in one system
-        short-circuits the other? Decided: not yet — needs its own migration plan.
-[ ] 24. Job board scraping (01_scrape_jobs.mjs) hasn't run since 2026-06-22 — all 5
+        need resolve_companies.mjs (or a new stage) to check `sourcing.companies`
+        before creating a stub / before find_contacts spends a credit on it. Also covers
+        the reject side: if a signal company matches a `sourcing.companies` row with
+        icp_status='reject', skip find_contacts entirely — that company is already known
+        out-of-market (about/website/reason already in sourcing, no contacts needed).
+        Bigger question this raises: should signal_monitoring.companies and
+        sourcing.companies eventually merge into one client-scoped companies table so a
+        "known reject" in one system short-circuits the other? Decided: not yet — needs
+        its own migration plan.
+[ ] 24. Job board scraping (scrape_jobs.mjs) hasn't run since 2026-06-22 — all 5
         actors (LinkedIn/Indeed/StepStone/Xing/Cadremploi) share that exact
         last_scraped date. Unrelated to the Exa webhook incident. Every actor's own
         ACTOR_NOTES.txt recommends weekly (StepStone/Xing/Cadremploi/LinkedIn) or
         monthly (Indeed) reruns — none of that has been happening. Needs either a
         manual rerun or folding into #17/#18 (cron deploy) so it doesn't silently
         stop again.
+        STATUS 2026-07-15: rerun attempted — scrape succeeded (989 raw jobs across
+        all 5 sources, real Apify spend), but insert failed on EVERY source with
+        Postgres 42P10 (on_conflict mismatch — migration 004 widened raw_signals'
+        unique constraint to (client_id,source,external_id,monitor_label), but
+        scrape_jobs.mjs's flushToDb() still passed the old 3-column on_conflict).
+        This isn't historical data loss — scrape_jobs.mjs simply hadn't run at all
+        since before migration 004 shipped, so this is the first time the mismatch
+        was ever hit. FIXED in code (on_conflict now includes monitor_label) but
+        NOT YET RE-RUN with the fix — today's 989-job scrape was paid for but never
+        persisted, needs a second run (Leo paused mid-session, "не торопись").
+        Also unresolved: job-board signals route through resolve_companies.mjs
+        (older, separate from classify_company.mjs's new merged classifier) — not
+        yet checked whether it needs the same Q1-Q4 treatment.
+
+=== 2026-07-15 END-OF-DAY PLAN (Leo's direction, agreed order) ===
+
+Today's Exa-signal enrichment work is done (230 companies, 172 with contact, 116
+with email — see CHANGELOG [0.8.0]-[0.11.0]). Discovered clients/philippe-bosquillon/
+copy/copy_signals_v2.txt already has a mature, complete copy playbook (per-signal-type
+email variants A/B/C + LinkedIn + cold call scripts + full sequences + localization +
+a contact-routing guide) — the "auto-generate copy when a signal appears" idea Leo
+described is NOT a new system to invent, it's binding this existing playbook to
+today's resolved signal/company/contact data. Agreed order:
+  1. [in progress] Hotlist NOW — CSV, top 10-20 hottest signals, ready-to-send copy
+     picked from the playbook per signal_type, so Philippe can start writing today
+     without waiting on anything else below.
+  2. Re-run scrape_jobs.mjs with the on_conflict fix (item 24 above), then
+     filter_icp.mjs, then check resolve_companies.mjs against the new classifier.
+  3. Export the 116 inferred emails to Downloads for manual validation upload
+     (BounceBan/mails.so/MV per project rule) — parallel, not blocking.
+  4. AFTER #2 — build the real copy-automation script (signal_type -> playbook
+     template -> filled variables -> send-ready copy), covering both Exa and job-
+     board sources together.
+  5. Frontend redesign — explicitly parked as its own separate effort, not blocking
+     1-4. mockups/ has database.html/settings.html/exa-analytics.html done but the
+     core signals-list screen Philippe actually uses daily hasn't been touched yet.
 
 === SERVER + CRON ===
 
@@ -148,3 +740,64 @@ SESSION 12 (2026-07-14): Exa Analytics mockup — Weekly Activity replaced with 
                            TAM/Apollo/contacts pipeline (11,793 companies, 4,670 contacts,
                            recovered 2 previously-lost validated contact batches) — kept
                            deliberately separate from signal_monitoring for now, see item 23.
+SESSION 13 (2026-07-14/15): Built the full signal→company resolution pipeline end to end
+                           (items 25-35 above) — this was the big one. Started from: 44.6% of
+                           Exa signals (151/346) had zero company_id, no domain-resolution layer
+                           existed at all. Ended at: 337/346 (97%) have a real resolved domain.
+
+                           Sequence of what happened, roughly: (1) built classify_company.mjs
+                           with Layer 0/1/2 cascade + Exa domain/about resolution + LLM classify
+                           + multi-entity extraction with 2 fallbacks — tested on real 30-signal
+                           batch, manually verified all 30 by hand (not just trusted the stats).
+                           (2) Audited the LLM's own reliability: only 32% of employee-count
+                           claims were grounded in fed text, rest was pretrained knowledge or
+                           pure guessing off text tone — this finding is WHY Blitz got built next.
+                           (3) Got real Blitz API access working (docs/blitz-api/ already had the
+                           right endpoints documented: enrichment/domain-to-linkedin +
+                           enrichment/company), built verify_via_blitz.mjs as a bolt-on
+                           correction pass — first version auto-flipped icp_status blindly on
+                           Blitz's employee count alone and nearly corrupted a CORRECT reject
+                           (Emma/Nantes-bakery → Emma Sleep mattress company, 1267 employees,
+                           wrong entity) into a wrong pass. Caught and reverted by hand. (4)
+                           Leo pushed back correctly: why resolve by NAME when we have domains —
+                           redesigned so Blitz becomes the PRIMARY classifier by DOMAIN
+                           (deterministic, real data) with LLM-about-text demoted to fallback-
+                           only for the ~30% Blitz can't find, integrated directly into
+                           classify_company.mjs's resolveOneEntity(). (5) Reclassified all 179
+                           already-resolved companies with real Blitz data (see item 32) — 43%
+                           of borderline calls flipped, confirming the LLM-guess layer really
+                           was that unreliable. (6) Found and fixed the nameSimilar() gate being
+                           too strict (missed real matches like "Haacht Brewery"/"Brouwerij
+                           Haacht" — same words, different language/order) — widened to
+                           Jaccard word-overlap + compound-morphology prefix tolerance, verified
+                           against 9 real test cases including the ones that should still
+                           correctly fail (OSI/US-Air-Force, DF-Holding/UN). (7) Process-
+                           execution fights: Bash tool's run_in_background has its own timeout
+                           independent of script runtime — killed 2 live runs mid-flight before
+                           switching to PowerShell Start-Process (fully detached). (8) Checked
+                           real Exa pricing (exa.ai/pricing) instead of trusting a month-old
+                           internal doc — confirmed contents.text is a SEPARATE billed line item
+                           from search, found resolveDomain() was paying for content on 5 unused
+                           results per call, fixed. (9) Checked Blitz's real rate limit (was
+                           already documented, 50 req/sec, just never checked before writing the
+                           first version single-threaded) — added CONCURRENCY=20, cut a 10-minute
+                           run to 50 seconds. Added a standing CLAUDE.md rule (global + repo)
+                           to check real rate limits before writing any new external-API script.
+                           (10) Leo's final direction for this session: no hard numeric ICP
+                           cutoffs anywhere, AI-driven judgment everywhere, bias permissive when
+                           uncertain (cheap to filter false positives by hand later, expensive to
+                           silently lose real targets to a wrong reject) — rewrote
+                           companyClassifier.mjs's prompt and removed filter_icp.mjs's terminal
+                           hard employee-count reject accordingly (items 35, Q7/Q8) — NOT yet
+                           re-tested live. Computed real cost for turning on Exa People Search
+                           for contact-finding (item Q9): ~$2.3-2.7/month at current signal
+                           volume — Leo's call: turn it on, not yet built though.
+
+                           Full open-questions list for next session: see "OPEN QUESTIONS FOR
+                           NEXT SESSION" block at the top of this file (Q1-Q10) — Leo is handing
+                           this off to a fresh session to resolve the remaining design questions,
+                           particularly Q1 (merging the two classify functions into one AI-always
+                           decision path) and Q4 (resolve-all-mentioned-entities redesign, the
+                           single biggest remaining accuracy gap — 41% of all company mentions
+                           this session were never even looked up because only the first-guessed
+                           "primary_target" per signal gets resolved).

@@ -1,0 +1,482 @@
+[
+  {
+    "name": "Ardo",
+    "linkedin_url": "http://www.linkedin.com/company/ardo",
+    "domain": "ardo.com",
+    "about": "Ardo, a world leader in the production and sales of fresh-frozen vegetables, fruit and herbs, has a strong focus on sustainability, which is at the heart of its mission and vision. The company strives to create a double positive impact by preserving natural resources and protecting the planet and co",
+    "country": "BE",
+    "employees": "1251"
+  },
+  {
+    "name": "Intersnack Deutschland Se",
+    "linkedin_url": "http://www.linkedin.com/company/intersnack-deutschland-se",
+    "domain": "intersnack.de",
+    "about": "Wir sind stolz darauf, der führende Hersteller im Bereich salziges Knabbergebäck zu sein. Mit unseren fünf Produktionsstandorten in Deutschland (Alsbach, Cloppenburg, Petersau, Wevelinghoven und Krieschow) und unserer Zentrale in Köln vertreiben wir bekannte Marken wie funny-frisch, Chio und POM-BÄR",
+    "country": "DE",
+    "employees": "429"
+  },
+  {
+    "name": "Dmk Deutsches Milchkontor Gmbh",
+    "linkedin_url": "http://www.linkedin.com/company/dmkgroup",
+    "domain": "dmk.de",
+    "about": "With around 6,800 employees at more than 20 locations in Germany, the Netherlands and other international hubs, Germany’s largest dairy cooperative processes milk into food products of the highest quality. The product portfolio ranges from cheese, dairy products, ingredients and vegan products to ba",
+    "country": "DE",
+    "employees": "1005"
+  },
+  {
+    "name": "Edgard & Cooper B Corp",
+    "linkedin_url": "http://www.linkedin.com/company/edgard&cooper",
+    "domain": "edgardcooper.com",
+    "about": "Do you believe in doing the right thing? We started Edgard & Cooper because we’d had enough of feeding our dogs and cats over-processed pet food that they didn’t really like. We decided we could do better and started making our own. Today, we’re proud to offer a complete range of delicious, well-bal",
+    "country": "BE",
+    "employees": "289"
+  },
+  {
+    "name": "St Michel Biscuits",
+    "linkedin_url": "http://www.linkedin.com/company/st-michel-biscuits",
+    "domain": "entreprise.stmichel.fr",
+    "about": "Acteur incontournable du secteur de la biscuiterie et de la pâtisserie à la française, St Michel est une entreprise familiale indépendante en pleine croissance : • 8 usines en France avec l’ouverture de nouvelles lignes de production • Des produits distribués à l’international dans + de 100 pays • 1",
+    "country": "FR",
+    "employees": "924"
+  },
+  {
+    "name": "Groupe Nutriset",
+    "linkedin_url": "http://www.linkedin.com/company/groupe-nutriset",
+    "domain": "groupenutriset.fr",
+    "about": "For more than 35 years, Nutriset Group is 100% dedicated to research, production and making accessible nutritional solutions for the treatment and prevention of malnutrition of vulnerable population. The goal of this family company based in France (Normandy), is to nourish sensitive populations and ",
+    "country": "FR",
+    "employees": "247"
+  },
+  {
+    "name": "Aviko Deutschland Gmbh",
+    "linkedin_url": "https://www.linkedin.com/company/aviko-deutschland",
+    "domain": "aviko.de",
+    "about": "AVIKO Deutschland GmbH Seit seiner Gründung im Jahr 1962 hat sich Aviko zu einem der vier größten kartoffelverarbeitenden Unternehmen der Welt entwickelt. Seit 2002 ist Aviko eine Tochtergesellschaft von Royal Cosun. Mit einem Marktanteil von 50% sind wir weltweit Marktführer für gekühlte Pommes fri",
+    "country": "DE",
+    "employees": "21"
+  },
+  {
+    "name": "Servair",
+    "linkedin_url": "https://www.linkedin.com/company/servair",
+    "domain": "servair.fr",
+    "about": "SERVAIR is the leading French and African operator in the airline catering and cleaning business. Ranked third on a worldwide basis, with its partners and subsidiaries, SERVAIR offers airlines a range of services essential to air transport and passenger comfort at approximately 44 airports around th",
+    "country": "FR",
+    "employees": "2577"
+  },
+  {
+    "name": "Ingredion Incorporated",
+    "linkedin_url": "https://www.linkedin.com/company/ingredion-incorporated",
+    "domain": "ingredion.com",
+    "about": "Ingredion Incorporated (NYSE: INGR) headquartered in the suburbs of Chicago, is a leading global ingredient solutions provider serving customers in more than 120 countries. With 2023 annual net sales of nearly $8 billion, we turn grains, fruits, vegetables and other plant-based materials into value-",
+    "country": "US",
+    "employees": "8374"
+  },
+  {
+    "name": "Nomilk2day Engineering",
+    "linkedin_url": "https://www.linkedin.com/company/nomilk2day-engineering",
+    "domain": "nomilk2day.nl",
+    "about": "WAT WE DOEN Nomilk2day bemiddelt engineers in industry en techniek. Wij hebben een groot netwerk van engineers en weten deze snel te bereiken. Onze focus ligt op engineers op bachelor- en masterniveau, zowel starters als professionals met meerdere jaren succesvolle werkervaring in- Mechanical- Elect",
+    "country": "NL",
+    "employees": "32"
+  },
+  {
+    "name": "The Coca-Cola Company",
+    "linkedin_url": "https://www.linkedin.com/company/the-coca-cola-company",
+    "domain": "coca-colacompany.com",
+    "about": "From our roots at the counter of a local Atlanta pharmacy, to our current portfolio of more than 200 beverages, The Coca-Cola Company is one of the most globally-recognized brands in the world. Today, our lineup features beloved beverage brands, including Coca-Cola, Sprite, Fanta, smartwater, Dasani",
+    "country": "US",
+    "employees": "58831"
+  },
+  {
+    "name": "Mars Holding Gmbh",
+    "linkedin_url": "https://www.linkedin.com/company/mars-holding-gmbh",
+    "domain": "",
+    "about": "Wir sind ein familiengeführtes, traditionsreiches Transportunternehmen und arbeiten in enger Partnerschaft mit Amazon Logistik. Mit über Mitarbeitern sind wir an diversen in- und ausländischen Standorten vertreten.",
+    "country": "DE",
+    "employees": "79"
+  },
+  {
+    "name": "Hudson Benelux",
+    "linkedin_url": "https://www.linkedin.com/company/hudson-benelux",
+    "domain": "hudsonsolutions.com",
+    "about": "Since our founding in 1982, Hudson has evolved into a leading provider of HR solutions, with deep expertise across Recruitment & Selection, Executive Search, Interim Management, Talent Management, Reward Management and HR Tools. In December 2021, Hudson became part of the broader Randstad organisati",
+    "country": "BE",
+    "employees": "241"
+  },
+  {
+    "name": "Mondelēz International",
+    "linkedin_url": "https://www.linkedin.com/company/mondelezinternational",
+    "domain": "mdlz.com",
+    "about": "Mondelēz International, Inc.(NASDAQ: MDLZ) is an American multinational confectionery, food, and beverage company based in Illinois which employs approximately individuals around the world. Our Purpose Our purpose is to empower people to snack right. We will lead the future of snacking around the wo",
+    "country": "FR",
+    "employees": "49056"
+  },
+  {
+    "name": "Famille Michaud Apiculteurs",
+    "linkedin_url": "https://www.linkedin.com/company/famille-michaud-apiculteurs",
+    "domain": "famillemichaud.com",
+    "about": "Famille Michaud Apiculteurs est depuis 1920 une entreprise familiale et indépendante basée dans les Pyrénées dont le savoir-faire et la passion se transmettent depuis 4 générations. Famille Michaud Apiculteurs s\\'attache à produire et à sélectionner des miels 100 % purs et naturels, tout en respecta",
+    "country": "FR",
+    "employees": "202"
+  },
+  {
+    "name": "Maison Briau",
+    "linkedin_url": "https://www.linkedin.com/company/maisonbriau",
+    "domain": "maisonbriau.fr",
+    "about": "Maison de cuisine, spécialiste de la Brandade de morue depuis 1796. Située à Estillac, Maison Briau, c\\'est l\\'histoire d\\'hommes et de femmes passionnés par la cuisine et les traditions, engagés pour la fraîcheur, la qualité et le bon goût. Notre gamme de plats cuisinés gourmands sont à retrouver a",
+    "country": "FR",
+    "employees": "85"
+  },
+  {
+    "name": "Nestlé",
+    "linkedin_url": "https://www.linkedin.com/company/nestle-s-a-",
+    "domain": "g-nestle.de",
+    "about": "Acting Europe-wide as a manufacturer of survey accessories, the name Gottlieb Nestle stands for highest quality standards as well as for innovation. Starting as a classic medium-sized enterprise we developed into one of Europe´s leading suppliers for survey technology over the years. Please convince",
+    "country": "DE",
+    "employees": "228357"
+  },
+  {
+    "name": "Sapros Gmbh",
+    "linkedin_url": "https://www.linkedin.com/company/sapros-gmbh",
+    "domain": "sapros.de",
+    "about": "SAPROS ist Ihr zertifizierter, zuverlässiger Experte für Qualität und Service aus einer Hand. Mit regionalen Produkten, einzigartigen Leistungen und an mehreren Standorten. Für unsere Kunden und Partner im B2B-Bereich sind wir servicestarke, flexible Problemlöser, mit Just-in-time Lieferung. Was Sie",
+    "country": "DE",
+    "employees": "48"
+  },
+  {
+    "name": "Pernod Ricard",
+    "linkedin_url": "https://www.linkedin.com/company/pernod-ricard",
+    "domain": "pernod-ricard.com",
+    "about": "Pernod Ricard is a convivial, responsible and successful global wine and spirits group and the #1 premium spirits organisation in the world. The Group represents 240 premium brands available in more than 160 countries. We are 18,500 exceptionally talented people worldwide with our own salesforce in ",
+    "country": "FR",
+    "employees": "19359"
+  },
+  {
+    "name": "Tout&bon",
+    "linkedin_url": "https://www.linkedin.com/company/tout-&-bon",
+    "domain": "toutetbon.fr",
+    "about": "Depuis 2010, nous réinventons la pause repas et les événements professionnels avec une exigence : allier fraîcheur, service et engagement. Ce que nous faisons : Plateaux-repas, buffets, cocktails, petit-déjeuners, animations culinaires… Nos solutions sont conçues pour répondre à tous les formats d’é",
+    "country": "FR",
+    "employees": "158"
+  },
+  {
+    "name": "Achim Lohner Gmbh & Co. Kg",
+    "linkedin_url": "https://www.linkedin.com/company/achim-lohner-gmbh-co-kg",
+    "domain": "die-lohners.de",
+    "about": "Willkommen in der bezaubernden Welt von der Traditionsbäckerei “Die Lohners”, wo der Duft frisch gebackener Köstlichkeiten in der Luft liegt und die Wärme der Tradition jeden Besucher umarmt. Als modernes, innovatives und rasant wachsendes Familienunternehmen sind wir stolz auf unsere reiche Traditi",
+    "country": "DE",
+    "employees": "73"
+  },
+  {
+    "name": "Henry Lambertz Gmbh & Co Kg",
+    "linkedin_url": "https://www.linkedin.com/company/henry-lambertz-gmbh-co-kg",
+    "domain": "lambertz.de",
+    "about": "Willkommen bei der Lambertz Gruppe! Bei uns ist jeder Tag ein bunter Mix aus Tradition, Innovation und einem Verständnis für die Geschmacksvielfalt. Wir bewahren Traditionsprodukte seit über 335 Jahren, während wir die Süßwarenbranche mit frischen, innovativen Konzepten revolutionieren. Unsere Mitar",
+    "country": "DE",
+    "employees": "256"
+  },
+  {
+    "name": "Unternehmensgruppe Theo Müller Gmbh & Co. Kg",
+    "linkedin_url": "https://www.linkedin.com/company/unternehmensgruppe-theo-m%c3%bcller-gmbh-&-co.-kg",
+    "domain": "",
+    "about": "",
+    "country": "DE",
+    "employees": "1"
+  },
+  {
+    "name": "Fromageries De L\\'ermitage",
+    "linkedin_url": "https://www.linkedin.com/company/fromagerie-de-l'ermitage",
+    "domain": "ermitage.com",
+    "about": "Près de 90 ans d’histoire fromagère. En 1931, 211 producteurs de lait créent la Coopérative de l’Ermitage à Bulgnéville, dans les Vosges, pour assurer leur indépendance et produire des fromages de qualité. Aujourd’hui plus de Coopérateurs, Producteurs de lait, sont toujours les seuls actionnaires de",
+    "country": "FR",
+    "employees": "246"
+  },
+  {
+    "name": "Be4solutions Gmbh",
+    "linkedin_url": "https://www.linkedin.com/company/be4solutions-gmbh",
+    "domain": "",
+    "about": "Die be4solutions GmbH entstand aus der Personalvermittlungsabteilung der be4work GmbH und konzentriert sich vollständig auf die Direktvermittlung von Fach- und Führungskräften. Als eigenständiges Unternehmen bündeln wir unsere Erfahrung, unser Netzwerk und unsere Recruiting-Kompetenz, um Unternehmen",
+    "country": "DE",
+    "employees": ""
+  },
+  {
+    "name": "Bluetec Production",
+    "linkedin_url": "https://www.linkedin.com/company/bluetec-production",
+    "domain": "bluetec-production.com",
+    "about": "",
+    "country": "DE",
+    "employees": ""
+  },
+  {
+    "name": "Delphi Hr-Consulting Gmbh",
+    "linkedin_url": "https://www.linkedin.com/company/delphi-hr-consulting-gmbh",
+    "domain": "delphi-hr.de",
+    "about": "Personalberatung aus Leidenschaft. Arbeit ist ein bedeutender Teil unseres Lebens und bestimmt das eigene Lebensgefühl entscheidend mit. Menschen und Unternehmen so zu verstehen, um gegenseitige Erwartungen, Qualifikationen, unterschiedliche Persönlichkeiten und die Firmenkultur in Einklang zu bring",
+    "country": "DE",
+    "employees": "34"
+  },
+  {
+    "name": "Marktkauf",
+    "linkedin_url": "https://www.linkedin.com/company/marktkauf",
+    "domain": "apoimmarktkauf-ostfildern.de",
+    "about": "",
+    "country": "DE",
+    "employees": "458"
+  },
+  {
+    "name": "Bluetec Engineering Gmbh & Co. Kg",
+    "linkedin_url": "https://www.linkedin.com/company/bluetec-engineering-gmbh-co-kg",
+    "domain": "bluetec-engineering.com",
+    "about": "Bluetec Engineering ist eine reine Personalvermittlung, die sich vom Modell der Zeitarbeit distanziert. Unsere Spezialisierung liegt in Berufsfeldern der Elektrotechnik und Mechanik. Neben ausgeklügelten Algorithmen stehen Dir professionelle und charmante Berater zur Seite und helfen Dir so gut sie ",
+    "country": "DE",
+    "employees": "11"
+  },
+  {
+    "name": "Glatt Ingenieurtechnik Gmbh",
+    "linkedin_url": "https://www.linkedin.com/company/glatt-ingenieurtechnik-gmbh",
+    "domain": "",
+    "about": "",
+    "country": "DE",
+    "employees": "56"
+  },
+  {
+    "name": "Godi Hitschler Konflikt- & Krisenberatung Führungskräftetraining",
+    "linkedin_url": "https://www.linkedin.com/company/stronghold-coaching-communication",
+    "domain": "godi-hitschler.com",
+    "about": "Ich kann Krise. Du auch- Godi Hitschler Godi und ihr 10-köpfiges Team zeigen dir seit 8 Jahren mit einer Prise Krise, wie du mentale Stärke aufbaust und damit souverän und gelassen an der Spitze stehst. Neben dem Sat 1 Frühstücksfernsehen wurde Godi bereits von führenden Print Medien interviewt und ",
+    "country": "DE",
+    "employees": "1"
+  },
+  {
+    "name": "Groupe Sncf",
+    "linkedin_url": "https://www.linkedin.com/company/sncf",
+    "domain": "sncf.com",
+    "about": "SNCF is a world leader in public transportation. Trains, passenger services, cards and passes, dialogue, ticket booking. One Group, 5 divisions SNCF offers a complete range of mobility solutions through its five divisions: SNCF Infra, SNCF Proximité, SNCF Voyages, SNCF GEODIS and Gares & Connexions.",
+    "country": "FR",
+    "employees": "59799"
+  },
+  {
+    "name": "Talentup",
+    "linkedin_url": "https://www.linkedin.com/company/talentup",
+    "domain": "talentup.com",
+    "about": "Talentup is a unique network of independent recruitment companies and headhunters sharing a common website and sophisticated HR tools. Our know-how of the job market in France and abroad allows us to accompany the companies to find the profiles they need to recruit in all types of industries. Talent",
+    "country": "FR",
+    "employees": "12"
+  },
+  {
+    "name": "Mag-Fruits Coerys",
+    "linkedin_url": "https://www.linkedin.com/company/magfruits",
+    "domain": "mag-fruits.fr",
+    "about": "Implantée à Ingré, la société Mag-Fruits distribue des fruits et légumes frais, semi-élaborés et élaborés aux professionnels de la région. Entreprise à taille humaine, nous œuvrons au quotidien pour mettre à votre disposition une large gamme de produits rigoureusement sélectionnés auprès de nos prod",
+    "country": "FR",
+    "employees": "17"
+  },
+  {
+    "name": "Hays Pharma Services",
+    "linkedin_url": "https://www.linkedin.com/company/hays-pharma-services",
+    "domain": "",
+    "about": "",
+    "country": "FR",
+    "employees": "8"
+  },
+  {
+    "name": "Saturn Petcare",
+    "linkedin_url": "https://www.linkedin.com/company/saturn-petcare",
+    "domain": "werkenbijsaturnpetcare.nl",
+    "about": "Wie nog nooit een product van het merk \\saturn\\ in het winkelschap heeft aangetroffen, zal in eerste instantie verbaasd zijn dat saturn petcare tot de grootste petfoodfabrikanten van Europa behoort. We zijn echter niet groot en succesvol geworden met een eigen saturn-merk, maar als fabrikant van han",
+    "country": "NL",
+    "employees": "224"
+  },
+  {
+    "name": "Schanzenbäckerei Gmbh",
+    "linkedin_url": "https://www.linkedin.com/company/schanzenb%c3%a4ckerei-gmbh",
+    "domain": "schanzenbaeckerei.de",
+    "about": "",
+    "country": "DE",
+    "employees": "21"
+  },
+  {
+    "name": "Electrolux Professional Group",
+    "linkedin_url": "https://www.linkedin.com/company/electrolux-professional-group",
+    "domain": "electroluxprofessional.com",
+    "about": "With 20 different brands, Electrolux Professional Group is one of the world’s leading providers of professional food, beverage, and laundry solutions. With equipment manufactured in 13 plants and showcased across the world in 20 centers of excellence, we reach 110 countries and meet the needs of a w",
+    "country": "SE",
+    "employees": "3118"
+  },
+  {
+    "name": "Birfood Gmbh & Co. Kg Nl Bremen",
+    "linkedin_url": "https://www.linkedin.com/company/birfood-gmbh-&-co.-kg-nl-bremen",
+    "domain": "birgroup.de",
+    "about": "",
+    "country": "DE",
+    "employees": "33"
+  },
+  {
+    "name": "Bad Harzburger Mineralbrunnen Gmbh",
+    "linkedin_url": "https://www.linkedin.com/company/bad-harzburger-mineralbrunnen-gmbh",
+    "domain": "bad-harzburger.de",
+    "about": "Die Bad Harzburger Mineralbrunnen GmbH ist ein inhabergeführtes, mittelständisches Unternehmen am Fuße des Nationalparks Harz.",
+    "country": "DE",
+    "employees": "6"
+  },
+  {
+    "name": "Frostkrone",
+    "linkedin_url": "https://www.linkedin.com/company/frostkrone",
+    "domain": "frostkrone.de",
+    "about": "",
+    "country": "DE",
+    "employees": "2"
+  },
+  {
+    "name": "Prominent Germany",
+    "linkedin_url": "https://www.linkedin.com/company/prominent-deutschland",
+    "domain": "prominent.de",
+    "about": "In its element for 60 years: Fluid metering technology is ProMinent\\'s particular speciality and it is perfectly complemented by water treatment and water disinfection products. Whether individual or system solutions, ProMinent\\'s modular programme offers maximum flexibility and cost-effectiveness f",
+    "country": "DE",
+    "employees": "64"
+  },
+  {
+    "name": "Hapeko Executive Consultants",
+    "linkedin_url": "https://www.linkedin.com/company/hapeko-executive-consultants",
+    "domain": "hapeko.com",
+    "about": "",
+    "country": "DE",
+    "employees": ""
+  },
+  {
+    "name": "Hpu Unternehmensberatung Gmbh",
+    "linkedin_url": "https://www.linkedin.com/company/hpu-unternehmensberatung",
+    "domain": "hpu.de",
+    "about": "Wir haben unseren Ursprung in der Hansestadt Hamburg und sind die Beratung für mittelständische Unternehmen der Food-Branche. Zusammen mit unseren Kunden aus den unterschiedlichsten Bereichen der Food-Branche schaffen wir langfristige Konzepte zum Thema Personalmanagement, die nachweislich effektiv ",
+    "country": "DE",
+    "employees": "7"
+  },
+  {
+    "name": "Schäfer\\'s Brot- Und Kuchen-Spezialitäten Gmbh & Co. Kg",
+    "linkedin_url": "https://www.linkedin.com/company/sch%c3%a4fer's-brot--und-kuchen-spezialit%c3%a4ten-gmbh-&-co.-kg",
+    "domain": "",
+    "about": "",
+    "country": "DE",
+    "employees": "4"
+  },
+  {
+    "name": "Edeka Stadler & Honner",
+    "linkedin_url": "https://www.linkedin.com/company/edeka-stadler-&-honner",
+    "domain": "",
+    "about": "",
+    "country": "DE",
+    "employees": "20"
+  },
+  {
+    "name": "Beba Technology Gmbh & Co. Kg",
+    "linkedin_url": "https://www.linkedin.com/company/beba-technology-gmbh-co-kg",
+    "domain": "beba-mischtechnik.de",
+    "about": "Mit unserem einzigartigen Produktprogramm und Know-how in der Mischtechnologie setzen wir Maßstäbe.",
+    "country": "DE",
+    "employees": "6"
+  },
+  {
+    "name": "Baumann Automation",
+    "linkedin_url": "https://www.linkedin.com/company/baumann-gmbh",
+    "domain": "baumann-automation.com",
+    "about": "Auf einer Büro- und Produktionsfläche von ca. m² in Amberg entwickelt und produziert Baumann Automation schlüsselfertige Automationssysteme für Kunden der internationalen Automobilzulieferer, Elektronik- und Haushaltsgeräteindustrie. Alles aus einer Hand – von der einzelnen Roboterzelle bis zur komp",
+    "country": "DE",
+    "employees": "236"
+  },
+  {
+    "name": "Transco East Gmbh",
+    "linkedin_url": "https://www.linkedin.com/company/transco-east-gmbh",
+    "domain": "transco.eu",
+    "about": "Nach Osteuropa bzw. in das gesamte Gebiet der ehemaligen Sowjetunion. Mit ausgewähltem, zuverlässigem Equipment EURO 5, basierend auf dem neuesten Stand der EDV-gestützten Informationstechnologie. Das bieten wir Ihnen Vor, während und nach der Transportdurchführung.",
+    "country": "DE",
+    "employees": "6"
+  },
+  {
+    "name": "Novapac Verpackungsmaschinen Gmbh",
+    "linkedin_url": "https://www.linkedin.com/company/novapac-verpackungsmaschinen-gmbh",
+    "domain": "novapac.de",
+    "about": "",
+    "country": "DE",
+    "employees": "9"
+  },
+  {
+    "name": "Ingenieurbüro Heimann",
+    "linkedin_url": "https://www.linkedin.com/company/ingenieurb%c3%bcro-heimann",
+    "domain": "heimann-personal.de",
+    "about": "Wir finden Ihren perfekten Match – schnell, präzise und persönlich. Mit über 35 Jahren Erfahrung in der Softwareentwicklung und Projektleitung sowie 15 Jahren erfolgreicher Personalvermittlung ist das Ingenieurbüro Heimann Ihr kompetenter Partner für anspruchsvolle Besetzungen in Hightech-Branchen. ",
+    "country": "DE",
+    "employees": "18"
+  },
+  {
+    "name": "Foodjob Nordic",
+    "linkedin_url": "https://www.linkedin.com/company/foodjobnordic",
+    "domain": "foodjobnordic.com",
+    "about": "Foodjob Nordic - your recruitment partner in the food industry. Foodjob was founded in 2010 by Mads Kinch Clemmensen and is the only Scandinavian food recruitment specialist focused on solving international recruitment challenges for the food industry. Foodjob Danmark became Foodjob Nordic in 2017. ",
+    "country": "DK",
+    "employees": "3"
+  },
+  {
+    "name": "Fahrzeug-Werke Lueg Ag Autorisierter Mercedes-Benz Verkauf Und Service",
+    "linkedin_url": "https://www.linkedin.com/company/fahrzeug-werke-lueg-ag-autorisierter-mercedes-benz-verkauf-und-service",
+    "domain": "mercedes-benz-lueg.de",
+    "about": "",
+    "country": "DE",
+    "employees": "32"
+  },
+  {
+    "name": "Bavaria Human Capital Bavaria Consulting Group",
+    "linkedin_url": "https://www.linkedin.com/company/bavaria-human-capital",
+    "domain": "bavaria-human-capital.com",
+    "about": "Bavaria Human Capital is an HR and management consultancy based in the heart of Munich - our core business is executive search, filling management positions for our customers within the DACH region and in other European countries. Bavaria Human Capital stands for over 20 years of industry experience",
+    "country": "DE",
+    "employees": "8"
+  },
+  {
+    "name": "Gerry Weber International Gmbh",
+    "linkedin_url": "https://www.linkedin.com/company/gerry-weber-international-gmbh",
+    "domain": "group.gerryweber.com",
+    "about": "GERRY WEBER International GmbH, headquartered in Halle/Westphalia, operates on a global scale and unites three strong fashion brands under a single roof: GERRY WEBER, TAIFUN and SAMOON. Our brands stand for highquality, trendoriented fashion and accessories in classic modern mainstream for demanding",
+    "country": "DE",
+    "employees": "287"
+  },
+  {
+    "name": "Haus Rabenhorst O. Lauffs Gmbh & Co. Kg",
+    "linkedin_url": "https://www.linkedin.com/company/haus-rabenhorst-o-lauffs-gmbh-und-co-kg",
+    "domain": "haus-rabenhorst.de",
+    "about": "For over 200 years now, we at Rabenhorst have been doing our best for people and the environment. Our brands focus on healthy, natural products with a genuine, unadulterated taste of nature. From purchasing to processing to filling, we pay attention to the highest, uncompromising quality. In additio",
+    "country": "DE",
+    "employees": "53"
+  },
+  {
+    "name": "Gebr. Kümmel Co. Gmbh",
+    "linkedin_url": "https://www.linkedin.com/company/gebr.-k%c3%bcmmel-co.-gmbh",
+    "domain": "schaelmuehle.de",
+    "about": "",
+    "country": "DE",
+    "employees": "1"
+  },
+  {
+    "name": "Seher Partner Og",
+    "linkedin_url": "https://www.linkedin.com/company/seher-partner-og",
+    "domain": "seherundpartner.at",
+    "about": "Wir sind Recruitingexperten für alle Führungs- und Spezialistenpositionen in den Bereichen Konsumgüterindustrie, Handel, Gastronomie, Dienstleistung und Banken. In allen anderen Branchen decken wir kaufmännische Managementpositionen ab. Durch unser tiefgehendes Branchen- und Strukturverständnis im N",
+    "country": "DE",
+    "employees": "6"
+  },
+  {
+    "name": "Lorenz",
+    "linkedin_url": "https://www.linkedin.com/company/lorenz-snacks",
+    "domain": "",
+    "about": "",
+    "country": "DE",
+    "employees": "587"
+  },
+  {
+    "name": "Edgard & Cooper  | B Corp",
+    "linkedin_url": "https://www.linkedin.com/company/edgard&cooper",
+    "domain": "",
+    "about": "",
+    "country": "BE",
+    "employees": "289"
+  }
+]

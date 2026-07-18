@@ -208,3 +208,95 @@ Headers: `x-api-key: <EXA_API_KEY>` (из `.env` в корне проекта)
 - [ ] Переименовать Google Sheet вкладку в "Signals" (не сделано)
 - [ ] Добавить TAM-фильтр в n8n: если компания из companies_pass.csv → Telegram alert
 - [ ] Опционально: добавить Exa job board queries (+$0.05/неделю) для foodjobs.de/AgriFoodMatch
+- [x] Exa Finder тест (company description + people search) — DONE 2026-06-29
+
+---
+
+## Exa Finder API — Test Results (2026-06-29)
+
+**Цель:** проверить может ли Exa заменить Blitz для (a) получения описания компании (ICP scoring) и (b) поиска контактов.
+
+**Контекст:** 74% сигнальных компаний (54/73) НЕ в нашей Blitz DB. Blitz scrape был ограничен фильтрами по keywords/employees. Exa Finder должен заполнить этот gap.
+
+**Скрипт:** `signals/exa/test_finder.cjs`
+**Результаты:** `signals/exa/results/exa_finder_test_2026-06-29.json` + `exa_finder_summary_2026-06-29.json`
+
+---
+
+### Test A: Company Description (для ICP scoring)
+
+**Метод:** `POST /search` с `includeDomains: [company.domain]` + `contents.text`
+
+**Результат: 10/10 (100%)** для Cat2 food companies
+
+| Компания | Страна | Emp | Описание найдено | Качество |
+|---------|-------|-----|-----------------|---------|
+| Ardo | BE | 1251 | YES | "fresh-frozen vegetables, herbs, fruits to foodservice, industry, retail" |
+| Intersnack Deutschland SE | DE | 429 | YES | корп сайт с рекрутинговой страницей |
+| DMK Deutsches Milchkontor | DE | 1005 | YES | молочный кооператив, 4+ мл. тонн молока |
+| St Michel Biscuits | FR | 924 | YES | французские бисквиты + рекрутинговая страница |
+| Henry Lambertz GmbH & Co KG | DE | 256 | YES | Lambertz Group, нац. + интерн. производство |
+| Fromageries de L'Ermitage | FR | 246 | YES | сыр, "la nature qui dicte sa loi" |
+| Famille Michaud Apiculteurs | FR | 202 | YES | мёд, "natural sweetener specialist for over 100 years" |
+| Saturn Petcare | NL | 224 | YES | корм для животных, Werken Bij страница |
+| Servair | FR | 2577 | YES | авиационный кейтеринг + food service |
+| Edgard & Cooper | BE | 289 | YES | nat. pet food, "naturally tasty cat & dog food" |
+
+**Вывод:** домен → `/search` с `includeDomains` даёт описание, достаточное для ICP scoring.
+
+---
+
+### Test B: People Search (для поиска контактов)
+
+**Метод:** `POST /search` с `category: "linkedin profile"` + три уровня запросов:
+- B1: CEO / MD / Directeur Général / Geschäftsführer
+- B2: Plant Director / Werksleiter / Operations Director
+- B3: HR Director / DRH / Personalleiter
+
+**Результат: 14/14 (100%)** — все компании (Cat1 + Cat2), все 3 уровня
+
+| Tier | Companies hit | Avg profiles/company |
+|------|-------------|---------------------|
+| B1 (execs) | 14/14 | 5 |
+| B2 (ops/plant) | 14/14 | 5 |
+| B3 (HR) | 14/14 | 3 |
+
+**Примеры реального матча:**
+
+| Компания | Профиль | Должность | LinkedIn URL |
+|---------|---------|----------|-------------|
+| Hügli Nahrungsmittel | Eric Overbeek | CEO Hügli & Board Bell Food Group | linkedin.com/in/eric-overbeek-7668043 |
+| Hügli Nahrungsmittel | Dirk Balzer | COO Hügli | linkedin.com/in/dirk-balzer-01b865164 |
+| Ardo | Sabine Sagaert | CEO at Ardo | linkedin.com/in/sabinesagaert |
+| St Michel Biscuits | Bruno Rousseau | (President) | linkedin.com/in/bruno-rousseau-a801baa4 |
+
+Профили точно соответствуют компании — в тексте профиля явно указана должность и название компании (не просто упоминание).
+
+---
+
+### Ограничения
+
+1. **Нет email** — Exa возвращает LinkedIn URL, не email. Нужен отдельный шаг: LinkedIn URL → email через Blitz/Hunter/pattern.
+2. **Точность имён** — для компаний с неуникальным именем ("Saturn") могут быть false positives. Рекомендация: всегда добавлять страну и сферу в запрос.
+3. **Стоимость** — 3 запроса на people + 2-3 на company = ~5-6 запросов/компанию = ~$0.035-0.042 на компанию. Для 54 пропущенных компаний = ~$2 total.
+
+---
+
+### Вывод: Exa Finder = game changer
+
+До теста: 74% сигнальных компаний без контактов и без описания для ICP.
+
+После теста: **Exa покрывает 100%** — описание и LinkedIn профили директоров для КАЖДОЙ компании.
+
+**Рекомендуемый pipeline (новый):**
+
+```
+Новый сигнал → lookup в blitz_all_scored (by LinkedIn URL / domain)
+  ├── FOUND + contacts → L1: send immediately
+  ├── FOUND, no contacts → L2: Exa People search → get LinkedIn URLs → Blitz email
+  └── NOT FOUND → L3: Exa Company search → description → LLM ICP score
+                      → if PASS: Exa People search → contacts
+                      → if REJECT: skip
+```
+
+**Следующий шаг:** запустить этот pipeline на всех 54 Cat2 компаниях + 481 needs_website компаниях.

@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // Scrape all job boards → write ALL raw results to signal_monitoring.raw_signals
 // Sources: LinkedIn, StepStone, Xing, Cadremploi, Indeed
-// Run: node --env-file=nextjs/.env.local pipeline/stages/01_scrape_jobs.mjs
+// Run: node --env-file=nextjs/.env.local pipeline/stages/scrape_jobs.mjs
 //
 // Key rotation: checks all 5 Apify keys, skips blocked/low-balance accounts
-// No ICP filtering here — raw everything goes to DB, filtering is 02_filter.mjs
+// No ICP filtering here — raw everything goes to DB, filtering is filter_icp.mjs
 
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
@@ -16,102 +16,11 @@ import { normalize as normStepStone }  from '../lib/normalize/stepstone.mjs';
 import { normalize as normXing }       from '../lib/normalize/xing.mjs';
 import { normalize as normCadremploi } from '../lib/normalize/cadremploi.mjs';
 import { normalize as normIndeed }     from '../lib/normalize/indeed.mjs';
+import { loadKeyPool, pickKey, apifyRun } from '../../../../../scripts/utils/apify-key-pool.mjs';
 
 const __dir      = dirname(fileURLToPath(import.meta.url));
 const BOARDS_DIR = join(__dir, '../../job_boards');
-const APIFY_BASE = 'https://api.apify.com/v2';
-const POLL_MS    = 8_000;
 const CLIENT_SLUG = process.env.NEXT_PUBLIC_CLIENT_SLUG || 'philippe-bosquillon';
-
-// ── All 5 Apify key candidates ────────────────────────────────────────────────
-const KEY_NAMES = [
-  'APIFY_KEY_KAD2',
-  'APIFY_KEY_STD',
-  'APIFY_KEY_LEO_BLOCKED',
-  'APIFY_KEY_KAD1_BLOCKED',
-  'APIFY_KEY_PIH_BLOCKED',
-];
-
-// Cache of { key, name, remaining } — refreshed once at startup, used for all picks
-let _keyPool = null;
-
-async function loadKeyPool() {
-  if (_keyPool) return _keyPool;
-  console.log('[keys] checking all Apify accounts...');
-  const pool = [];
-  for (const name of KEY_NAMES) {
-    const key = process.env[name];
-    if (!key) { console.log(`  ${name}: not set`); continue; }
-    try {
-      const [limitsRes, userRes] = await Promise.all([
-        fetch(`${APIFY_BASE}/users/me/limits`, { headers: { Authorization: `Bearer ${key}` } }),
-        fetch(`${APIFY_BASE}/users/me`,         { headers: { Authorization: `Bearer ${key}` } }),
-      ]);
-      const limitsData = await limitsRes.json();
-      const userData   = await userRes.json();
-      const max       = limitsData.data?.limits?.maxMonthlyUsageUsd ?? 0;
-      const used      = limitsData.data?.current?.monthlyUsageUsd   ?? 0;
-      const remaining = +(max - used).toFixed(4);
-      const features  = userData.data?.effectivePlatformFeatures ?? {};
-      const actorsOk  = features.ACTORS?.isEnabled !== false;
-      const status    = !actorsOk ? `BLOCKED` : `$${remaining.toFixed(3)}`;
-      console.log(`  ${name}: ${status}`);
-      if (actorsOk && remaining > 0.02) pool.push({ key, name, remaining });
-    } catch (e) {
-      console.warn(`  ${name}: check failed — ${e.message}`);
-    }
-  }
-  if (!pool.length) throw new Error('No working Apify keys with any budget');
-  _keyPool = pool;
-  return pool;
-}
-
-// Pick key with MOST remaining budget — call before each actor run to distribute load
-async function pickKey(minBudget = 0.02) {
-  const pool = await loadKeyPool();
-  const best = pool
-    .filter(k => k.remaining >= minBudget)
-    .sort((a, b) => b.remaining - a.remaining)[0];
-  if (!best) throw new Error(`No key with ≥$${minBudget} remaining`);
-  // Optimistically subtract estimated cost so next pick goes to a different key
-  // LinkedIn ~$0.10/run, StepStone/Cadremploi ~$0.05, Xing ~$0.02, Indeed ~$0.25/run
-  best.remaining -= minBudget;
-  console.log(`  using ${best.name} (est. remaining after: $${best.remaining.toFixed(3)})`);
-  return best;
-}
-
-// ── Apify: start run + poll until done + fetch items ─────────────────────────
-async function apifyRun(apiKey, actorId, input) {
-  const headers = { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
-  const slug    = actorId.replace('/', '~');
-
-  const runRes  = await fetch(`${APIFY_BASE}/acts/${slug}/runs`, {
-    method: 'POST', headers, body: JSON.stringify(input),
-  });
-  const runData = await runRes.json();
-  if (!runData?.data?.id) {
-    throw new Error(`Failed to start actor ${actorId}: ${JSON.stringify(runData).slice(0, 200)}`);
-  }
-
-  const runId     = runData.data.id;
-  const datasetId = runData.data.defaultDatasetId;
-  let status      = runData.data.status;
-
-  process.stdout.write(`    polling`);
-  while (!['SUCCEEDED', 'FAILED', 'ABORTED', 'TIMED-OUT'].includes(status)) {
-    await new Promise(r => setTimeout(r, POLL_MS));
-    const poll = await fetch(`${APIFY_BASE}/actor-runs/${runId}`, { headers });
-    status = (await poll.json()).data.status;
-    process.stdout.write('.');
-  }
-  process.stdout.write(` ${status}\n`);
-
-  if (status !== 'SUCCEEDED') return [];
-
-  const res  = await fetch(`${APIFY_BASE}/datasets/${datasetId}/items?limit=2000&clean=true`, { headers });
-  const data = await res.json();
-  return Array.isArray(data) ? data : (data.items ?? []);
-}
 
 function readConfig(board) {
   return JSON.parse(readFileSync(join(BOARDS_DIR, board, 'config.json'), 'utf8'));
@@ -121,7 +30,13 @@ function readConfig(board) {
 async function flushToDb(source, rows) {
   if (!rows.length) { console.log(`  [db] ${source}: nothing to insert`); return 0; }
   const deduped  = [...new Map(rows.map(r => [r.external_id, r])).values()];
-  const inserted = await insert('raw_signals', deduped, 'client_id,source,external_id');
+  // Migration 004 widened raw_signals' unique constraint to (client_id, source, external_id,
+  // monitor_label) — job-board rows don't set monitor_label, so it falls back to the column's
+  // '' default, but on_conflict must still name all 4 columns or Postgres 400s with 42P10 "no
+  // unique or exclusion constraint matching". Found live 2026-07-15: this had silently discarded
+  // every job-board scrape since migration 004 shipped (all rows fetched and paid for, zero
+  // written — LinkedIn/StepStone/Xing all failed with this before the fix landed mid-run).
+  const inserted = await insert('raw_signals', deduped, 'client_id,source,external_id,monitor_label');
   console.log(`  [db] ${source}: raw=${rows.length} deduped=${deduped.length} inserted=${inserted.length}`);
   return inserted.length;
 }
@@ -133,10 +48,11 @@ async function scrapeLinkedIn(clientId) {
   const RUNS = ['de_specific_sectors', 'fr_specific_sectors', 'split_nl_be'];
   const rows = [];
 
+  const pool = await loadKeyPool();
   for (const testName of RUNS) {
     const test = cfg.tests[testName];
     if (!test) { console.warn(`  [linkedin] test not found: ${testName}`); continue; }
-    const { key } = await pickKey(0.10);
+    const { key } = pickKey(pool, 0.10);
     console.log(`  [linkedin/${testName}] ${test.urls.length} URLs count=${test.count}`);
     try {
       const items = await apifyRun(key, cfg.actor_id, {
@@ -162,8 +78,9 @@ async function scrapeStepStone(clientId) {
   const cfg  = readConfig('stepstone');
   const rows = [];
 
+  const pool = await loadKeyPool();
   for (const q of cfg.production_queries) {
-    const { key } = await pickKey(0.05);
+    const { key } = pickKey(pool, 0.05);
     console.log(`  [stepstone] "${q.keyword}"`);
     try {
       const items = await apifyRun(key, cfg.actor_id, {
@@ -189,8 +106,9 @@ async function scrapeXing(clientId) {
   const cfg  = readConfig('xing');
   const rows = [];
 
+  const pool = await loadKeyPool();
   for (const q of cfg.production_queries) {
-    const { key } = await pickKey(0.02);
+    const { key } = pickKey(pool, 0.02);
     console.log(`  [xing] "${q.keyword}"`);
     try {
       const items = await apifyRun(key, cfg.actor_id, { keyword: q.keyword, location: q.location });
@@ -214,8 +132,9 @@ async function scrapeCadremploi(clientId) {
   const cfg  = readConfig('cadremploi');
   const rows = [];
 
+  const pool = await loadKeyPool();
   for (const q of cfg.production_queries) {
-    const { key } = await pickKey(0.05);
+    const { key } = pickKey(pool, 0.05);
     console.log(`  [cadremploi] "${q.keyword}"`);
     try {
       const items = await apifyRun(key, cfg.actor_id, { keyword: q.keyword, maxItems: q.maxItems ?? 50 });
@@ -254,7 +173,7 @@ async function scrapeIndeed(clientId) {
       console.log(`  [indeed] budget exhausted after ${rows.length} results, stopping`);
       break;
     }
-    const { key } = await pickKey(0.25);
+    const { key } = pickKey(pool, 0.25);
     console.log(`  [indeed/${testName}] "${q.position}" country=${q.country}`);
     try {
       const items = await apifyRun(key, cfg.actor_id, {
@@ -276,7 +195,7 @@ async function scrapeIndeed(clientId) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
-  console.log('=== 01_scrape_jobs.mjs ===');
+  console.log('=== scrape_jobs.mjs ===');
   console.log(`client: ${CLIENT_SLUG}`);
 
   const clientId = await getClientId(CLIENT_SLUG);
@@ -285,7 +204,7 @@ async function main() {
   // Pre-load key pool once (all scrape functions share it)
   await loadKeyPool();
 
-  const runId = await startRun({ clientId, script: '01_scrape_jobs', source: 'job_boards' });
+  const runId = await startRun({ clientId, script: 'scrape_jobs', source: 'job_boards' });
   const stats  = { scraped: 0, pushed: 0 };
   const errors = [];
 

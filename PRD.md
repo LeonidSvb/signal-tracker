@@ -1,5 +1,144 @@
 # Signal System — PRD
-# Last updated: 2026-06-22
+# Last updated: 2026-07-15
+
+---
+
+## STATUS UPDATE (2026-07-15): the addendum below is now mostly BUILT, not just proposed
+
+Almost everything in "SESSION ADDENDUM — Resolution Layer" below was implemented 2026-07-14/15
+(classify_company.mjs, Blitz-first classification, multi-entity extraction, all of it — see
+TODO.txt "RESOLUTION PIPELINE — BUILT 2026-07-14/15" section, items 25-35). Real numbers: 337 of
+346 Exa signals (97%) now have a resolved domain, up from 151/346 having none at all.
+
+**For the current open design questions and full session narrative, read TODO.txt — the
+"OPEN QUESTIONS FOR NEXT SESSION" block at the top (Q1-Q10) and "SESSION 13" in the history
+block have the complete, up-to-date picture.** Not duplicating that detail here — this file's
+addendum below is left as-is for historical context on the original design reasoning, but treat
+TODO.txt as the live source of truth for what's built vs. still open.
+
+## SESSION ADDENDUM — Resolution Layer (2026-07-14) — historical design doc, see status update above
+
+Everything below this addendum (from "## Контекст и цель" onward) is the original 2026-06-22
+planning doc. Most of it is now built and superseded by reality (see docs/SCHEMA.md,
+docs/EXA_INTEGRATION.md, CHANGELOG.md) — kept for historical reference, not current spec.
+This addendum is the live plan: what's actually true right now, what was decided in the
+2026-07-14 session, and what's proposed but **not yet built or approved**. Leo reads this,
+edits/confirms, then it gets implemented.
+
+### Problem this addendum solves
+
+Exa signals get ICP-filtered and LLM-scored fine, but turning a headline into an addressable
+company (domain, right entity, contact) stalls hard — see real numbers below. The question this
+session worked through: how do we close that gap without an automatic recurring Blitz spend
+($50/mo subscription Leo wants to stop paying unless a new client closes).
+
+### Real current state (measured live against production Supabase, 2026-07-14)
+
+- `raw_signals` source=exa: **365 total, ever**. 346 passed_icp · 17 filtered_out · 2 pending.
+- `signals` table: 346 rows exist (scoring ran 2026-07-13 12:12–12:22 UTC — already done, despite
+  docs/EXA_INTEGRATION.md still saying "filter hasn't run yet" as of its 07-13 timestamp — that
+  doc is now stale on this one point, real numbers here supersede it).
+- Of those 346 signals: only **195 (56%) have a company_id**. **151 (44%) have company_id=NULL** —
+  the LLM either couldn't extract a usable company name from the headline, or extraction ran but
+  resolution silently failed. These 151 are dead ends today — not visible to Philippe, not
+  actionable.
+- `companies` table (all sources, hiring + exa combined): 350 rows. Only **78 have a
+  linkedin_url**, only **63 have a domain**. The rest are name-only stubs — i.e. domain/LinkedIn
+  resolution is **not** something that already happens automatically; it was an open gap, not a
+  built feature, before this session.
+- `contacts`: **106 total**, all from the 2026-06-26 hiring-signal Blitz run. **Zero contacts
+  exist for any Exa-sourced company** — confirms TODO item 22, unchanged since last check.
+- `app_state`: 311 of 312 companies are still `status='new'`. **Nothing has ever been sent to
+  Philippe from this system.**
+
+### Correction: what Exa actually returns (earlier in this conversation this was overstated)
+
+A monitor result is `{url, title, author, publishedDate}` per hit, plus one AI-synthesized
+`content` paragraph and `grounding` citations per run (see docs/EXA_INTEGRATION.md). **`url` is
+the news article's URL (e.g. foodnavigator.com/...), not the company's own website.** Exa monitors
+never return a domain, a LinkedIn URL, or a structured company entity — they return media
+coverage. `company_name` is obtained separately, via one LLM call reading the headline
+(`extractCompanyAndAngle` in `score_signals.mjs`) — that call returns a name string only, nothing
+resolvable to a domain.
+
+Separately, there **is** an already-validated but **unwired** capability for exactly this —
+"Exa Finder" (tested 2026-06-29, see `exa/EXA_NOTES.md` + docs/EXA_INTEGRATION.md "Exa Finder"
+section): given a **known domain**, `POST /search {includeDomains:[domain]}` reliably returns a
+company description (10/10 in test) and a people-search finds LinkedIn execs (14/14 matched).
+This assumes the domain is already known — it does not discover a domain from a bare company
+name. Getting the domain in the first place still needs one more (unrestricted) Exa search per
+unknown company.
+
+### Decision: 3-layer cost cascade for signal → company resolution
+
+Agreed this session (Leo). Replaces "call Blitz automatically whenever a new company appears."
+
+1. **Layer 0 — free.** Match the signal's company (by domain if known, else normalized/fuzzy
+   name) against `sourcing.companies` — the 11,793-company TAM base in the outer Mastr_Leads
+   repo's Supabase schema, already paid for. Hit + `icp_status='pass'` → use it. Hit +
+   `icp_status='reject'` → drop it, done, no further spend. Miss → Layer 1.
+2. **Layer 1 — cheap (~$0.03–0.04/company per the 2026-06-29 Exa Finder test).** One Exa search to
+   resolve the entity's actual domain + about text, then the same LLM ICP-classification prompt
+   style already used to build the TAM (industry/size/country fit) → pass/reject + reason.
+3. **Layer 2 — free, permanent.** Upsert the Layer-1 result into `sourcing.companies` (same
+   `client_id` already shared between `sourcing` and `signal_monitoring` on purpose, from the
+   2026-07-13 schema design) — pass or reject, both worth storing. Every future duplicate signal
+   on this company hits Layer 0 for free, forever, for any client.
+
+Blitz (`find_contacts.mjs`) is explicitly **out of this cascade** — it stays a manual, batched,
+Leo-triggered step only, never automatic, so the $50/mo subscription only gets used when Leo
+actively decides to spend it.
+
+### Open problem: subsidiary / parent-company ambiguity
+
+News headlines often name a subsidiary ("Kloster Kitchen, part of the Rauch Group") or a parent
+making a move abroad. Naive name-extraction just grabs whichever noun phrase the LLM latches onto
+— no signal of which entity is the real outreach target, and picking wrong sends Philippe a bad
+intro (worse than no intro).
+
+**Proposed approach (not yet built):**
+- Extend `extractCompanyAndAngle`'s prompt to also return `is_subsidiary`, `parent_name`,
+  `operating_country` — the LLM already reads the headline, this is one more field, not a new
+  call.
+- Default targeting rule: prefer the **local operating entity** (the one with the DE/FR/NL/BE
+  plant/office/hiring need) over a distant parent/HQ — that's who Philippe would actually place
+  someone at.
+- If the extraction is ambiguous or low-confidence, don't auto-resolve — mark
+  `status='needs_review'` and surface it in a short manual-review list instead of guessing.
+- At Layer 1, search Exa using the resolved specific entity name, not the raw headline noun —
+  cuts false-domain matches between similarly-named parent/subsidiary pairs.
+
+### Renames already done this session (no behavior change)
+
+Pipeline stage files dropped their numeric prefixes for readability:
+`01_scrape_jobs`→`scrape_jobs.mjs`, `02_filter`→`filter_icp.mjs`,
+`03_resolve_companies`→`resolve_companies.mjs`, `04_find_contacts`→`find_contacts.mjs`,
+`05_score_llm`→`score_signals.mjs`. All references in `run.mjs`, `CLAUDE.md`, `docs/`, mockups
+updated; `TODO.txt`/`CHANGELOG.md` history entries left as-is (they describe what was true when
+written).
+
+### Proposed phased plan
+
+**Phase A — build, no spend.** `pipeline/lib/sourcing.mjs` (REST client for the outer repo's
+`sourcing` schema, same pattern as `supabase.mjs` with `Content-Profile: sourcing`). New
+`classify_company.mjs` stage: Layer 0 lookup → Layer 1 Exa Finder + LLM classify (incl.
+subsidiary fields) → Layer 2 write-back. Wired into `resolve_companies.mjs` ahead of stub
+creation, so the 151 currently-orphaned signals get a real shot at resolving.
+
+**Phase B — checkpoint, needs "запускай".** Small controlled test batch (e.g. 20 of the 151
+unresolved) through Layer 1 before running the rest, to sanity-check output quality before
+spending on all 151. Est. cost for the full 151: ~$5–6 at $0.03–0.04/company.
+
+**Phase C — checkpoint.** For companies that resolve `icp_status='pass'` with a domain/about: a
+call on whether to run `find_contacts.mjs` (Blitz) now for some/all of them, or send Philippe
+company-level signal info first and follow with named contacts later.
+
+**Phase D — delivery.** Actually assemble what goes to Philippe — needs your input, not decided:
+
+1. Delivery format — a document, a link into the Next.js tracker, an email digest?
+2. Is company-level info (about + signal + angle, no named contact yet) good enough to send, or
+   does Philippe need a named person before anything is worth sending?
+3. Budget/batch size you're comfortable with for the Phase B test run.
 
 ---
 
@@ -292,12 +431,12 @@ signals/pipeline/
   config/
     icp_filter.json          -- единый ICP фильтр
   stages/
-    01_scrape_jobs.mjs       -- LinkedIn + StepStone + Xing + Cadremploi + Indeed
+    scrape_jobs.mjs       -- LinkedIn + StepStone + Xing + Cadremploi + Indeed
     01_scrape_exa.mjs        -- Exa Search (33 запроса, замена мониторам)
-    02_filter.mjs            -- ICP фильтр → raw_signals.status
-    03_resolve_companies.mjs -- Blitz company lookup → companies[]
-    04_find_contacts.mjs     -- Blitz waterfall + email enrichment → contacts[]
-    05_score_llm.mjs         -- OpenRouter narrative + angle + score → signals[]
+    filter_icp.mjs            -- ICP фильтр → raw_signals.status
+    resolve_companies.mjs -- Blitz company lookup → companies[]
+    find_contacts.mjs     -- Blitz waterfall + email enrichment → contacts[]
+    score_signals.mjs         -- OpenRouter narrative + angle + score → signals[]
     06_push_supabase.mjs     -- upsert всё в Supabase
     07_recalc_scores.mjs     -- еженедельный пересчёт freshness + status
   run.mjs                    -- оркестратор (запускает стадии последовательно)
@@ -305,11 +444,11 @@ signals/pipeline/
 ```
 
 **Что переиспользовать из существующего:**
-- `job_boards/*/run_test.mjs` → основа для 01_scrape_jobs.mjs (actor вызовы)
+- `job_boards/*/run_test.mjs` → основа для scrape_jobs.mjs (actor вызовы)
 - `job_boards/linkedin/aggregate_signals.mjs` → логика фильтрации
 - `_archive/scripts/blitz_enrich.py` → портировать на JS или запускать как subprocess
 - `_archive/scripts/pattern_inference.py` → переписать в mjs
-- `enrichment/llm_cache.json` → переиспользовать как кэш для 05_score_llm.mjs
+- `enrichment/llm_cache.json` → переиспользовать как кэш для score_signals.mjs
 
 ---
 
@@ -332,12 +471,12 @@ signals/pipeline/
 ```
 [ ] 6. Создать pipeline/config/icp_filter.json
 [ ] 7. Написать log.mjs (хелпер pipeline_runs)
-[ ] 8. Написать 01_scrape_jobs.mjs (LinkedIn + StepStone + Cadremploi; Xing после фикса ключа)
+[ ] 8. Написать scrape_jobs.mjs (LinkedIn + StepStone + Cadremploi; Xing после фикса ключа)
 [ ] 9. Написать 01_scrape_exa.mjs (33 запроса через Search API)
-[ ] 10. Написать 02_filter.mjs (ICP фильтр, пишет filter_reason)
-[ ] 11. Написать 03_resolve_companies.mjs (Blitz, кэш через companies[])
-[ ] 12. Написать 04_find_contacts.mjs (Blitz waterfall + pattern inference)
-[ ] 13. Написать 05_score_llm.mjs (OpenRouter, кэш через llm_cache.json)
+[ ] 10. Написать filter_icp.mjs (ICP фильтр, пишет filter_reason)
+[ ] 11. Написать resolve_companies.mjs (Blitz, кэш через companies[])
+[ ] 12. Написать find_contacts.mjs (Blitz waterfall + pattern inference)
+[ ] 13. Написать score_signals.mjs (OpenRouter, кэш через llm_cache.json)
 [ ] 14. Написать 06_push_supabase.mjs (upsert companies + signals + contacts)
 [ ] 15. Написать run.mjs (оркестратор)
 [ ] 16. Тестовый прогон локально — 1 источник, 1 страна

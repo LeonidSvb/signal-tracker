@@ -1,0 +1,11 @@
+{
+  "date": "2026-07-15T19:34",
+  "source": "C:\\Users\\79818\\Desktop\\Mastr_Leads\\clients\\philippe-bosquillon\\signals\\pipeline\\runs\\route_email_2026-07-15\\validation\\1_mv\\catch_all_emails.txt",
+  "total": 2,
+  "results": {
+    "deliverable": 2,
+    "risky": 0,
+    "undeliverable": 0,
+    "unknown": 0
+  }
+}

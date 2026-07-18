@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Find contacts for companies that have linkedin_url but no contacts yet.
 // Uses BlitzAPI waterfall-icp-keyword with food industry cascade.
-// Run: node --env-file=nextjs/.env.local pipeline/stages/04_find_contacts.mjs
+// Run: node --env-file=nextjs/.env.local pipeline/stages/find_contacts.mjs
 
 import { readFileSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
@@ -13,6 +13,12 @@ const __dir = dirname(fileURLToPath(import.meta.url));
 const CLIENT_SLUG = process.env.NEXT_PUBLIC_CLIENT_SLUG || 'philippe-bosquillon';
 const EMP_THRESHOLD = 500;
 const MAX_PER_LEVEL = 3;
+// Overall cap regardless of how many cascade levels find someone — data 2026-07-15: capping at
+// 3 loses only 6pp of email-hit-rate vs no cap (57% vs 63%) while cutting volume dramatically
+// (some companies were getting 9-15 contacts, e.g. every level of a multinational's cascade
+// hitting separately). is_primary stays on the first (highest cascade-priority) hit only — that
+// one is the LinkedIn-outreach contact; the rest exist purely to raise odds of finding an email.
+const MAX_CONTACTS_PER_COMPANY = 3;
 const CONCURRENCY   = 5;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -84,13 +90,21 @@ async function processCompany(company, clientId) {
   const linkedinUrl = normalizeLinkedinUrl(company.linkedin_url);
 
   for (const level of cascade) {
+    if (rows.length >= MAX_CONTACTS_PER_COMPANY) break;
     const results = await findLevel(linkedinUrl, level);
     for (const { person } of results) {
+      if (rows.length >= MAX_CONTACTS_PER_COMPANY) break;
       if (seen.has(person.linkedin_url)) continue;
       seen.add(person.linkedin_url);
       const email = await getEmail(person.linkedin_url);
       const curExp = person.experiences?.find(e => e.is_current) || {};
-      const title  = (person.headline || curExp.job_title || '').split(' at ')[0].trim();
+      // curExp.job_title is Blitz's structured current-position field — prefer it over the raw
+      // headline, which is a self-written bio and often noisy ("CEO Office @Circus Group |
+      // ex-TIER, ex-1KOMMA5° | Project Lead & AI-Enthusiast") — a cascade title-keyword match can
+      // land on a substring inside that bio rather than the person's actual current role. Found
+      // 2026-07-15 auditing find_contacts.mjs output: 51 of ~250 contacts had title="unknown"
+      // (both fields empty) and several stored a full noisy headline as the title.
+      const title = (curExp.job_title || person.headline || '').split(/ at | @ |\s*\|\s*|\s*•\s*/)[0].trim();
       rows.push({
         client_id:    clientId,
         company_id:   company.id,
@@ -112,15 +126,15 @@ async function processCompany(company, clientId) {
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 export async function run() {
-  console.log('\n=== 04_find_contacts.mjs ===');
+  console.log('\n=== find_contacts.mjs ===');
 
   if (!BLITZ_KEY) {
-    console.log('BLITZ_API_KEY not set — skipping stage 04');
+    console.log('BLITZ_API_KEY not set — skipping find_contacts');
     return { skipped: true };
   }
 
   const clientId = await getClientId(CLIENT_SLUG);
-  const runId    = await startRun({ clientId, script: '04_find_contacts', source: 'blitz' });
+  const runId    = await startRun({ clientId, script: 'find_contacts', source: 'blitz' });
 
   const allCompanies = await selectAll('companies', { client_id: clientId });
   const withUrl      = allCompanies.filter(c => c.linkedin_url);

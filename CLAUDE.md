@@ -20,10 +20,10 @@ pipeline/
     _template.json   — дефолты для всех клиентов
     philippe-bosquillon.json
   config/
-    icp_filter.json  — ICP правила (читается 02_filter.mjs)
+    icp_filter.json  — ICP правила (читается filter_icp.mjs)
     blacklist.json   — детальный список исключений (staffing agencies)
   lib/normalize/     — нормализаторы raw JSON → raw_signals per источник
-  stages/            — 01_scrape_jobs, 02_filter, 03_resolve_companies, 04_find_contacts
+  stages/            — scrape_jobs, filter_icp, resolve_companies, find_contacts, score_signals
   import_historical.mjs — одноразовый импорт 287 сигналов (ещё не запущен)
 nextjs/              — Next.js 14 фронт + API routes
   src/app/page.tsx   — трекер лидов
@@ -40,25 +40,34 @@ enrichment/          — исторические CSV + llm_cache.json (КРИТ
 - `APIFY_KEY_KAD2` — основной (LinkedIn/StepStone/Cadremploi)
 - `APIFY_KEY_STD` — запасной
 - `EXA_API_KEY` — в `signals/.env`
+- `BLITZ_API_KEY` — в `blitz/.env` (проверять актуальность там, не тут)
 - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — в `nextjs/.env.local`
+
+## Rate limits внешних API (проверять здесь перед выбором concurrency)
+
+- **Blitz:** 50 req/sec (Enterprise + "+45 RPS" аддон) — используй ~40/sec с запасом. Источник: `docs/blitz-api/blitz-api-test-results.md`
+- **Exa:** RPS не задокументирован публично; free tier 20,000 req/месяц (`exa.ai/pricing`), содержимое (`contents.text`) — отдельная статья расходов $1/1k страниц сверх поиска $7/1k
+- **OpenRouter (gpt-oss-120b):** лимиты не проверялись — если скрипт на этой модели идёт медленно, сначала проверить, не в OpenRouter ли узкое место
 
 ## Job boards — как запускать
 
 `node job_boards/{actor}/run_test.mjs` — Apify KAD2, результаты в `{actor}/results/`
 Xing и Indeed — нужна ротация ключа с KAD1_BLOCKED на KAD2 в config.json
 
-## Exa — сейчас через n8n (временно)
+## Exa — прямой webhook (n8n/Google Sheets отключены 2026-06-22, не использовать эти упоминания как current state)
 
-33 монитора → n8n `0WmBVaYBGDUMfPSl` → Google Sheet.
-Monitor IDs: `exa/clients/philippe-bosquillon.json`
-Цель: мигрировать webhook на `/api/exa-webhook` (plan в ARCHITECTURE.md).
+33 монитора → Exa webhook → `nextjs/src/app/api/exa-webhook/route.ts` → `raw_signals` напрямую.
+Monitor ID → (signal_type, country) маппинг сейчас захардкожен в самом route.ts
+(`MONITOR_LABELS`, TS-словарь) — единый на один deployment/CLIENT_SLUG. Известное
+ограничение при переходе на мульти-клиентский фронт, см. PLAN doc.
+Полная архитектура + история инцидента: `docs/EXA_INTEGRATION.md`.
 
 ## Pipeline — как запускать
 
 ```powershell
 # Env из nextjs/.env.local
-node --env-file=nextjs/.env.local pipeline/stages/01_scrape_jobs.mjs
-node --env-file=nextjs/.env.local pipeline/stages/02_filter.mjs
+node --env-file=nextjs/.env.local pipeline/stages/scrape_jobs.mjs
+node --env-file=nextjs/.env.local pipeline/stages/filter_icp.mjs
 node --env-file=nextjs/.env.local pipeline/import_historical.mjs
 ```
 

@@ -1,0 +1,217 @@
+{
+  "_meta": {
+    "note": "VERBATIM transcription of copy/copy_signals_v2.txt + copy/copy_signals_linkedin.txt (D3, HANDOFF_2026-07-15_scoring_two_channel.md). No copy rewrites — Leo reviews this JSON diff against the two .txt files once before it is used to send anything. Bodies keep the source's literal {variable} and OR-choice bracket placeholders (e.g. '{appointed new CEO / named new leadership}') where the source itself left them unresolved — copyEngine.mjs / a human must resolve those, this file does not invent a resolution.",
+    "source_files": ["copy/copy_signals_v2.txt", "copy/copy_signals_linkedin.txt"],
+    "linkedin_resynced_at": "2026-07-17 — li_connection_note/li_first_message fields below re-transcribed from copy_signals_linkedin.txt v2 (Leo's review comments on v1 folded in: no generic credentials line in connection notes, {relevant_case} manual-fill variable added to every first message, qualifying-question CTA instead of direct call pitch, varied openers instead of literal 'Thanks for connecting' everywhere). Email variants (A/B/C) below are UNCHANGED — still v1/copy_signals_v2.txt, not yet adapted to the same principles. Leo reviews the LinkedIn rewrite before this is used in a live queue build.",
+    "transcribed_at": "2026-07-15",
+    "sender_email_channel": "Leo (not Philippe) except HIRING_SURGE variant A, which is voiced as Philippe per the source",
+    "sender_linkedin_channel": "Philippe, first person, per copy_signals_linkedin.txt A9",
+    "subject_by_lang": {
+      "en": "someone I'd like to introduce",
+      "fr": "quelqu'un à vous présenter",
+      "de": "jemand den ich vorstellen möchte",
+      "nl": "iemand die ik wil voorstellen"
+    },
+    "linkedin_mechanics": {
+      "connection_note_max_chars": 300,
+      "connection_note_optional": "if accept rate with a note drops, send without one (A/B decided by Leo from real data) — copy_signals_linkedin.txt «MEHANIKA»",
+      "first_message_timing": "day the connection is accepted, not later",
+      "reply_handling": "any reply (including 'thanks, not relevant') is screenshotted/forwarded to Leo — Philippe does not reply himself",
+      "inmail_eligible_rule": "T1 only, connection pending >7 days with <14 days left in the event window — text = that type's li_first_message with connection_note_first_line replaced by \"{first_name}, reaching out directly as the timing seemed too relevant to wait —\"",
+      "inmail_monthly_limit": 50
+    },
+    "cold_call_universal_script_ru": "\"Hi {first_name}, это Leo — звоню потому что я видел [сигнал]. Я представляю Philippe Bosquillon — food exec search, {market_focus}, 30 лет в индустрии сам. Он размещает такие роли как {role/context} за 2-3 недели. Имеет смысл познакомить вас с Philippe?\"",
+    "sequence_routing_note": "copy_signals_v2.txt БЛОК 5's step-count table (Sonnet must not treat as ground truth over the literal SEQUENCE block in each section — e.g. it claims HIRING_STALE is 4-step 0/4/10/18 but section 1D's actual SEQUENCE is 3-step 0/3/8; the literal section wins)."
+  },
+
+  "templates": {
+    "HIRING_EXEC": {
+      "source_section": "1A",
+      "window_days": "7-14 days from posting",
+      "required_variables": ["first_name", "company", "exact_job_title", "market_focus", "job_title"],
+      "variants": {
+        "A": "hey {first_name},\n\nsaw {company} is looking for a {exact_job_title} —\nthat's exactly what Philippe places, senior food industry execs in {market_focus}\nin about 2 weeks\n\nworth a quick intro?\n\nLeo",
+        "B": "hey {first_name},\n\nsaw {company} posted for a {exact_job_title} —\nmost searches like this through a generalist take 4–6 months\n\nI know someone who does it in 2–3 weeks because he knows the people personally\n— food exec himself for 30+ years in {market_focus}\n\nworth an intro?\n\nLeo",
+        "C": "hey {first_name},\n\nnoticed {company} is searching for a {exact_job_title} —\nleadership gaps at that level cost companies real operational momentum\n\nI know someone who specifically places these roles in {market_focus},\ncloses in 2–3 weeks\n\nhappy to intro if it makes sense\n\nLeo"
+      },
+      "followups": [
+        { "day": 3,  "body": "hey {first_name},\n\nfollowing up on my earlier note — wanted to add one thing:\nPhilippe spent 30+ years as an executive inside food companies in {market_focus}\nso he's not recruiting from the outside, he literally knows the candidates personally\n\nthat's why 2–3 weeks instead of months\n\nstill happy to intro if useful\n\nLeo" },
+        { "day": 8,  "body": "hey {first_name},\n\nstill seeing the {job_title} role posted —\nif the search isn't going the way you hoped, worth a conversation at least\n\nLeo" },
+        { "day": 16, "body": "hey {first_name},\n\nclosing this out — if the {job_title} role ever gets reopened or a new\nsearch comes up, Philippe is the fastest path in {market_focus}\n\nbonne continuation / alles Gute / veel succes\n\nLeo", "breakup": true }
+      ],
+      "linkedin_message_legacy": "Hi {first_name}, saw {company} is looking for a {job_title} —\nI know someone who places these roles in food in {market_focus} in 2-3 weeks,\n30+ years as food exec himself. Worth connecting Philippe to you?",
+      "cold_call": "\"Hi {first_name}, я Leo — I'm calling because I saw {company} is looking\n for a {job_title}. I represent Philippe Bosquillon — he's a food exec\n himself, 30 years in the industry, and he specifically places roles like\n this in 2-3 weeks. Would it make sense for me to introduce you two?\"",
+      "li_connection_note": "{first_name}, saw the {exact_job_title} opening at {company}. I do exec\nsearch in food, {market_focus} — this is exactly my level. Open to\nconnecting?",
+      "li_first_message": "Thanks for connecting, {first_name}.\n\nIs the {exact_job_title} search still open, or did you already fill it?\n\n{relevant_case}\n\nIf it's still live, happy to compare notes — no pressure either way."
+    },
+
+    "HIRING_MID": {
+      "source_section": "1B",
+      "window_days": null,
+      "required_variables": ["first_name", "company", "exact_job_title", "market_focus", "job_title"],
+      "variants": {
+        "A": "hey {first_name},\n\nsaw {company} is hiring a {exact_job_title} —\n\nI know someone who specifically places production leadership roles at food\ncompanies in {market_focus}, has done it in 2–3 weeks before\n\nworth an intro?\n\nLeo",
+        "B": "hey {first_name},\n\ncame across {company}'s posting for a {exact_job_title} —\nthat's a hard role to fill fast through a generalist\n\nI know someone who does exec search in food in {market_focus} —\n30+ years in the industry, knows the production management talent pool personally\n\nhappy to intro if relevant\n\nLeo"
+      },
+      "followups": [
+        { "day": 4,  "body": "hey {first_name},\n\njust wanted to add — finding a strong {job_title} in {market_focus}\nthrough a generalist usually takes months and still misses the right candidates\n\nPhilippe's network in food production is built from 30+ years inside\nthese companies — different kind of access\n\nLeo" },
+        { "day": 10, "body": "hey {first_name},\n\nstill open on the {job_title}?\nhappy to set up a quick call between you and Philippe — no commitment, just a conversation\n\nLeo" },
+        { "day": 18, "body": "hey {first_name},\n\nclosing this out — if a similar role comes up down the line,\nPhilippe is the call to make for food production leadership in {market_focus}\n\nLeo", "breakup": true }
+      ],
+      "linkedin_message_legacy": "Hi {first_name}, saw {company} is looking for a {job_title} —\nPhilippe Bosquillon does exec search for exactly this type of role in food in\n{market_focus}, typically closes in 2–3 weeks. Worth a quick intro?",
+      "li_connection_note": "{first_name}, {company}'s {exact_job_title} posting is exactly the kind of\nrole I place — food operations leadership, {market_focus}. Let's connect.",
+      "li_first_message": "{first_name} — appreciate the connect.\n\nQuick one: is the {exact_job_title} role at {company} still open?\n\n{relevant_case}\n\nIf yes, worth a short conversation? If not, no worries at all."
+    },
+
+    "HIRING_SURGE": {
+      "source_section": "1C",
+      "window_days": null,
+      "required_variables": ["first_name", "company", "role_1", "role_2", "market_focus"],
+      "variants": {
+        "A": { "voice": "philippe_inmail", "body": "Hi {first_name},\n\nnoticed {company} posted for a {role_1} and a {role_2} this month —\nlooks like serious scaling\n\nI specifically do exec search for food companies in {market_focus},\nbeen in this industry myself for 30 years\n\nwould it make sense to talk?\n\nPhilippe" },
+        "B": { "voice": "leo_email", "body": "hey {first_name},\n\nsaw {company} is simultaneously looking for a {role_1} and a {role_2} —\nthat's a lot of leadership to find at once\n\nI know someone who specifically places these roles in {market_focus}\nin 2–3 weeks — food exec himself for 30 years\n\nworth an intro?\n\nLeo" }
+      },
+      "followups": [
+        { "day": 1,  "channel": "linkedin", "body": null, "note": "Philippe sends InMail — not drafted as separate body in source, reuses li_first_message below" },
+        { "day": 3,  "body": null, "note": "playbook only describes this step (\"follow-up (credibility + speed)\") — no literal body text in copy_signals_v2.txt. DO NOT auto-send until Leo writes it." },
+        { "day": 7,  "body": null, "note": "playbook only describes this step (\"soft re-engage (\\\"still hiring for both?\\\")\") — no literal body text. DO NOT auto-send until Leo writes it." },
+        { "day": 14, "body": null, "note": "playbook only says \"breakup\" — no literal body text. DO NOT auto-send until Leo writes it.", "breakup": true }
+      ],
+      "linkedin_message_legacy": "Hi {first_name}, saw {company} is hiring for {role_1} and {role_2} simultaneously —\nI do exec search for food companies in {market_focus}, 30 years in the industry.\nWorth a quick call?",
+      "li_connection_note": "{first_name}, {company} hiring both a {role_1} and a {role_2} at once —\nthat's a real leadership build-out. I do exec search in food,\n{market_focus}. Connect?",
+      "li_first_message": "Thanks for connecting, {first_name}.\n\nTwo searches running at once is a lot to carry — are the {role_1} and\n{role_2} roles both still open?\n\n{relevant_case}\n\nHappy to help however's useful, even just as a sounding board."
+    },
+
+    "HIRING_STALE": {
+      "source_section": "1D",
+      "window_days": null,
+      "required_variables": ["first_name", "company", "job_title", "market_focus", "exact_job_title"],
+      "variants": {
+        "A": "hey {first_name},\n\nnoticed {company}'s {job_title} posting has been up for a while —\nlong searches usually mean the generalist approach isn't working\n\nI know someone who specifically does this in {market_focus} in 2–3 weeks —\nfood exec himself, knows the candidates personally\n\nmight be worth a conversation at this point?\n\nLeo",
+        "B": "hey {first_name},\n\nsaw {company} has been searching for a {job_title} for quite some time —\nif it's still open, Philippe places exactly this type of role in {market_focus},\ntypically in 2–3 weeks\n\nworth a quick intro?\n\nLeo"
+      },
+      "followups": [
+        { "day": 3, "body": "hey {first_name},\n\n\"if it's still going — happy to set up a call this week\"\n\nLeo", "note": "source shows only this one-liner, not a full email — transcribed as-is" },
+        { "day": 8, "body": null, "note": "playbook only says \"breakup (soft)\" — no literal body text. DO NOT auto-send until Leo writes it.", "breakup": true }
+      ],
+      "linkedin_message_legacy": "Hi {first_name} — noticed {company} has been looking for a {job_title} for a while.\nPhilippe Bosquillon places these roles in food in {market_focus} in 2-3 weeks.\nWorth connecting if the search is still active?",
+      "li_connection_note": "{first_name}, noticed the {exact_job_title} search at {company} has been\nrunning a while. I place these roles in food, {market_focus} — happy to\nconnect either way.",
+      "li_first_message": "{first_name}, thanks for connecting.\n\nStill working the {exact_job_title} search, or has it wrapped up?\n\n{relevant_case}\n\nIf it's dragging, sometimes a second track helps — open to a quick chat?"
+    },
+
+    "HIRING_RECRUITER": {
+      "source_section": "1E",
+      "window_days": null,
+      "required_variables": ["first_name", "company", "job_title", "market_focus", "exact_job_title"],
+      "note": "who to write to: NOT the recruiter — go direct to the company (HR Director or CEO).",
+      "variants": {
+        "A": "hey {first_name},\n\nsaw that {company} is searching for a {job_title} —\nknow you may already have a search going\n\nPhilippe Bosquillon places exactly this type of role in {market_focus}\nin 2–3 weeks — food exec himself, 30 years — sometimes worth having a\nfaster parallel option\n\nhappy to intro if it makes sense\n\nLeo",
+        "B": "hey {first_name},\n\nnoticed {company} has an open {job_title} search —\nif the timeline is critical, Philippe places senior food roles\nin {market_focus} in 2–3 weeks\n\nmight complement whatever search you have running\n\nLeo"
+      },
+      "sequence_ref": "HIRING_MID",
+      "followups": null,
+      "li_connection_note": "{first_name}, saw {company} has a {exact_job_title} search open. I work\nthis exact space in food, {market_focus} — good to be connected regardless.",
+      "li_first_message": "Thanks for connecting, {first_name}.\n\nI know {company} may already have a search running for the\n{exact_job_title} — is it still active?\n\n{relevant_case}\n\nIf timing's tight, I sometimes run in parallel alongside a generalist firm.\nWorth a word?"
+    },
+
+    "CLEVEL": {
+      "source_section": "2A",
+      "window_days": "strictly 30-60 days",
+      "required_variables": ["first_name", "company", "market_focus"],
+      "variants": {
+        "A": { "angle": "restructuring", "body": "hey {first_name},\n\nsaw that {company} recently {appointed new CEO / named new leadership} —\nnew leadership at the top usually means restructuring below over the next months\n\nI know someone who specifically does exec search for food companies\nin {market_focus} — thought it might be timely\n\nLeo" },
+        "B": { "angle": "to_the_new_leader", "body": "hey {first_name},\n\ncongratulations on the new role at {company} —\nbuilding the right team around you early usually makes the biggest difference\n\nI know someone who specifically does exec search for food in {market_focus},\nplaces in 2–3 weeks if you ever need to move fast\n\nworth keeping in touch\n\nLeo" },
+        "C": { "angle": "to_hr_director", "body": "hey {first_name},\n\nsaw {company} just brought on a new {CEO/MD} —\nleadership transitions at the top usually trigger a wave of team changes\n\nI know someone who specifically places food execs in {market_focus} in 2–3 weeks —\nmight be worth a connection now before the wave hits\n\nLeo" }
+      },
+      "followups": [
+        { "day": 3,  "body": "hey {first_name},\n\nfollowing up — wanted to be specific about why Philippe is relevant here:\nhe spent 30+ years as an executive inside food companies in {market_focus}\nso his network is direct — not headhunter databases, actual people he knows\n\nthat's how he closes in 2-3 weeks\n\nLeo" },
+        { "day": 8,  "body": "hey {first_name},\n\njust a note — leadership windows like this are usually 30-60 days\nbefore things settle into the new structure\n\nhappy to set up a quick intro call this week if useful\n\nLeo" },
+        { "day": 20, "body": "hey {first_name},\n\nchecking in — how's the transition going at {company}?\nif new team needs have come up, Philippe is the fastest path in {market_focus}\n\nLeo" },
+        { "day": 35, "body": "hey {first_name},\n\nclosing this thread — if executive search comes up at {company} down the road,\nPhilippe is the call to make\n\nLeo", "breakup": true }
+      ],
+      "linkedin_message_legacy": "Hi {first_name}, congratulations on the appointment at {company} — exciting moment.\nI do exec search for food companies in {market_focus}, 30 years in the industry myself.\nWould love to connect early on — new leadership usually brings new team needs.",
+      "cold_call": "\"Hi {first_name}, je m'appelle Leo — I'm calling because I saw {company}\n just appointed a new {CEO/MD}. I represent Philippe Bosquillon — he does\n exec search for food companies in {market_focus} and specifically helps new\n leadership build their teams fast, in 2-3 weeks. Would it make sense to\n introduce you to Philippe now?\"",
+      "li_variant_1_appointee": {
+        "note": "write to the person newly appointed",
+        "li_connection_note": "Congratulations on the new role at {company}, {first_name}. I do exec\nsearch in food, {market_focus} — would be glad to connect.",
+        "li_first_message": "{first_name}, congratulations again on the {company} role.\n\nFirst few months in a new seat usually mean rethinking parts of the team —\nhas that started yet for you, or still settling in?\n\n{relevant_case}\n\nNo agenda today — just flag me if team questions come up."
+      },
+      "li_variant_2_hr_or_ceo_nearby": {
+        "note": "write to HR Director / CEO near the appointment, not the appointee",
+        "li_connection_note": "{first_name}, saw {company} just brought in new leadership. I do exec\nsearch in food, {market_focus} — thought it made sense to connect.",
+        "li_first_message": "Thanks for connecting, {first_name}.\n\nWith the new leadership in at {company}, is a team review already on the\ntable, or still early days?\n\n{relevant_case}\n\nHappy to talk before things get busy, if useful."
+      }
+    },
+
+    "MA": {
+      "source_section": "2B",
+      "window_days": null,
+      "required_variables": ["first_name", "acquirer", "target", "market_focus"],
+      "variants": {
+        "A": "hey {first_name},\n\nsaw that {acquirer} recently acquired {target} —\nintegration always brings leadership changes, usually fast\n\nI know someone who specifically does exec search for food companies\nin {market_focus} — places senior roles in 2–3 weeks\n\nworth an intro if the timing's right?\n\nLeo",
+        "B": "hey {first_name},\n\nsaw the {acquirer} / {target} deal —\ncross-border integrations at this scale usually mean leadership restructuring\non both sides within 3–6 months\n\nI know someone who specifically places food execs in {market_focus} —\n2–3 weeks when you need to move fast\n\nworth keeping Philippe in mind?\n\nLeo",
+        "C": "hey {first_name},\n\nsaw {acquirer} completed the acquisition of {target} —\nintegration usually creates leadership gaps quickly\n\nPhilippe Bosquillon does exec search for food in {market_focus},\nplaces in 2–3 weeks — might be worth a connection now\n\nLeo"
+      },
+      "followups": [
+        { "day": 4,  "body": "hey {first_name},\n\njust to add — post-acquisition leadership gaps have a narrow window\nbefore they affect operations\n\nPhilippe closes searches in 2-3 weeks in {market_focus} —\ndifferent from the 4-6 month generalist timeline\n\nLeo" },
+        { "day": 10, "body": "hey {first_name},\n\nhow's the integration progressing? if leadership gaps have come up\nat {company} or {target}, happy to intro Philippe — fastest search\nin food in {market_focus}\n\nLeo" },
+        { "day": 20, "body": "hey {first_name},\n\nclosing this out — if executive search comes up during the integration,\nPhilippe Bosquillon, {market_focus} food exec search, 2-3 weeks\n\nLeo", "breakup": true }
+      ],
+      "linkedin_message_legacy": "Hi {first_name}, saw the {acquirer}/{target} deal close — congratulations.\nIntegration leadership is usually the hardest part. I do exec search for food\nin {market_focus}, 30 years in the industry. Worth staying in touch.",
+      "li_connection_note": "{first_name}, following the {acquirer}/{target} deal — integrations like\nthat usually surface leadership questions fast. I place food execs,\n{market_focus}. Connect?",
+      "li_first_message": "{first_name}, congratulations on the {target} deal closing.\n\nHow's the integration shaping up on the leadership side — anything open\nyet, or too early to say?\n\n{relevant_case}\n\nIf gaps start showing up on either side, I'm a fast call away."
+    },
+
+    "EXPAND": {
+      "source_section": "2C",
+      "window_days": null,
+      "required_variables": ["first_name", "company", "location", "market_focus"],
+      "variants": {
+        "A": { "angle": "timing_of_hire", "body": "hey {first_name},\n\nsaw {company} is {investing €Xm in / building a new facility at} {location} —\ngrowth at that scale usually means leadership gaps follow shortly after\n\nI know someone who specifically does exec search for food in {market_focus} —\nplaces in 2–3 weeks\n\nworth an intro?\n\nLeo" },
+        "B": { "angle": "timing_specific", "body": "hey {first_name},\n\nsaw {company} is expanding production at {location} —\nnew facilities usually need the right operational leadership in place before they open\n\nPhilippe Bosquillon places exactly this type of role in {market_focus},\n2–3 weeks — food exec himself for 30 years\n\nworth a quick intro?\n\nLeo" },
+        "C": { "angle": "scale", "body": "hey {first_name},\n\n{company}'s {€Xm} expansion caught my eye —\nbuilds at that scale usually create 2-3 new senior leadership needs\n\nI know someone who specifically places food ops execs in {market_focus} in 2-3 weeks\n\nhappy to intro\n\nLeo" }
+      },
+      "followups": [
+        { "day": 4,  "body": "hey {first_name},\n\nto add context — Philippe specifically places Werksleiter / Plant Director\nlevel roles in {market_focus}, and his candidates are executives-turned-execs\nnot headhunter database profiles\n\nthat's why 2–3 weeks vs 4–6 months\n\nLeo" },
+        { "day": 10, "body": "hey {first_name},\n\nwhat's the timeline on the {location} expansion?\nif leadership hiring is coming up, worth a quick intro to Philippe before the race starts\n\nLeo" },
+        { "day": 18, "body": "hey {first_name},\n\nclosing this out — when the {project} build gets to leadership hiring,\nPhilippe Bosquillon, {market_focus} food exec search, 2-3 weeks\n\nLeo", "breakup": true }
+      ],
+      "linkedin_message_legacy": "Hi {first_name}, saw {company}'s expansion plans — exciting project.\nNew facilities at that scale usually need strong operational leadership early on.\nPhilippe Bosquillon does exec search for food in {market_focus}, 30 years in industry.\nWorth connecting?",
+      "li_connection_note": "{first_name}, saw {company}'s build at {location}. I place the operational\nleadership behind projects like this in food, {market_focus} — let's\nconnect.",
+      "li_first_message": "Thanks for connecting, {first_name}.\n\nIs the leadership hire for {location} already underway, or is that further\ndown the build timeline?\n\n{relevant_case}\n\nHappy to compare notes on timing whenever it's useful."
+    },
+
+    "INVEST": {
+      "source_section": "2D",
+      "window_days": null,
+      "note": "only for established companies, €20M+ raise — not Series A startups",
+      "required_variables": ["first_name", "company", "market_focus"],
+      "variants": {
+        "A": "hey {first_name},\n\nsaw {company} recently secured {€Xm} for {project} —\nnew capital at that scale usually means scaling the team alongside it\n\nI know someone who specifically does exec search for food in {market_focus} —\nplaces in 2–3 weeks when you need to move\n\nworth an intro?\n\nLeo",
+        "B": "hey {first_name},\n\ncongrats on the {€Xm} raise at {company} —\ngrowth rounds usually mean new leadership needs follow fast\n\nPhilippe Bosquillon places food execs in {market_focus} in 2–3 weeks —\nmight be worth staying in touch\n\nLeo"
+      },
+      "followups": [
+        { "day": 5,  "body": null, "note": "playbook only says \"credibility\" — no literal body text. DO NOT auto-send until Leo writes it." },
+        { "day": 12, "body": null, "note": "playbook only says \"breakup\" — no literal body text. DO NOT auto-send until Leo writes it.", "breakup": true }
+      ],
+      "linkedin_message_legacy": null,
+      "li_connection_note": "{first_name}, congrats on the {amount} raise at {company}. I build food\nleadership teams, {market_focus} — good to be connected.",
+      "li_first_message": "{first_name}, congrats again on the {amount} raise.\n\nAny leadership hiring on the roadmap yet, or still early days post-close?\n\n{relevant_case}\n\nWorth staying in touch either way — happy to talk whenever it's relevant."
+    },
+
+    "CONTRACT": {
+      "source_section": "2E",
+      "window_days": null,
+      "note": "weak signal — only use if the contract is large and the company is in ICP",
+      "required_variables": ["first_name", "company", "market_focus"],
+      "variants": {
+        "A": "hey {first_name},\n\nsaw {company} won {the X contract / a major partnership with Y} —\ncontracts like that usually mean scaling operations to match\n\nI know someone who places food ops leadership in {market_focus} in 2–3 weeks\nif hiring follows\n\nworth an intro?\n\nLeo"
+      },
+      "followups": null,
+      "sequence_note": "3 steps maximum, no day offsets or follow-up bodies given in source",
+      "linkedin_message_legacy": null,
+      "li_connection_note": "{first_name}, saw {company}'s new contract win. I place food ops\nleadership, {market_focus} — glad to connect.",
+      "li_first_message": "Thanks for connecting, {first_name}.\n\nDid the {company} win change the hiring picture on the ops side, or\nbusiness as usual for now?\n\n{relevant_case}\n\nIf it did, happy to be useful — even just a quick sanity-check call."
+    }
+  }
+}

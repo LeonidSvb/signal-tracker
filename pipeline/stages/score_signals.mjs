@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 // Score passed_icp raw_signals (rule-based) + LLM angle.
 // Creates signal records in signals table. Skips already-processed signals.
-// Run: node --env-file=nextjs/.env.local pipeline/stages/05_score_llm.mjs
+// Run: node --env-file=nextjs/.env.local pipeline/stages/score_signals.mjs
 
 import { readFileSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { selectAll, insert, patch } from '../lib/supabase.mjs';
 import { getClientId, startRun, finishRun } from '../lib/log.mjs';
+import { expiresAt } from '../lib/staleness.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const CLIENT_SLUG = process.env.NEXT_PUBLIC_CLIENT_SLUG || 'philippe-bosquillon';
@@ -96,12 +97,6 @@ function calcScore(signal, multiSignalBonus = 0) {
   return Math.min(10, execScore(title) + freshScore(signal.pub_date));
 }
 
-function calcExpires(signal) {
-  const base = signal.pub_date ? new Date(signal.pub_date) : new Date();
-  const days = signal.source_type === 'news' ? 30 : 90;
-  return new Date(base.getTime() + days * 86_400_000).toISOString();
-}
-
 function daysAgo(pubDate) {
   if (!pubDate) return null;
   return Math.round((Date.now() - new Date(pubDate).getTime()) / 86_400_000);
@@ -138,7 +133,7 @@ function parseJsonLoose(text) {
 
 // News signals never carry a structured company_name (Exa returns a headline, not an entity —
 // see docs/EXA_INTEGRATION.md) — found 2026-07-13: every Exa signal's company_name was landing
-// null, so resolveCompany() was searching against '' and 03_resolve_companies.mjs was skipping
+// null, so resolveCompany() was searching against '' and resolve_companies.mjs was skipping
 // them outright (`if (!name) continue`). One LLM call now extracts the company name AND writes
 // the angle at the same time, since both need the same headline anyway.
 async function extractCompanyAndAngle(signal, country) {
@@ -169,9 +164,9 @@ Respond with ONLY a JSON object, no other text: {"company": "<the single food/be
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 export async function run() {
-  console.log('\n=== 05_score_llm.mjs ===');
+  console.log('\n=== score_signals.mjs ===');
   const clientId = await getClientId(CLIENT_SLUG);
-  const runId    = await startRun({ clientId, script: '05_score_llm', source: 'llm_scoring' });
+  const runId    = await startRun({ clientId, script: 'score_signals', source: 'llm_scoring' });
 
   const rawSignals = await selectAll('raw_signals', { client_id: clientId, status: 'passed_icp' });
   console.log(`passed_icp signals: ${rawSignals.length}`);
@@ -274,7 +269,7 @@ export async function run() {
         score,
         freshness_score: freshScore(s.pub_date),
         status:         'active',
-        expires_at:     calcExpires(s),
+        expires_at:     expiresAt(signalType, s.pub_date),
         narrative:      null,
         angle,
       });

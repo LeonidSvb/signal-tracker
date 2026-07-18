@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // ICP filter — reads all pending raw_signals, classifies each row,
 // writes status='passed_icp'|'filtered_out' + filter_reason back to DB.
-// Run: node --env-file=nextjs/.env.local pipeline/stages/02_filter.mjs
+// Run: node --env-file=nextjs/.env.local pipeline/stages/filter_icp.mjs
 
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
@@ -57,11 +57,12 @@ function filterHiring(row) {
     if (industries && !hasKeyword(industries, cfg.industry_keywords))
       return { status: 'filtered_out', filter_reason: 'wrong_industry' };
 
-    const emp = row.raw_data?.companyEmployeesCount;
-    if (emp != null) {
-      if (emp < cfg.min_employees || emp > cfg.max_employees)
-        return { status: 'filtered_out', filter_reason: 'wrong_size' };
-    }
+    // Hard employee-count cutoff removed 2026-07-15 (Leo): this was a TERMINAL, irreversible
+    // reject — a company filtered_out here never reaches classify_company.mjs's LLM/Blitz
+    // judgment at all. A small food-industry company can easily afford a €70-90K+ senior hire,
+    // so a raw headcount number was the wrong signal to gate on this early. Employee count is
+    // now judged downstream (Blitz real data + permissive LLM guidance in companyClassifier.mjs)
+    // instead of blocked here before any real judgment happens.
   }
 
   if (source === 'xing') {
@@ -84,7 +85,7 @@ function filterNews(row) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
-  console.log('=== 02_filter.mjs ===');
+  console.log('=== filter_icp.mjs ===');
   const clientId = await getClientId(CLIENT_SLUG);
   console.log(`client_id: ${clientId}`);
 
@@ -104,7 +105,7 @@ async function main() {
     console.log(`  ${status.padEnd(15)} ${reason.padEnd(20)} ${ids.length}`);
   }
 
-  const runId = await startRun({ clientId, script: '02_filter', source: 'icp_filter' });
+  const runId = await startRun({ clientId, script: 'filter_icp', source: 'icp_filter' });
 
   let passed = 0, filtered = 0, updated = 0;
   for (const [key, ids] of Object.entries(groups)) {

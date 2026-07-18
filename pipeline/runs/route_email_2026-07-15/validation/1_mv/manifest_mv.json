@@ -1,0 +1,14 @@
+{
+  "date": "2026-07-15T19:33",
+  "actor": "VJ5w50TP6mAbyimyO",
+  "input": "C:\\Users\\79818\\Desktop\\Mastr_Leads\\clients\\philippe-bosquillon\\signals\\pipeline\\runs\\route_email_2026-07-15\\validation\\input.txt",
+  "total": 20,
+  "results": {
+    "ok": 15,
+    "catch_all": 2,
+    "unknown": 2,
+    "disposable": 0,
+    "invalid": 1
+  },
+  "est_cost_usd": 0.016
+}
