@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Signal Tracker 2.0 — Concept</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --bg: #EEF1F7; --surface: #FFFFFF; --surface-2: #F7F8FC; --border: #E1E4EC;
+  --ink: #1E2233; --muted: #8B92A6; --muted-2: #B4B9C8;
+  --accent: #4F5FD1; --accent-light: #EEF0FE; --accent-text: #4A55C4;
+  --pos: #1E8A4C; --pos-bg: #E4F5E9;
+  --warn: #A8720A; --warn-bg: #FDF3D8;
+  --neg: #C0392B; --neg-bg: #FBE7E4;
+  --neutral-bg: #EEF0F3; --neutral-text: #6B7280;
+  --shadow: 0 1px 2px rgba(30,34,51,0.04), 0 1px 8px rgba(30,34,51,0.04);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Lato', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px; line-height: 1.5; }
+.mono { font-family: ui-monospace, 'SF Mono', Consolas, monospace; }
+
+/* ── App shell ─────────────────────────────────────────── */
+.app { display: flex; flex-direction: column; height: 100vh; }
+.topbar { background: #0D0F16; color: #fff; padding: 11px 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-shrink: 0; }
+.topbar-left { display: flex; align-items: center; gap: 22px; }
+.topbar-title { font-size: 15px; font-weight: 700; }
+.topbar-sub { font-size: 11.5px; color: #9CA3C4; margin-top: 1px; }
+.topnav { display: flex; gap: 4px; }
+.topnav a { font-size: 11.5px; font-weight: 700; color: #9CA3C4; text-decoration: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+.topnav a.active { background: rgba(255,255,255,.08); color: #fff; }
+.topbar-stats { display: flex; gap: 20px; }
+.tstat { text-align: center; }
+.tstat b { display: block; font-size: 17px; font-weight: 800; line-height: 1; }
+.tstat span { font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: #8890B5; }
+
+.body { display: flex; flex: 1; overflow: hidden; }
+.view { display: none; flex: 1; overflow: hidden; }
+.view.active { display: flex; }
+
+/* ── Sidebar / list — WIDER + DENSER per Leo's feedback ──── */
+.sidebar { width: 460px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; }
+.sidebar-note { padding: 8px 14px; font-size: 10.5px; color: var(--muted); background: var(--surface-2); border-bottom: 1px solid var(--border); }
+.row { padding: 7px 14px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .1s; }
+.row:hover { background: var(--surface-2); }
+.row.active { background: var(--accent-light); border-left: 3px solid var(--accent); padding-left: 11px; }
+.row.locked { cursor: default; opacity: .62; }
+.row-top { display: flex; align-items: center; gap: 8px; }
+.row-name { font-size: 12.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.row-meta { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dot-sep::before { content: "·"; margin: 0 5px; color: var(--muted-2); }
+
+.tier-pill { font-size: 8.5px; font-weight: 800; letter-spacing: .03em; padding: 1.5px 5px; border-radius: 4px; flex-shrink: 0; cursor: help; }
+.tier-T1 { background: var(--accent); color: #fff; }
+.tier-T2 { background: var(--accent-light); color: var(--accent-text); }
+.tier-T3 { background: var(--neutral-bg); color: var(--neutral-text); }
+
+.avail-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--pos); flex-shrink: 0; }
+.locked-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted-2); flex-shrink: 0; }
+
+/* tooltip */
+.tip { position: relative; }
+.tip .tip-box { position: absolute; bottom: calc(100% + 6px); left: 0; background: var(--ink); color: #fff; font-size: 11px;
+  font-weight: 400; padding: 8px 10px; border-radius: 6px; width: 240px; line-height: 1.5; display: none; z-index: 20;
+  box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+.tip:hover .tip-box { display: block; }
+
+/* ── Detail pane ───────────────────────────────────────── */
+.detail { flex: 1; overflow-y: auto; padding: 24px 30px 60px; }
+.detail-inner { max-width: 780px; }
+.placeholder { max-width: 460px; margin: 80px auto; text-align: center; color: var(--muted); }
+.placeholder .icon { font-size: 30px; margin-bottom: 10px; }
+.placeholder h3 { color: var(--ink); font-size: 15px; margin: 0 0 6px; }
+.placeholder p { font-size: 12.5px; line-height: 1.6; margin: 0; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; margin-bottom: 16px; }
+.card-head { padding: 17px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.co-name { font-size: 19px; font-weight: 800; margin-bottom: 4px; }
+.co-meta { font-size: 12px; color: var(--muted); display: flex; align-items: center; flex-wrap: wrap; }
+.co-meta a { color: var(--accent-text); text-decoration: none; }
+.co-meta a:hover { text-decoration: underline; }
+.tier-block { text-align: right; flex-shrink: 0; }
+.tier-big { font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; cursor: help; }
+.tier-reason { font-size: 10.5px; color: var(--muted); margin-top: 5px; max-width: 190px; }
+
+.section { padding: 15px 20px; border-bottom: 1px solid var(--border); }
+.section:last-child { border-bottom: none; }
+.section-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+
+/* events — AI summary + deduped sources */
+.event { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+.event:last-child { margin-bottom: 0; }
+.event-top { padding: 11px 13px; }
+.event-toprow { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 5px; }
+.event-badge { font-size: 9.5px; font-weight: 800; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; flex-shrink: 0; }
+.badge-active { background: var(--pos-bg); color: var(--pos); }
+.badge-stale { background: var(--neutral-bg); color: var(--neutral-text); }
+.ai-summary { font-size: 13px; font-weight: 600; line-height: 1.45; }
+.ai-tag { font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--accent-text); background: var(--accent-light); padding: 1.5px 5px; border-radius: 4px; margin-right: 6px; vertical-align: 1px; }
+.event-sources { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.src-link { font-size: 10.5px; color: var(--accent-text); text-decoration: none; border: 1px solid var(--border); padding: 3px 8px; border-radius: 999px; background: var(--surface-2); }
+.src-link:hover { border-color: var(--accent); text-decoration: underline; }
+.dupe-note { font-size: 10px; color: var(--muted-2); font-style: italic; margin-top: 6px; }
+
+/* contacts */
+.contacts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.contact { border: 1px solid var(--border); border-radius: 8px; padding: 12px; position: relative; }
+.contact.primary { border-color: var(--accent); }
+.c-priority { position: absolute; top: 10px; right: 10px; font-size: 8.5px; font-weight: 800; text-transform: uppercase; color: var(--accent-text); }
+.c-name { font-size: 13.5px; font-weight: 700; padding-right: 50px; }
+.c-title { font-size: 11px; color: var(--muted); margin: 2px 0 8px; min-height: 14px; }
+.email-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; margin-bottom: 8px; }
+.pill-verified { background: var(--pos-bg); color: var(--pos); }
+.pill-pending { background: var(--warn-bg); color: var(--warn); }
+.pill-none { background: var(--neutral-bg); color: var(--neutral-text); }
+.c-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.c-link { font-size: 11.5px; font-weight: 600; padding: 5px 9px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+.c-link:hover { border-color: var(--accent); color: var(--accent-text); }
+.c-link.li { background: #EAF3FC; border-color: #C7DEF5; color: #1D6FBF; }
+
+/* outreach — flat status row (D2) */
+.channel-block { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
+.channel-block:last-child { margin-bottom: 0; }
+.channel-head { padding: 10px 14px; background: var(--surface-2); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+.channel-name { font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 7px; }
+.channel-name .li-dot { width: 7px; height: 7px; border-radius: 50%; background: #1D6FBF; }
+.channel-name .em-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted-2); }
+.channel-owner { font-size: 9.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 700; }
+
+.status-row { padding: 12px 14px 4px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.status-btn { padding: 5px 12px; border-radius: 999px; font-size: 11.5px; font-weight: 700; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; }
+.status-btn:hover { border-color: var(--accent); }
+.status-btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.status-btn.on.pass { background: var(--neg); border-color: var(--neg); }
+.status-btn.on.meeting { background: var(--pos); border-color: var(--pos); }
+
+.copy-box { margin: 10px 14px 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.cb-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--accent-text); margin-bottom: 7px; }
+.cb-msg { font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; white-space: pre-wrap; line-height: 1.55; margin-bottom: 9px; }
+.cb-aside { font-size: 11px; color: var(--muted); background: var(--warn-bg); border-left: 3px solid var(--warn); padding: 7px 10px; border-radius: 5px; margin-bottom: 9px; line-height: 1.5; }
+.cb-actions { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+.btn { font-size: 11.5px; font-weight: 700; padding: 6px 12px; border-radius: 6px; border: 1px solid transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+.btn-copy { background: var(--surface); border-color: var(--border); color: var(--ink); }
+.btn-copy:hover { border-color: var(--accent); color: var(--accent-text); }
+.btn-copy.copied { border-color: var(--pos); color: var(--pos); }
+.btn-translate { background: var(--surface); border-color: var(--border); color: var(--ink); }
+.btn-translate:hover { border-color: var(--accent-text); color: var(--accent-text); }
+.btn-translate.on { background: var(--accent-light); border-color: var(--accent); color: var(--accent-text); }
+
+.email-status { padding: 13px 14px; font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.email-status .ico { font-size: 14px; }
+
+/* ── Templates view (D4) ───────────────────────────────── */
+.templates-wrap { flex: 1; overflow-y: auto; padding: 24px 30px 60px; }
+.templates-inner { max-width: 980px; }
+.tpl-intro { font-size: 12.5px; color: var(--muted); margin-bottom: 16px; max-width: 70ch; line-height: 1.6; }
+.tpl-universal { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
+.tpl-universal-label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--accent-text); margin-bottom: 8px; }
+.tpl-universal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tpl-universal-item .k { font-size: 10.5px; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+.tpl-universal-item .v { font-family: ui-monospace, monospace; font-size: 11px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 5px; padding: 8px 10px; white-space: pre-wrap; line-height: 1.5; }
+
+.tpl-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+table.tpl { width: 100%; border-collapse: collapse; }
+table.tpl th { text-align: left; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; color: var(--muted);
+  padding: 9px 12px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+table.tpl th.li-col { color: #1D6FBF; }
+table.tpl th.em-col { color: var(--muted); }
+table.tpl td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: top; font-size: 11.5px; }
+table.tpl tr:last-child td { border-bottom: none; }
+table.tpl td.key { font-family: ui-monospace, monospace; font-weight: 700; font-size: 10.5px; white-space: nowrap; }
+table.tpl td.copy { font-family: ui-monospace, monospace; font-size: 10.5px; color: var(--ink); line-height: 1.5; max-width: 280px; }
+table.tpl td.copy.li { background: #FAFCFF; }
+
+.reset-link { font-size: 10.5px; color: var(--muted-2); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; background: none; border: none; padding: 0; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div>
+        <div class="topbar-title">Signal Leads — v2.0 concept</div>
+        <div class="topbar-sub">Philippe Bosquillon · Food Executive Search</div>
+      </div>
+      <div class="topnav">
+        <a class="active" onclick="switchView('leads', this)">Leads</a>
+        <a onclick="switchView('templates', this)">Templates</a>
+      </div>
+    </div>
+    <div class="topbar-stats">
+      <div class="tstat"><b>49</b><span>T1</span></div>
+      <div class="tstat"><b>54</b><span>T2</span></div>
+      <div class="tstat"><b>14</b><span>T3</span></div>
+      <div class="tstat"><b>339</b><span>Emails checked</span></div>
+    </div>
+  </div>
+
+  <div class="body">
+    <!-- ═══════════ LEADS VIEW ═══════════ -->
+    <div class="view active" id="view-leads">
+      <div class="sidebar" id="sidebar">
+        <div class="sidebar-note">32 real companies from the live DB — wider + denser per feedback · DMK &amp; BRATA have full detail wired below</div>
+        <div id="rows"></div>
+      </div>
+      <div class="detail" id="detail"></div>
+    </div>
+
+    <!-- ═══════════ TEMPLATES VIEW (D4) ═══════════ -->
+    <div class="view" id="view-templates">
+      <div class="templates-wrap">
+        <div class="templates-inner">
+          <div class="tpl-intro">One row per signal type — reads directly from <code>pipeline/config/copy_templates.json</code> (the same file <code>build_linkedin_queue.mjs</code> and <code>route_email.mjs</code> use in production, per ADR-009 D4). Step 3 and the follow-up are universal across every signal type by design (ADR-005) — shown once above, not repeated per row.</div>
+
+          <div class="tpl-universal">
+            <div class="tpl-universal-label">Universal — same for every signal type</div>
+            <div class="tpl-universal-grid">
+              <div class="tpl-universal-item"><div class="k">Step 3 — propose a call (LinkedIn)</div><div class="v">Good, that's exactly what I help with — worth a quick call to figure out which of these roles matters most right now. {relevant case, if you have one} Here's my calendar: [Calendly link].</div></div>
+              <div class="tpl-universal-item"><div class="k">Follow-up nudge (LinkedIn)</div><div class="v">Hey {first_name} — just checking back in, no worries if it's not the right time.</div></div>
+            </div>
+          </div>
+
+          <div class="tpl-table-wrap">
+            <table class="tpl">
+              <thead>
+                <tr>
+                  <th>Signal type</th>
+                  <th class="li-col">LinkedIn — Step 1 (connect)</th>
+                  <th class="li-col">LinkedIn — Step 2 (qualify)</th>
+                  <th class="em-col">Email — variant A (Leo)</th>
+                </tr>
+              </thead>
+              <tbody id="tpl-rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Real data pulled live from signal_monitoring on 2026-07-19 ──────────────
+const LIST = [
+  {id:'dmk', name:'DMK Deutsches Milchkontor Gmbh', tier:'T1', employees:1005, country:'DE', sources:3, contacts:5, withEmail:5, available:true},
+  {id:'brata', name:'BRATA Produktion GmbH', tier:'T2', employees:300, country:'DE', sources:1, contacts:3, withEmail:0, available:true},
+  {name:'Group of Butchers', tier:'T1', employees:280, country:'NL', sources:2, contacts:3, withEmail:2},
+  {name:'Ingredion Incorporated', tier:'T1', employees:8374, country:'US', sources:4, contacts:5, withEmail:4},
+  {name:'Aryzta', tier:'T1', employees:7700, country:'CH', sources:2, contacts:3, withEmail:2},
+  {name:'Heineken', tier:'T1', employees:1360, country:'BE', sources:1, contacts:4, withEmail:2},
+  {name:'waterdrop®', tier:'T1', employees:400, country:'AT', sources:2, contacts:3, withEmail:3},
+  {name:'Circus', tier:'T1', employees:300, country:'DE', sources:2, contacts:5, withEmail:0},
+  {name:'Vandemoortele USA', tier:'T1', employees:6000, country:'BE', sources:3, contacts:3, withEmail:1},
+  {name:'InfiniteRoots', tier:'T1', employees:200, country:'DE', sources:2, contacts:3, withEmail:1},
+  {name:'Hengstenberg', tier:'T1', employees:2000, country:'DE', sources:1, contacts:6, withEmail:1},
+  {name:'Poulailon', tier:'T1', employees:250, country:'FR', sources:1, contacts:1, withEmail:1},
+  {name:'Planted', tier:'T1', employees:215, country:'DE', sources:2, contacts:1, withEmail:1},
+  {name:'el origen food GmbH', tier:'T1', employees:20, country:'DE', sources:1, contacts:4, withEmail:0},
+  {name:'Culinor', tier:'T1', employees:200, country:'CH', sources:1, contacts:6, withEmail:2},
+  {name:'The Vegetarian Butcher Collective', tier:'T1', employees:127, country:'NL', sources:1, contacts:3, withEmail:0},
+  {name:'Eurolysine', tier:'T1', employees:195, country:null, sources:2, contacts:5, withEmail:2},
+  {name:'Crisp', tier:'T1', employees:405, country:null, sources:1, contacts:3, withEmail:2},
+  {name:'Zertus Gruppe', tier:'T1', employees:42, country:null, sources:1, contacts:4, withEmail:2},
+  {name:'The Nutriment Company', tier:'T1', employees:300, country:null, sources:1, contacts:3, withEmail:2},
+  {name:'Maasoever', tier:'T1', employees:25, country:'NL', sources:1, contacts:4, withEmail:2},
+  {name:'Berief Food Gmbh', tier:'T1', employees:72, country:'DE', sources:2, contacts:1, withEmail:1},
+  {name:'Polaris', tier:'T1', employees:51, country:'FR', sources:1, contacts:1, withEmail:1},
+  {name:'Suntory Beverage & Food Benelux', tier:'T2', employees:71, country:'BE', sources:1, contacts:1, withEmail:0},
+  {name:'Hügli Nahrungsmittel Gmbh', tier:'T2', employees:268, country:'DE', sources:1, contacts:1, withEmail:0},
+  {name:'Henry Lambertz Gmbh & Co Kg', tier:'T2', employees:256, country:'DE', sources:1, contacts:1, withEmail:0},
+  {name:'Bav Institut', tier:'T2', employees:77, country:'DE', sources:1, contacts:1, withEmail:1},
+  {name:"Tout&bon", tier:'T2', employees:158, country:'FR', sources:1, contacts:3, withEmail:3},
+  {name:'Haus Rabenhorst O. Lauffs Gmbh & Co. Kg', tier:'T2', employees:53, country:'DE', sources:1, contacts:1, withEmail:0},
+  {name:'Lactalis Germany', tier:'T3', employees:2500, country:null, sources:1, contacts:8, withEmail:2},
+  {name:'Theo Müller Unternehmensgruppe (UTM)', tier:'T3', employees:35000, country:null, sources:1, contacts:3, withEmail:3},
+  {name:'Corbion', tier:'T3', employees:2299, country:'NL', sources:1, contacts:2, withEmail:0},
+];
+
+const TIER_EXPLAIN = {
+  T1: "Highest priority. Has a fresh 'class A' event (M&A, investment, new leadership) — or 2+ different events within 90 days.",
+  T2: "Medium priority. Has a fresh 'class B' event (expansion, contract win, sector signal).",
+  T3: "Lower priority. Older or weaker signal — still worth a look, just not urgent.",
+};
+
+// ── D3: events deduped by source_url, AI-summarized when >=2 unique sources ──
+const DETAIL = {
+  dmk: {
+    name: 'DMK Deutsches Milchkontor GmbH', industry: 'Food and Beverage Manufacturing', employees: 1005, country: 'DE',
+    domain: 'dmk.de', linkedin: 'https://www.linkedin.com/company/dmk-group',
+    tier: 'T1', rank: 9, tier_reason: 'fresh class A event: EXPAND/INVEST (52d) — €25m lactoferrin plant',
+    events: [
+      {
+        status: 'active',
+        summary: "DMK is investing €25m to expand lactoferrin production at its German dairy plant — confirmed by 3 independent outlets.",
+        sources: [
+          { label: 'FoodBev Media', url: 'https://www.foodbev.com/news/dmk-group-invests-25m-in-lactoferrin-production-to-expand-functional-ingredients-portfolio', date: '2026-05-28' },
+          { label: 'just-food.com', url: 'https://www.just-food.com/news/dmk-group-german-plant-capex/', date: '2026-05-27' },
+          { label: 'IN Food', url: 'https://in-food.co.uk/dmk-opens-e25m-lactoferrin-plant/', date: '2026-06-01' },
+        ],
+        dupeNote: '5 raw signal rows collapsed to 3 unique sources — the just-food.com article was caught by 3 different Exa monitor categories (SECTOR/EXPAND ×2), same URL each time.',
+      },
+      { status: 'stale', summary: "Inside the Arla–DMK merger: Ingo Müller appointed Head of Germany in the merged entity.", sources: [
+        { label: 'Mejerimedier', url: '#', date: '2026-06-04' },
+      ], dupeNote: null },
+    ],
+    contacts: [
+      { name: 'Andreas Nagel', title: 'Global GBS / Shared Services Leader — Strategy, Transformation, HR and FI Operations', linkedin: 'https://www.linkedin.com/in/andreaspeternagel', email: 'andreas.nagel@dmk.de', status: 'verified', primary: true },
+      { name: 'Merle Niewert', title: 'Head of HR Digitalization & Business Analytics bei DMK Deutsches Milchkontor GmbH', linkedin: 'https://www.linkedin.com/in/merle-niewert-a3800522a', email: 'merle.niewert@dmk.de', status: 'pending', primary: false },
+    ],
+    outreach: {
+      contactFirstName: 'Andreas',
+      en: {
+        connect: "Saw DMK's build for the new lactoferrin plant, Andreas. I do exec search in food, Germany — would be glad to connect.",
+        sent: "Thanks for connecting, Andreas. Builds like this usually need the plant leadership locked in before opening day — is that hire already underway?",
+        replied: "Thanks for connecting, Andreas. Builds like this usually need the plant leadership locked in before opening day — is that hire already underway?",
+        meeting: "Good, that's exactly what I help with — worth a quick call to figure out which of these roles matters most right now. Here's my calendar: [Calendly link].",
+      },
+      de: {
+        connect: "Herzlichen Glückwunsch — habe den Ausbau von DMK gesehen, Andreas. Ich mache Executive Search im Lebensmittelbereich, Deutschland — würde mich freuen, mich zu vernetzen.",
+        sent: "Danke fürs Vernetzen, Andreas. Solche Bauprojekte brauchen meist die Werksleitung vor der Eröffnung — läuft diese Suche schon?",
+        replied: "Danke fürs Vernetzen, Andreas. Solche Bauprojekte brauchen meist die Werksleitung vor der Eröffnung — läuft diese Suche schon?",
+        meeting: "Gut, genau damit helfe ich — lohnt sich ein kurzer Anruf, um zu klären, welche Rolle gerade am wichtigsten ist. Hier mein Kalender: [Calendly-Link].",
+      },
+      aside: "If the answer is a clear no — don't propose a call, simply move on. If they're clearly engaged, it's fine to ask a bit more (decision-maker? other roles open? rough timeline?) — but leave budget/comp for the actual call.",
+    },
+    emailState: 'no_campaign',
+  },
+  brata: {
+    name: 'BRATA Produktion GmbH', industry: 'Retail Groceries · breadcrumbs & food coatings', employees: 300, country: 'DE',
+    domain: 'brata.de', linkedin: 'https://www.linkedin.com/company/brata-kg',
+    tier: 'T2', rank: 5, tier_reason: 'best fresh event: EXPAND (class B, 33d)',
+    events: [
+      { status: 'active', summary: "BRATA's new blending facility completed its first production order.", sources: [
+        { label: 'Company site', url: 'https://www.brata.de', date: '2026-06-16' },
+      ], dupeNote: null },
+    ],
+    contacts: [
+      { name: 'Stefan Eßer', title: 'Prokurist / Betriebsleiter', linkedin: 'https://linkedin.com/in/stefan-e%C3%9Fer-b343b8106', email: null, status: 'none', primary: true },
+      { name: 'Etienne Piehler', title: 'Sales Manager Export at BRATA Paniermehl | Food Coatings & Breadcrumbs', linkedin: 'https://linkedin.com/in/etienne-piehler-552a25251', email: null, status: 'none', primary: false },
+    ],
+    outreach: {
+      contactFirstName: 'Stefan',
+      en: {
+        connect: "Saw BRATA's new blending facility go into production, Stefan. I do exec search in food, Germany — would be glad to connect.",
+        sent: "Thanks for connecting, Stefan. Builds like this usually need the plant leadership locked in before opening day — is that hire already underway?",
+        replied: "Thanks for connecting, Stefan. Builds like this usually need the plant leadership locked in before opening day — is that hire already underway?",
+        meeting: "Good, that's exactly what I help with — worth a quick call to figure out which of these roles matters most right now. Here's my calendar: [Calendly link].",
+      },
+      de: {
+        connect: "Habe die neue Anlage von BRATA gesehen, Stefan. Ich mache Executive Search im Lebensmittelbereich, Deutschland — würde mich freuen, mich zu vernetzen.",
+        sent: "Danke fürs Vernetzen, Stefan. Solche Bauprojekte brauchen meist die Werksleitung vor der Eröffnung — läuft diese Suche schon?",
+        replied: "Danke fürs Vernetzen, Stefan. Solche Bauprojekte brauchen meist die Werksleitung vor der Eröffnung — läuft diese Suche schon?",
+        meeting: "Gut, genau damit helfe ich — lohnt sich ein kurzer Anruf, um zu klären, welche Rolle gerade am wichtigsten ist. Hier mein Kalender: [Calendly-Link].",
+      },
+      aside: "If the answer is a clear no — don't propose a call, simply move on. If they're clearly engaged, it's fine to ask a bit more (decision-maker? other roles open? rough timeline?) — but leave budget/comp for the actual call.",
+    },
+    emailState: 'no_email',
+  },
+};
+
+// D4 — copy_templates.json migrated shape preview (9 keys kept, step1/step2 per key)
+const TEMPLATES = [
+  { key: 'HIRING_EXEC', li1: 'saw the {exact_job_title} opening at {company}. I do exec search in food, {market_focus} — open to connecting?', li2: 'Is the {exact_job_title} search still open, or did you already fill it?', em: 'hey {first_name},\n\nsaw {company} is looking for a {exact_job_title} —\nthat\'s exactly what Philippe places, senior food industry execs\nin {market_focus} in about 2 weeks\n\nworth a quick intro?\n\nLeo' },
+  { key: 'HIRING_MID', li1: "{company}'s {exact_job_title} posting is exactly the kind of role I place — food operations leadership, {market_focus}. Let's connect.", li2: 'Quick one: is the {exact_job_title} role at {company} still open?', em: 'hey {first_name},\n\nsaw {company} is hiring a {exact_job_title} —\n\nI know someone who specifically places production leadership roles\nat food companies in {market_focus}\n\nworth an intro?\n\nLeo' },
+  { key: 'HIRING_SURGE', li1: 'noticed {company} posted for a {role_1} and a {role_2} this month — looks like serious scaling.', li2: 'Is the leadership hiring push still the priority, or has one of these roles taken precedence?', em: 'hey {first_name},\n\nsaw {company} is simultaneously looking for a {role_1} and a {role_2} —\nthat\'s a lot of leadership to find at once\n\nworth an intro?\n\nLeo' },
+  { key: 'MA', li1: 'Following the {acquirer}/{target} deal —', li2: 'Integrations like this usually mean a leadership gap shows up within the first few months — is that already happening?', em: 'hey {first_name},\n\nsaw the {acquirer}/{target} deal —\nintegrations like this usually surface a leadership gap fast\n\nworth an intro?\n\nLeo' },
+  { key: 'EXPAND', li1: "Saw {company}'s build at {location}.", li2: 'Builds like this usually need the plant leadership locked in before opening day — is that hire already underway?', em: 'hey {first_name},\n\nsaw {company}\'s build at {location} —\nusually means new plant leadership gets locked in before opening day\n\nworth an intro?\n\nLeo' },
+  { key: 'INVEST', li1: 'Congrats on the {amount} raise at {company}.', li2: 'Rounds like this usually mean leadership hiring follows within a few months — already on the roadmap?', em: 'hey {first_name},\n\ncongrats on the {amount} raise —\nrounds like this usually mean leadership hiring follows within months\n\nworth an intro?\n\nLeo' },
+  { key: 'CONTRACT', li1: "Saw {company}'s new contract win.", li2: 'Wins like that usually pull operations hard enough to need extra leadership — is that already showing up?', em: 'hey {first_name},\n\nsaw {company}\'s new contract win —\nwins like that usually pull operations hard enough to need extra leadership\n\nworth an intro?\n\nLeo' },
+  { key: 'CLEVEL', li1: 'Congratulations on the new role at {company}.', li2: 'New leadership usually means the team underneath gets a look too — is that already on your radar?', em: 'hey {first_name},\n\ncongrats on the new role at {company} —\nnew leadership at the top usually means changes below within months\n\nworth an intro?\n\nLeo' },
+  { key: 'HIRING_STALE', li1: '(same as HIRING_MID — role has been open a while)', li2: 'Still working through the {job_title} search, or has it stalled?', em: 'hey {first_name},\n\nstill seeing the {job_title} role posted —\nif the search isn\'t going the way you hoped, worth a conversation\n\nLeo' },
+];
+
+let selected = 'dmk';
+let statusState = { dmk: 'sent', brata: 'sent' };
+let langState = { dmk: 'en', brata: 'en' };
+
+function countryFlag(c) { return c || ''; }
+
+function renderList() {
+  document.getElementById('rows').innerHTML = LIST.map((c) => {
+    const isAvail = !!c.available;
+    const isActive = isAvail && c.id === selected;
+    const meta = [countryFlag(c.country), c.employees ? c.employees.toLocaleString() + 'p' : null, c.sources + ' src', c.withEmail + '/' + c.contacts + ' email'].filter(Boolean).join(' · ');
+    const clickHandler = isAvail ? "selectCompany('" + c.id + "')" : 'renderPlaceholder()';
+    return '<div class="row ' + (isActive ? 'active' : '') + ' ' + (isAvail ? '' : 'locked') + '" onclick="' + clickHandler + '">' +
+      '<div class="row-top">' +
+        '<span class="' + (isAvail ? 'avail-dot' : 'locked-dot') + '"></span>' +
+        '<span class="row-name">' + c.name + '</span>' +
+        '<span class="tier-pill tip tier-' + c.tier + '">' + c.tier + '<span class="tip-box">' + TIER_EXPLAIN[c.tier] + '</span></span>' +
+      '</div>' +
+      '<div class="row-meta">' + meta + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function emailPill(status) {
+  if (status === 'verified') return '<span class="email-pill pill-verified">✓ Verified</span>';
+  if (status === 'pending') return '<span class="email-pill pill-pending">◐ Pending recheck</span>';
+  return '<span class="email-pill pill-none">No email found — LinkedIn only</span>';
+}
+
+function renderEvents(events) {
+  return events.map((e) => {
+    const badgeClass = e.status === 'active' ? 'badge-active' : 'badge-stale';
+    const srcLinks = e.sources.map(s => '<a class="src-link" href="' + s.url + '" target="_blank">↗ ' + esc(s.label) + ' · ' + s.date + '</a>').join('');
+    return '<div class="event">' +
+      '<div class="event-top">' +
+        '<div class="event-toprow"><span class="ai-summary"><span class="ai-tag">AI summary</span>' + esc(e.summary) + '</span><span class="event-badge ' + badgeClass + '">' + e.status + '</span></div>' +
+        '<div class="event-sources">' + srcLinks + '</div>' +
+        (e.dupeNote ? '<div class="dupe-note">' + esc(e.dupeNote) + '</div>' : '') +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderContacts(contacts) {
+  return '<div class="contacts-grid">' + contacts.map(c => {
+    const emailAction = c.status === 'verified' ? '<a class="c-link" href="mailto:' + c.email + '">✉ ' + c.email + '</a>' : '';
+    return '<div class="contact ' + (c.primary ? 'primary' : '') + '">' +
+      (c.primary ? '<span class="c-priority">Primary</span>' : '') +
+      '<div class="c-name">' + esc(c.name) + '</div>' +
+      '<div class="c-title">' + esc(c.title || '') + '</div>' +
+      emailPill(c.status) +
+      '<div class="c-actions">' + emailAction + '<a class="c-link li" href="' + c.linkedin + '" target="_blank">in LinkedIn</a></div>' +
+    '</div>';
+  }).join('') + '</div>';
+}
+
+// D2 — flat status row + contextual copy text (no forced stepper)
+const STATUSES = [
+  { key: 'new', label: 'New' },
+  { key: 'sent', label: 'Sent' },
+  { key: 'replied', label: 'Replied' },
+  { key: 'meeting', label: 'Meeting' },
+  { key: 'pass', label: 'Pass' },
+];
+
+function renderOutreach(key) {
+  const o = DETAIL[key].outreach;
+  const status = statusState[key];
+  const lang = langState[key];
+
+  const statusBtns = STATUSES.map(s => '<button class="status-btn ' + (status === s.key ? 'on ' + s.key : '') + '" onclick="setStatus(\'' + key + '\',\'' + s.key + '\')">' + s.label + '</button>').join('');
+
+  let copyBox = '';
+  if (status === 'new') {
+    copyBox = '<div class="copy-box"><div class="cb-label">Ready to send — connection request</div><div class="cb-msg" id="msg-' + key + '">' + esc(o[lang].connect) + '</div>' + copyActions(key) + '</div>';
+  } else if (status === 'sent' || status === 'replied') {
+    copyBox = '<div class="copy-box"><div class="cb-label">' + (status === 'sent' ? 'Waiting on a reply — once they answer, use this' : 'They replied — qualifying question') + '</div><div class="cb-msg" id="msg-' + key + '">' + esc(o[lang].sent) + '</div><div class="cb-aside">' + esc(o.aside) + '</div>' + copyActions(key) + '</div>';
+  } else if (status === 'meeting') {
+    copyBox = '<div class="copy-box"><div class="cb-label">Propose a call — same text for every signal type</div><div class="cb-msg" id="msg-' + key + '">' + esc(o[lang].meeting) + '</div>' + copyActions(key) + '</div>';
+  } else if (status === 'pass') {
+    copyBox = '<div class="copy-box"><div class="cb-label" style="color:var(--muted)">Marked as pass — no further copy needed, no more nudges.</div></div>';
+  }
+
+  return '<div class="status-row">' + statusBtns + '</div>' + copyBox;
+}
+
+function copyActions(key) {
+  const lang = langState[key];
+  return '<div class="cb-actions">' +
+    '<button class="btn btn-copy" onclick="copyMsg(this,\'' + key + '\')">⧉ Copy text</button>' +
+    '<button class="btn btn-translate ' + (lang === 'de' ? 'on' : '') + '" onclick="toggleLang(\'' + key + '\')">' + (lang === 'de' ? '✓ Showing DE' : '🌐 Translate to DE') + '</button>' +
+  '</div>';
+}
+
+function renderEmailStatus(state) {
+  if (state === 'no_email') return '<div class="email-status"><span class="ico">—</span> No email on file for the primary contact — LinkedIn is the only channel here.</div>';
+  if (state === 'no_campaign') return '<div class="email-status"><span class="ico">◐</span> Not sent yet — waiting on a PlusVibe campaign to be configured. Leo will handle this automatically once live.</div>';
+  return '<div class="email-status"><span class="ico">✉</span> ' + esc(state) + '</div>';
+}
+
+function renderDetail(key) {
+  const d = DETAIL[key];
+  document.getElementById('detail').innerHTML =
+    '<div class="detail-inner">' +
+      '<div class="card">' +
+        '<div class="card-head">' +
+          '<div><div class="co-name">' + esc(d.name) + '</div>' +
+          '<div class="co-meta">' + [d.industry, d.employees ? d.employees.toLocaleString() + ' employees' : null, d.country, '<a href="https://' + d.domain + '" target="_blank">' + d.domain + ' ↗</a>', '<a href="' + d.linkedin + '" target="_blank">LinkedIn ↗</a>'].filter(Boolean).join(' <span class="dot-sep"></span> ') + '</div></div>' +
+          '<div class="tier-block"><span class="tier-big tip tier-' + d.tier + '">' + d.tier + '<span class="tip-box">' + TIER_EXPLAIN[d.tier] + ' Rank is an internal sort order within the tier, not shown as a raw number.</span></span><div class="tier-reason">' + esc(d.tier_reason) + '</div></div>' +
+        '</div>' +
+        '<div class="section"><div class="section-label">Signals — deduped by source, AI-summarized</div>' + renderEvents(d.events) + '</div>' +
+        '<div class="section"><div class="section-label">Contacts</div>' + renderContacts(d.contacts) + '</div>' +
+        '<div class="section">' +
+          '<div class="section-label">Outreach</div>' +
+          '<div class="channel-block">' +
+            '<div class="channel-head"><div class="channel-name"><span class="li-dot"></span>LinkedIn</div><div class="channel-owner">Philippe runs this</div></div>' +
+            '<div id="outreach-' + key + '">' + renderOutreach(key) + '</div>' +
+          '</div>' +
+          '<div class="channel-block">' +
+            '<div class="channel-head"><div class="channel-name"><span class="em-dot"></span>Email</div><div class="channel-owner">Leo runs this</div></div>' +
+            renderEmailStatus(d.emailState) +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+}
+
+function renderPlaceholder() {
+  document.getElementById('detail').innerHTML =
+    '<div class="placeholder"><div class="icon">◇</div><h3>Full detail not part of this preview</h3><p>DMK and BRATA (left) show the complete concept. The rest of the list uses real company names and counts, without the deep-dive wired up for this mock.</p></div>';
+}
+
+function renderTemplates() {
+  document.getElementById('tpl-rows').innerHTML = TEMPLATES.map(t =>
+    '<tr><td class="key">' + t.key + '</td><td class="copy li">' + esc(t.li1) + '</td><td class="copy li">' + esc(t.li2) + '</td><td class="copy">' + esc(t.em) + '</td></tr>'
+  ).join('');
+}
+
+window.selectCompany = function (key) { selected = key; renderList(); renderDetail(key); };
+window.setStatus = function (key, status) { statusState[key] = status; document.getElementById('outreach-' + key).innerHTML = renderOutreach(key); };
+window.toggleLang = function (key) { langState[key] = langState[key] === 'de' ? 'en' : 'de'; document.getElementById('outreach-' + key).innerHTML = renderOutreach(key); };
+window.copyMsg = function (btn, key) {
+  const el = document.getElementById('msg-' + key);
+  navigator.clipboard.writeText(el.textContent).catch(() => {});
+  btn.textContent = '✓ Copied'; btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = '⧉ Copy text'; btn.classList.remove('copied'); }, 1400);
+};
+window.switchView = function (view, el) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+  document.querySelectorAll('.topnav a').forEach(a => a.classList.remove('active'));
+  el.classList.add('active');
+};
+
+renderList();
+renderDetail('dmk');
+renderTemplates();
+</script>
+</body>
+</html>
