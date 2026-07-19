@@ -39,6 +39,8 @@ function Calendar({
       formatters={{
         formatMonthDropdown: (date) =>
           date.toLocaleString(locale?.code, { month: "short" }),
+        formatWeekdayName: (date) =>
+          date.toLocaleDateString(locale?.code, { weekday: "short" }),
         ...formatters,
       }}
       classNames={{

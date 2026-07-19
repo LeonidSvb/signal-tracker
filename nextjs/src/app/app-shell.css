@@ -317,19 +317,37 @@ table.act tr:hover td { background: var(--surface-2); }
 .dr-menu-item:hover { background: #F7F8FC; }
 .dr-menu-item.active { color: #4A55C4; font-weight: 700; background: #EEF0FE; }
 
+/* 2026-07-19: rebuilt against outreach-cockpit's actual reference implementation
+   (mockups/reply-agent/detailed-analytics.html's .dr-cal-day), not guessed —
+   3-letter weekday labels, one uniform solid fill across the whole range
+   (start/middle/end all the same dark accent, rounded only at true edges — the
+   reference explicitly calls out getting this wrong once: a half-width fill on
+   the edge cells made 2-digit white-on-white numbers unreadable), 27px circular
+   cells, 11.5px numerals, ring-not-fill hover on plain days. */
 [data-slot="calendar"] { color: #1E2233; font-size: 12px; }
 [data-slot="calendar"] .rdp-month_caption { font-weight: 700; font-size: 12.5px; }
-[data-slot="calendar"] .rdp-weekday { color: #8B92A6; font-weight: 700; font-size: 10px; text-transform: uppercase; }
+[data-slot="calendar"] .rdp-weekday { color: #B7BECC; font-weight: 700; font-size: 9.5px; }
 [data-slot="calendar"] .rdp-button_previous,
-[data-slot="calendar"] .rdp-button_next { color: #8B92A6; border-radius: 6px; }
+[data-slot="calendar"] .rdp-button_next { color: #A6ACBD; border-radius: 6px; }
 [data-slot="calendar"] .rdp-button_previous:hover,
-[data-slot="calendar"] .rdp-button_next:hover { background: #F7F8FC; color: #1E2233; }
-[data-slot="calendar"] .rdp-day_button { color: #1E2233; border-radius: 6px; font-weight: 500; }
-[data-slot="calendar"] .rdp-day_button:hover { background: #F7F8FC; }
-[data-slot="calendar"] .rdp-outside .rdp-day_button { color: #B4B9C8; }
-[data-slot="calendar"] .rdp-disabled .rdp-day_button { color: #B4B9C8; opacity: .5; }
-[data-slot="calendar"] .rdp-today .rdp-day_button { background: #F7F8FC; font-weight: 800; }
+[data-slot="calendar"] .rdp-button_next:hover { background: #F5F6FA; color: #3D4457; }
+[data-slot="calendar"] .rdp-day_button {
+  color: #3D4457; font-weight: 500; font-size: 11.5px;
+  width: 27px; height: 27px; border-radius: 50%; border: 1px solid transparent;
+}
+[data-slot="calendar"] .rdp-day_button:hover:not([data-selected-single="true"]):not([data-range-start="true"]):not([data-range-end="true"]):not([data-range-middle="true"]) {
+  border-color: #B9C0D6;
+}
+[data-slot="calendar"] .rdp-outside .rdp-day_button { color: #D2D5DE; }
+[data-slot="calendar"] .rdp-disabled .rdp-day_button { color: #D2D5DE; opacity: .5; }
+[data-slot="calendar"] .rdp-today .rdp-day_button { font-weight: 800; }
 [data-slot="calendar"] .rdp-day_button[data-selected-single="true"],
 [data-slot="calendar"] .rdp-day_button[data-range-start="true"],
-[data-slot="calendar"] .rdp-day_button[data-range-end="true"] { background: #4F5FD1; color: #FFFFFF; font-weight: 700; }
-[data-slot="calendar"] .rdp-day_button[data-range-middle="true"] { background: #EEF0FE; color: #4A55C4; border-radius: 0; }
+[data-slot="calendar"] .rdp-day_button[data-range-end="true"],
+[data-slot="calendar"] .rdp-day_button[data-range-middle="true"] {
+  background: #4F5FD1; color: #FFFFFF; font-weight: 700; border-radius: 0;
+}
+[data-slot="calendar"] .rdp-day_button[data-range-start="true"] { border-radius: 999px 0 0 999px; }
+[data-slot="calendar"] .rdp-day_button[data-range-end="true"] { border-radius: 0 999px 999px 0; }
+[data-slot="calendar"] .rdp-day_button[data-range-start="true"][data-range-end="true"],
+[data-slot="calendar"] .rdp-day_button[data-selected-single="true"] { border-radius: 999px; }
