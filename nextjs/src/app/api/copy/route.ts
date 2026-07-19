@@ -36,6 +36,18 @@ function variantForRank(rank: number | null, availableLetters: string[]): string
   return availableLetters[0] ?? null;
 }
 
+// GET — raw templates for the Settings > Templates panel (Stage 7). No fill,
+// no variant selection: just the live copy_templates.json content, so that
+// page is a true read-only mirror of the file the pipeline actually reads.
+export async function GET() {
+  try {
+    const templates = JSON.parse(readFileSync(TEMPLATES_PATH, 'utf8'));
+    return NextResponse.json(templates);
+  } catch (e: any) {
+    return NextResponse.json({ error: `could not read copy_templates.json: ${e.message}` }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest) {
   let body: { signalType?: string; rank?: number | null; vars?: Record<string, string>; liVariant?: string };
   try {
