@@ -56,7 +56,13 @@ vars above, point Traefik/any proxy at port 3000. No special script needed.
 
 ## Known debt
 
-- The old `scripts/deploy.ps1` embedded the VPS sudo password and the Supabase
-  service-role key in plaintext; both remain in git history even after deletion.
-  Sudo password rotation: pending. Service-role key rotation (self-hosted
-  Supabase, more involved): pending, tracked as debt.
+- The old `scripts/deploy.ps1` embedded the VPS account password and the
+  Supabase service-role key in plaintext; both remain in git history even after
+  deletion.
+  - Account password: rotated 2026-07-19 (new one lives in `Mastr_Leads/.env`,
+    `VPS_HOSTINGER_LEONID_PASS`). Impact of the leak was near-zero anyway:
+    sshd is key-only (`passwordauthentication no`) and sudo is `NOPASSWD: ALL`,
+    so the leaked string opened no door by itself. Reuse of that password on
+    other services is the only residual risk — worth checking once.
+  - Service-role key rotation (self-hosted Supabase, more involved): still
+    pending, tracked as debt.
