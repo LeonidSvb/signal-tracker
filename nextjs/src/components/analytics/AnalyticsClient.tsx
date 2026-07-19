@@ -86,7 +86,7 @@ function FunnelTooltip({ active, payload, label }: any) {
     <div style={{ background: "#fff", border: "1px solid #E1E4EC", borderRadius: 8, padding: "8px 10px", fontSize: 11, boxShadow: "0 4px 14px rgba(30,34,51,.1)" }}>
       <div style={{ fontWeight: 700, marginBottom: 3 }}>{fmtDate(label)}</div>
       <div style={{ color: "#4F5FD1" }}>Passed ICP: <b>{raw.passed}</b></div>
-      <div style={{ color: "#B4B9C8" }}>Filtered/pending: <b>{raw.raw - raw.passed}</b></div>
+      <div style={{ color: "#6B7280" }}>Filtered/pending: <b>{raw.raw - raw.passed}</b></div>
     </div>
   );
 }
@@ -99,7 +99,7 @@ function FunnelChart({ data }: { data: AnalyticsData["funnelDaily"] }) {
     <div>
       <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
         <LegendSwatch color="#4F5FD1" label="Passed ICP" active={showPassed} onClick={() => setShowPassed((v) => !v)} />
-        <LegendSwatch color="#E4E7FB" label="Filtered / pending" active={showFiltered} onClick={() => setShowFiltered((v) => !v)} />
+        <LegendSwatch color="#B4B9C8" label="Filtered / pending" active={showFiltered} onClick={() => setShowFiltered((v) => !v)} />
       </div>
       <ResponsiveContainer width="100%" height={150}>
         <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }} barCategoryGap="30%">
@@ -108,7 +108,7 @@ function FunnelChart({ data }: { data: AnalyticsData["funnelDaily"] }) {
           <YAxis allowDecimals={false} tick={{ fontSize: 9, fill: "#8B92A6" }} axisLine={false} tickLine={false} width={28} />
           <Tooltip content={<FunnelTooltip />} cursor={{ fill: "#F7F8FC" }} />
           <Bar dataKey="passed" stackId="s" fill="#4F5FD1" radius={[0, 0, 0, 0]} isAnimationActive hide={!showPassed} />
-          <Bar dataKey="filteredOnly" stackId="s" fill="#E4E7FB" radius={[2, 2, 0, 0]} isAnimationActive hide={!showFiltered} />
+          <Bar dataKey="filteredOnly" stackId="s" fill="#B4B9C8" radius={[2, 2, 0, 0]} isAnimationActive hide={!showFiltered} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>
