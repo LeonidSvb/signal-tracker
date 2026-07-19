@@ -33,6 +33,23 @@ const KNOWN_STAGES = [
   'rank_leads', 'route_email', 'build_linkedin_queue', 'build_signal_report',
 ];
 
+// Schema tables + their write-timestamp column, per docs/SCHEMA.md — reply-agent's
+// Health concept (CONCEPTS.md §6.7/6.8) keeps a "Database tables" section separate
+// from the sync-job drilldown, on purpose: tables have no "run" concept, just
+// MAX(timestamp), so no drilldown belongs on this section (§6.8 explicitly declines
+// a drilldown here — "no natural 'event' concept for a DB table row").
+const SCHEMA_TABLES: { table: string; ts: string; usedBy: string }[] = [
+  { table: 'clients', ts: 'created_at', usedBy: 'every page (client_id scope)' },
+  { table: 'companies', ts: 'created_at', usedBy: 'Leads tracker' },
+  { table: 'signals', ts: 'created_at', usedBy: 'Leads tracker (score, narrative, angle)' },
+  { table: 'contacts', ts: 'created_at', usedBy: 'Leads tracker, contact rows' },
+  { table: 'raw_signals', ts: 'scraped_at', usedBy: 'scrape_jobs / filter_icp input' },
+  { table: 'pipeline_runs', ts: 'started_at', usedBy: 'Health (this page)' },
+  { table: 'app_state', ts: 'updated_at', usedBy: 'Leads tracker (CRM status)' },
+  { table: 'notes', ts: 'created_at', usedBy: 'Leads tracker (append-only notes)' },
+  { table: 'channel_actions', ts: 'created_at', usedBy: 'Activity tab, route_email.mjs' },
+];
+
 export async function GET() {
   try {
     const [clients] = await Promise.all([sbGet(`clients?slug=eq.${CLIENT_SLUG}&select=id`)]);
@@ -76,10 +93,25 @@ export async function GET() {
       invalid: contacts.filter((c: any) => c.email_status === 'invalid').length,
     };
 
+    // Database tables — one MAX(timestamp) query per table, in parallel.
+    const tables = await Promise.all(
+      SCHEMA_TABLES.map(async ({ table, ts, usedBy }) => {
+        try {
+          const rows = await sbGet(
+            `${table}?client_id=eq.${clientId}&select=${ts}&order=${ts}.desc.nullslast&limit=1`
+          );
+          return { table, usedBy, lastWrite: rows?.[0]?.[ts] ?? null };
+        } catch {
+          return { table, usedBy, lastWrite: null };
+        }
+      })
+    );
+
     return NextResponse.json({
       generatedAt: new Date().toISOString(),
       stages,
       validation,
+      tables,
     });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

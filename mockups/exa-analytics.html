@@ -33,6 +33,15 @@
   .tip.tip-r .tip-box { left: auto; right: 0; transform: none; }
   .icon-btn { color: #A6ACBD; background: none; border: none; cursor: pointer; padding: 3px; display: flex; align-items: center; border-radius: 4px; }
   .icon-btn:hover { color: #3D4457; background: #F2F4F9; }
+  /* Icon rail — same markup/order as settings.html and signals_v2_concept.html
+     (avatar, Leads, Analytics, spacer, Settings). This page used to have no
+     rail at all (just a close-X), which broke the "always-there" nav strip
+     the moment you clicked into Analytics — fixed to match the other two. */
+  .rail-icon { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #A6ACBD; cursor: pointer; position: relative; text-decoration: none; }
+  .rail-icon:hover { background: #F2F4F9; color: #5C6478; }
+  .rail-icon.active { background: #EEF0FE; color: #4F5FD1; }
+  .rail-tip { position: absolute; left: 46px; top: 50%; transform: translateY(-50%); background: #1F2430; color: white; font-size: 10.5px; font-weight: 600; padding: 3px 8px; border-radius: 5px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.1s; z-index: 50; }
+  .rail-icon:hover .rail-tip { opacity: 1; }
 
   .stat-card { background: #FAFBFD; border: 1px solid #E1E4EC; border-radius: 8px; padding: 7px 10px; display: flex; flex-direction: column; gap: 2px; }
   .stat-card-icon { width: 18px; height: 18px; border-radius: 5px; background: #EEF0FE; color: #4F5FD1; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -157,13 +166,33 @@
 </head>
 <body class="bg-bg font-sans text-[12.5px] text-text">
 
-<div class="max-w-5xl mx-auto px-6 py-5">
+<div class="flex h-screen overflow-hidden">
+
+  <!-- ICON RAIL — same markup/order as settings.html and signals_v2_concept.html -->
+  <div class="w-14 bg-white border-r border-border flex flex-col items-center py-3 gap-1 flex-shrink-0 relative z-20">
+    <div class="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white font-bold text-[11px] mb-3">PB</div>
+    <a href="signals_v2_concept.html" class="rail-icon">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 3 7l9 5 9-5-9-5z"/><path d="M3 12l9 5 9-5M3 17l9 5 9-5"/></svg>
+      <span class="rail-tip">Leads</span>
+    </a>
+    <div class="rail-icon active">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+      <span class="rail-tip">Analytics</span>
+    </div>
+    <div class="flex-1"></div>
+    <a href="settings.html" class="rail-icon">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/></svg>
+      <span class="rail-tip">Settings</span>
+    </a>
+  </div>
+
+  <div class="flex-1 overflow-y-auto">
+  <div class="max-w-5xl mx-auto px-6 py-5">
   <div class="flex items-center justify-between mb-4">
     <div>
       <div class="text-[14px] font-bold text-heading">Exa Analytics</div>
       <div class="disclaimer mt-0.5">Real data — pulled live from signal_monitoring.raw_signals (all sources) and the Exa Monitors API, 2026-07-14. Daily granularity now, not weekly — both charts below redraw for whatever range you Apply.</div>
     </div>
-    <a href="settings.html" class="icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></a>
   </div>
 
   <!-- DATE RANGE PICKER — shared by both charts below -->
@@ -438,7 +467,9 @@
     </div>
   </div>
 
-</div>
+  </div>
+  </div>
+  </div>
 
 <script>
   // ═══════════ Shared "today" for this mockup — 2026-07-14, this session's real current date ═══════════

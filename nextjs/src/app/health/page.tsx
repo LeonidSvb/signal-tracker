@@ -26,10 +26,13 @@ type StageInfo = {
   last5: NonNullable<StageRun>[];
 };
 
+type TableInfo = { table: string; usedBy: string; lastWrite: string | null };
+
 type HealthData = {
   generatedAt: string;
   stages: StageInfo[];
   validation: { totalWithEmail: number; validated: number; neverValidated: number; invalid: number };
+  tables: TableInfo[];
 };
 
 function pillClass(run: StageRun) {
@@ -106,6 +109,34 @@ export default function HealthPage() {
       {data && (
         <>
           <div className="card">
+            <h2>Database tables (signal_monitoring)</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Table</th>
+                  <th>Used by</th>
+                  <th>Last write</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.tables.map((t) => {
+                  const staleDays = t.lastWrite ? (Date.now() - new Date(t.lastWrite).getTime()) / 86400000 : null;
+                  const cls = t.lastWrite === null ? "pill-missing" : staleDays! > 14 ? "pill-warn" : "pill-ok";
+                  return (
+                    <tr key={t.table}>
+                      <td className="mono">{t.table}</td>
+                      <td className="muted">{t.usedBy}</td>
+                      <td>
+                        <span className={`pill ${cls}`}>{t.lastWrite ? fmt(t.lastWrite) : "no rows"}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="card">
             <h2>Email validation coverage</h2>
             <table>
               <thead>
@@ -128,7 +159,7 @@ export default function HealthPage() {
           </div>
 
           <div className="card">
-            <h2>Pipeline stages (signal_monitoring/pipeline)</h2>
+            <h2>Pipeline stages / scripts (weekly cron)</h2>
             <table>
               <thead>
                 <tr>
