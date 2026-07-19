@@ -1,75 +1,76 @@
 "use client";
 import { useState } from "react";
-import { useLeads, useNotes } from "@/hooks/useLeads";
-import Header from "@/components/Header";
-import Sidebar from "@/components/Sidebar";
-import LeadCard from "@/components/LeadCard";
+import { useRouter } from "next/navigation";
+import "./app-shell.css";
+import Rail from "@/components/Rail";
+import Sidebar from "@/components/leads/Sidebar";
+import DetailPanel from "@/components/leads/DetailPanel";
+import ActivityTab from "@/components/leads/ActivityTab";
+import { useCompanyList, useCompanyDetail, useNotes, useSetContactStatus } from "@/hooks/useLeads";
+import { useSendableStats } from "@/hooks/useSendableStats";
 
 const CLIENT_SLUG = process.env.NEXT_PUBLIC_CLIENT_SLUG ?? "philippe-bosquillon";
-const CURRENT_USER = "leo" as const;
 
 export default function Home() {
-  const { leads, states, loading, setStatus } = useLeads(CLIENT_SLUG);
+  const router = useRouter();
+  const [moduleTab, setModuleTab] = useState<"leads" | "activity">("leads");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [filter, setFilter] = useState("all");
+  const { companies, clientId, loading } = useCompanyList(CLIENT_SLUG);
+  const { detail } = useCompanyDetail(selectedId, clientId);
+  const { notes, addNote } = useNotes(selectedId);
+  const setContactStatus = useSetContactStatus();
+  const sendableStats = useSendableStats(clientId);
 
-  const selectedLead = leads.find((l) => l.id === selectedId) ?? leads[0] ?? null;
-  const { notes, addNote } = useNotes(selectedLead?.id ?? null);
-
-  const clientId = leads[0]?.client_id ?? "";
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-white text-lg">Loading signals...</div>
-      </div>
-    );
+  // Auto-select the first company once the list loads, matching the mockup's
+  // "always show a detail view" default rather than an empty state on first paint.
+  if (!selectedId && companies.length && !loading) {
+    setSelectedId(companies[0].id);
   }
 
-  if (leads.length === 0) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-center text-white space-y-3">
-          <div className="text-xl font-bold">No leads yet</div>
-          <div className="text-slate-400 text-sm">Run push-to-supabase.cjs to import data</div>
-        </div>
-      </div>
-    );
-  }
+  const totalTiered = companies.filter((c) => c.tier).length;
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
-      <Header
-        total={leads.length}
-        states={states}
-        onFilterChange={(f) => { setFilter(f); }}
-      />
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar
-          leads={leads}
-          states={states}
-          selectedId={selectedLead?.id ?? null}
-          activeFilter={filter}
-          onSelect={(id) => setSelectedId(id)}
-          onFilter={setFilter}
-        />
-        <main className="flex-1 overflow-y-auto p-6 bg-slate-50">
-          {selectedLead ? (
-            <LeadCard
-              lead={selectedLead}
-              state={states[selectedLead.id]}
-              notes={notes}
-              clientId={clientId}
-              currentUser={CURRENT_USER}
-              onStatusChange={setStatus}
-              onAddNote={addNote}
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full text-slate-400">
-              Select a company from the sidebar
-            </div>
+    <div className="app-shell">
+      <Rail />
+      <div className="main">
+        <div className="module-tabbar">
+          <button className={`module-tab ${moduleTab === "leads" ? "active" : ""}`} onClick={() => setModuleTab("leads")}>Leads</button>
+          <button className={`module-tab ${moduleTab === "activity" ? "active" : ""}`} onClick={() => setModuleTab("activity")}>Activity</button>
+        </div>
+        <div className="module-body">
+          {moduleTab === "leads" && (
+            <>
+              <Sidebar
+                companies={companies}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                totalTiered={totalTiered}
+                totalCompanies={companies.length}
+                sendableStats={sendableStats}
+              />
+              <div className="detail">
+                {detail ? (
+                  <DetailPanel
+                    detail={detail}
+                    clientId={clientId}
+                    notes={notes}
+                    addNote={addNote}
+                    setContactStatus={setContactStatus}
+                    onStatusChanged={() => { /* useCompanyList refetches on next mount; live re-sort is a follow-up */ }}
+                    onOpenTemplatesGuide={() => router.push("/settings")}
+                  />
+                ) : (
+                  <div className="placeholder">
+                    <div className="icon">◇</div>
+                    <h3>{loading ? "Loading…" : "Select a company"}</h3>
+                    <p>Pick a company from the list to see its signals, contacts, and outreach status.</p>
+                  </div>
+                )}
+              </div>
+            </>
           )}
-        </main>
+          {moduleTab === "activity" && clientId && <ActivityTab clientId={clientId} />}
+        </div>
       </div>
     </div>
   );
