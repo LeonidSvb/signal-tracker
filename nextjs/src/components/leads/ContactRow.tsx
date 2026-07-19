@@ -50,6 +50,7 @@ const LI_ICON = (
 
 interface Props {
   companyId: string;
+  companyName: string;
   clientId: string;
   contact: Contact;
   signalType: string; // best/primary signal type — drives which copy_templates.json key to fill
@@ -63,7 +64,7 @@ interface Props {
 }
 
 export default function ContactRow({
-  companyId, clientId, contact, signalType, rank, hqCountry, status, isOpen, onToggleOpen, onSetStatus, onOpenTemplatesGuide,
+  companyId, companyName, clientId, contact, signalType, rank, hqCountry, status, isOpen, onToggleOpen, onSetStatus, onOpenTemplatesGuide,
 }: Props) {
   const [lang, setLang] = useState<"en" | "de" | "fr" | "nl">("en");
   const [copy, setCopy] = useState<{ connect: string | null; qualify: string | null } | null>(null);
@@ -84,7 +85,7 @@ export default function ContactRow({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         signalType, rank,
-        vars: { first_name: firstName, company: "", market_focus: marketFocus },
+        vars: { first_name: firstName, company: companyName, market_focus: marketFocus },
       }),
     })
       .then((r) => r.json())

@@ -112,6 +112,7 @@ export default function DetailPanel({ detail, clientId, notes, addNote, setConta
               <ContactRow
                 key={c.id}
                 companyId={company.id}
+                companyName={company.name}
                 clientId={clientId}
                 contact={c}
                 signalType={bestSignalType}
