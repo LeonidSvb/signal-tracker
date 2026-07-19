@@ -1,19 +1,24 @@
 "use client";
 import { useState, useEffect } from "react";
+import {
+  ComposedChart, Bar, Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from "recharts";
 import DateRangePicker, { type DateRangeValue, type DateRangePreset } from "@/components/DateRangePicker";
 
-// Real Exa/pipeline analytics client (Stage 8). Loaded via next/dynamic
-// (app/analytics/page.tsx) so this — and its chart rendering — never enters
-// the initial Leads-page bundle (§2.6, docs/PLAN_2026-07-19_react_migration_prep.md).
+// Real Exa/pipeline analytics client (Stage 8, reworked in the Stage 9 Chrome
+// pass). Loaded via next/dynamic (app/analytics/page.tsx) so this — and its
+// chart rendering — never enters the initial Leads-page bundle (§2.6,
+// docs/PLAN_2026-07-19_react_migration_prep.md).
 //
-// Charts are simpler than mockups/exa-analytics.html's hand-rolled versions
-// (no ctrl+zoom, no cumulative-to-exclusive-delta funnel math, no smoothed
-// spline interpolation) — real SVG/CSS bars and straight-line polylines
-// instead, real data throughout, same visual language (tokens from
-// app-shell.css). The interaction fidelity was traded down deliberately to
-// keep this stage's real-data plumbing (the actual point of the rebuild)
-// correct and shippable rather than spending the remaining time matching
-// pixel-for-pixel zoom/tooltip physics.
+// Charts now use recharts (same library outreach-cockpit's own analytics run
+// on — src/components/overview/ComboChart.tsx, src/features/reply-agent/
+// DetailedAnalytics.tsx) with the same interactive-legend pattern cockpit
+// uses: a row of clickable swatches above the chart toggling a useState
+// boolean per series, animation is recharts' own default mount animation,
+// no hand-rolled keyframes. Ported the pattern, not literal files — cockpit's
+// chart components are plain hex-literal Tailwind/inline-style JSX with no
+// Tailwind-v4-only syntax, so this was a clean, non-fragile port (unlike its
+// calendar.tsx — see app-shell.css's comment on that).
 
 interface AnalyticsData {
   stats: { total: number; passed: number; filteredOut: number; pending: number; newestSignal: string | null };
@@ -57,46 +62,87 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
   );
 }
 
+function LegendSwatch({ color, label, active, onClick, round }: { color: string; label: string; active: boolean; onClick: () => void; round?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", gap: 5, fontSize: 10.5, fontWeight: 600, background: "none", border: "none",
+        cursor: "pointer", padding: "3px 6px", borderRadius: 5, opacity: active ? 1 : 0.4,
+        color: active ? "var(--ink)" : "var(--muted)",
+      }}
+    >
+      <span style={{ width: 8, height: 8, borderRadius: round ? "50%" : 2, background: color, display: "inline-block", flexShrink: 0 }} />
+      {label}
+    </button>
+  );
+}
+
+function FunnelTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  const raw = payload.find((p: any) => p.dataKey === "filteredOnly")?.payload;
+  if (!raw) return null;
+  return (
+    <div style={{ background: "#fff", border: "1px solid #E1E4EC", borderRadius: 8, padding: "8px 10px", fontSize: 11, boxShadow: "0 4px 14px rgba(30,34,51,.1)" }}>
+      <div style={{ fontWeight: 700, marginBottom: 3 }}>{fmtDate(label)}</div>
+      <div style={{ color: "#4F5FD1" }}>Passed ICP: <b>{raw.passed}</b></div>
+      <div style={{ color: "#B4B9C8" }}>Filtered/pending: <b>{raw.raw - raw.passed}</b></div>
+    </div>
+  );
+}
+
 function FunnelChart({ data }: { data: AnalyticsData["funnelDaily"] }) {
-  const maxVal = Math.max(1, ...data.map((d) => d.raw));
+  const [showPassed, setShowPassed] = useState(true);
+  const [showFiltered, setShowFiltered] = useState(true);
+  const chartData = data.map((d) => ({ ...d, filteredOnly: d.raw - d.passed }));
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 150 }}>
-        {data.map((d) => {
-          const rawH = (d.raw / maxVal) * 100;
-          const passedH = (d.passed / maxVal) * 100;
-          return (
-            <div key={d.date} style={{ flex: 1, height: "100%", display: "flex", alignItems: "flex-end", position: "relative" }} title={`${d.date}: ${d.raw} raw, ${d.passed} passed`}>
-              <div style={{ width: "100%", height: `${rawH}%`, background: "#E4E7FB", borderRadius: "2px 2px 0 0", position: "relative" }}>
-                <div style={{ width: "100%", height: maxVal ? `${(d.passed / Math.max(d.raw, 1)) * 100}%` : 0, background: "#4F5FD1", position: "absolute", bottom: 0, borderRadius: "2px 2px 0 0" }} />
-              </div>
-            </div>
-          );
-        })}
+      <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
+        <LegendSwatch color="#4F5FD1" label="Passed ICP" active={showPassed} onClick={() => setShowPassed((v) => !v)} />
+        <LegendSwatch color="#E4E7FB" label="Filtered / pending" active={showFiltered} onClick={() => setShowFiltered((v) => !v)} />
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "var(--muted)", marginTop: 4 }}>
-        {data.length > 0 && <><span>{fmtDate(data[0].date)}</span><span>{fmtDate(data[data.length - 1].date)}</span></>}
-      </div>
+      <ResponsiveContainer width="100%" height={150}>
+        <ComposedChart data={chartData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }} barCategoryGap={1}>
+          <CartesianGrid vertical={false} stroke="#E1E4EC" strokeDasharray="4 4" />
+          <XAxis dataKey="date" tickFormatter={fmtDate} tick={{ fontSize: 9, fill: "#8B92A6" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+          <YAxis hide />
+          <Tooltip content={<FunnelTooltip />} cursor={{ fill: "#F7F8FC" }} />
+          <Bar dataKey="passed" stackId="s" fill="#4F5FD1" radius={[0, 0, 0, 0]} isAnimationActive hide={!showPassed} />
+          <Bar dataKey="filteredOnly" stackId="s" fill="#E4E7FB" radius={[2, 2, 0, 0]} isAnimationActive hide={!showFiltered} />
+        </ComposedChart>
+      </ResponsiveContainer>
     </div>
   );
 }
 
 function VolumeChart({ data }: { data: Record<string, number | string>[] }) {
-  const w = 700, h = 150;
-  const maxVal = Math.max(1, ...data.flatMap((d) => Object.keys(SOURCE_META).map((k) => Number(d[k] || 0))));
-  const x = (i: number) => (data.length > 1 ? (i / (data.length - 1)) * w : 0);
-  const y = (v: number) => h - (v / maxVal) * h;
-
+  const [visible, setVisible] = useState<Record<string, boolean>>(
+    Object.fromEntries(Object.keys(SOURCE_META).map((k) => [k, true]))
+  );
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: "100%", height: 150 }} preserveAspectRatio="none">
-      <line x1={0} y1={0} x2={w} y2={0} stroke="#E1E4EC" strokeDasharray="4,4" />
-      <line x1={0} y1={h / 2} x2={w} y2={h / 2} stroke="#E1E4EC" strokeDasharray="4,4" />
-      <line x1={0} y1={h - 1} x2={w} y2={h - 1} stroke="#E1E4EC" strokeDasharray="4,4" />
-      {Object.entries(SOURCE_META).map(([key, meta]) => {
-        const points = data.map((d, i) => `${x(i)},${y(Number(d[key] || 0))}`).join(" ");
-        return <polyline key={key} points={points} fill="none" stroke={meta.color} strokeWidth={1.5} />;
-      })}
-    </svg>
+    <div>
+      <div style={{ display: "flex", gap: 2, flexWrap: "wrap", marginBottom: 8 }}>
+        {Object.entries(SOURCE_META).map(([key, meta]) => (
+          <LegendSwatch key={key} color={meta.color} label={meta.label} round active={visible[key]} onClick={() => setVisible((v) => ({ ...v, [key]: !v[key] }))} />
+        ))}
+      </div>
+      <ResponsiveContainer width="100%" height={150}>
+        <LineChart data={data} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+          <CartesianGrid vertical={false} stroke="#E1E4EC" strokeDasharray="4 4" />
+          <XAxis dataKey="date" tickFormatter={fmtDate} tick={{ fontSize: 9, fill: "#8B92A6" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+          <YAxis hide />
+          <Tooltip
+            labelFormatter={(l) => fmtDate(String(l))}
+            contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #E1E4EC" }}
+          />
+          {Object.entries(SOURCE_META).map(([key, meta]) =>
+            visible[key] ? (
+              <Line key={key} type="monotone" dataKey={key} name={meta.label} stroke={meta.color} strokeWidth={1.5} dot={false} isAnimationActive />
+            ) : null
+          )}
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -138,10 +184,7 @@ export default function AnalyticsClient() {
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "20px 24px 60px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>Exa Analytics</div>
-          <div className="disclaimer">Real data — live from signal_monitoring.raw_signals.</div>
-        </div>
+        <div style={{ fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>Analytics</div>
         <DateRangePicker presets={PRESETS} presetId={presetId} range={range} onApply={handleApply} />
       </div>
 
@@ -159,24 +202,13 @@ export default function AnalyticsClient() {
 
           <div className="icp-card" style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 12, fontWeight: 800, color: "var(--ink)", marginBottom: 8 }}>
-              Daily Signal Quality — Exa, raw vs. passed ICP
+              Daily Signal Quality (Exa)
             </div>
             <FunnelChart data={data.funnelDaily} />
-            <div className="disclaimer" style={{ marginTop: 6 }}>
-              By pub_date, source=exa. Dark segment = passed ICP, light = filtered/pending.
-            </div>
           </div>
 
           <div className="icp-card" style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 12, fontWeight: 800, color: "var(--ink)", marginBottom: 8 }}>Signal Volume by Source</div>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
-              {Object.entries(SOURCE_META).map(([key, meta]) => (
-                <span key={key} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10 }}>
-                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: meta.color, display: "inline-block" }} />
-                  {meta.label}
-                </span>
-              ))}
-            </div>
             <VolumeChart data={data.volumeDaily} />
           </div>
 

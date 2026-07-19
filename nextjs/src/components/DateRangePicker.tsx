@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import type { DateRange } from "react-day-picker";
+import { enUS } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -103,6 +104,7 @@ export default function DateRangePicker({ presets, presetId, range, onApply }: P
             mode="range"
             numberOfMonths={1}
             captionLayout="dropdown"
+            locale={enUS}
             selected={pendingRange ? { from: pendingRange.from, to: pendingRange.to } : undefined}
             onSelect={pickCalendarRange}
             defaultMonth={pendingRange?.from ?? new Date()}
