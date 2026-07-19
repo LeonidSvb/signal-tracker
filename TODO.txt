@@ -128,10 +128,71 @@ REAL BUILD — Sonnet execution session, 2026-07-19 (docs/HANDOFF_2026-07-19_fro
   hit the cache (cached:true, no second OpenRouter spend), and validation
   errors (missing text, unsupported lang) return clean 400s. `npm run build`
   clean, `/api/translate` shows in the route table as a dynamic route.
-- Stage 5+ (frontend foundation — real routes, IconRail/DateRangePicker
-  pulled in from outreach-cockpit, Leads module, Activity/Settings,
-  Analytics, full Chrome debugging pass) — next, per the handoff doc's
-  stage order.
+- Stage 5 DONE: design system ported verbatim from the mockup into
+  app-shell.css (shared, not per-page); components/Rail.tsx (shared nav,
+  structure reused from cockpit's IconRail.tsx, re-parametrized with our own
+  classes not cockpit's Tailwind palette); old
+  LeadCard/Sidebar/ContactCard/Header/NotesLog.tsx deleted; lib/supabase.ts +
+  useNotes()'s realtime subscription carried forward unchanged; vitest added
+  to nextjs/. Two real incompatibilities found porting cockpit's
+  DateRangePicker (not silently copied): cockpit's popover.tsx depends on
+  @base-ui/react (different library, not installed) — wrote a standard
+  classic-Radix popover.tsx instead; cockpit's <PopoverTrigger render=.../>
+  is Base UI's API — adapted to Radix's asChild. calendar.tsx WAS copied
+  verbatim (no incompatibility).
+- Stage 6 DONE: hooks/useLeads.ts rewritten — slim sidebar select + lazy
+  per-company detail fetch (§2.6). lib/status.ts (aggregateStatus/
+  resolveCompanyStatus, app_state fallback per §0 Q1) and lib/filters.ts
+  (sidebar filter predicate) extracted as pure functions, both vitest-tested
+  (15 tests). components/leads/: Sidebar, DetailPanel, EventsList (dedup by
+  source_url + event_summary with title fallback), ContactRow (per-contact
+  outreach — status buttons write to contact_state via migration 009, real
+  copy via new /api/copy route, real DE translation via /api/translate),
+  NotesPanel (flat list matching the mockup, not the old chat-bubble
+  NotesLog.tsx), ActivityTab (live channel_actions query + DateRangePicker).
+  Real finding acted on: mockup's 'meeting' status showed a fabricated
+  "propose a call" script — no such content exists in the real playbook
+  (Stage 3 finding), so ContactRow shows an honest note instead.
+- Stage 7 DONE: real /settings page, grouped sidebar. ICP Filter promoted
+  from an external link (mockup's behavior) to a genuine inline panel
+  reading live icp_filter.json via new /api/icp-filter route. Templates
+  panel reads live copy_templates.json via new GET /api/copy — real field
+  names, NOT the mockup's fabricated "Universal Step 3/Follow-up" block
+  (same Stage 3 finding as above). Caught and removed an "Exa > Analytics"
+  nav item I'd mistakenly added to Settings before committing — contradicts
+  this session's own earlier IA decision (Analytics is rail-only).
+- Stage 8 DONE: real /analytics page, next/dynamic-loaded (confirmed working
+  via the build's route table: 1.93kB vs. the Leads page's 128kB — the chart
+  code is genuinely code-split, not just declared lazy). New
+  api/analytics/route.ts aggregates real signal_monitoring.raw_signals data.
+  Disclosed scope reduction, not a silent gap: the mockup's 4-segment funnel
+  (Raw/Passed/Company Found/Contact Found) needs company_id/contact_id on
+  raw_signals, which doesn't exist — "Company/Contact Found" would require
+  replicating resolve_companies.mjs's Blitz-matching logic, out of scope for
+  this stage. Built with 2 honest real segments (Raw/Passed ICP) instead.
+  Chart interactivity (ctrl-zoom, spline smoothing, hover bubbles) also
+  simplified to plain real SVG/CSS — same real data, less physics.
+- Stage 9 PARTIAL: automated verification only, Chrome extension was not
+  connected this session (checked twice) — the mandatory interactive/visual
+  pass could not run. Did everything possible without it instead: all 4 real
+  routes (/, /settings, /analytics, /health) verified 200 via curl with no
+  "Application error"/hydration-failure markers in the SSR'd HTML; a REAL
+  end-to-end write test against production via the anon key (same
+  permission path the browser uses, not service role) — contact_state
+  upsert→status-change→read-back→cleanup, and a notes insert→cleanup — both
+  confirmed working through RLS with real data, not just "the code compiles
+  or the service-role key can write". `npm run build` clean throughout every
+  stage, 53/53 pipeline tests + 15/15 frontend vitest tests green
+  throughout, no stray console.log/debugger/TODO markers in new code.
+  REMAINING: a real Claude-in-Chrome visual/interactive pass (page-by-page
+  against signals_v2_concept.html side-by-side, every click path, console
+  errors, network failures) once the extension is connected — this is the
+  one thing this session genuinely could not do, not skipped by choice.
+- NOT pushed to origin — ~13 commits ahead of main as of this session's end.
+  Push (= Coolify prod rebuild) needs Leo's explicit go per the handoff's
+  own rule; pipeline changes (Stages 1-4) also need the VPS pipeline copy
+  refreshed separately (same rsync/scp path as the backend-hardening
+  deploy), not just a git push.
 
 === PREP DONE 2026-07-19 — React migration prep doc ===
 Full doc: docs/PLAN_2026-07-19_react_migration_prep.md — read this FIRST in
