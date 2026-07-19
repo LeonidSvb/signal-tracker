@@ -304,3 +304,32 @@ table.act tr:hover td { background: var(--surface-2); }
 .act-status-text { color: var(--muted); font-size: 11px; }
 
 .reset-link { font-size: 10.5px; color: var(--muted-2); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; background: none; border: none; padding: 0; }
+
+/* Date range picker (Stage 5/6, DateRangePicker.tsx + ui/calendar.tsx port from
+   outreach-cockpit). mockups/signals_v2_concept.html only had the .dr-trigger
+   button + a flat preset menu, never an actual calendar grid — that part is new,
+   never had real CSS. Radix's Popover renders its content into a portal appended
+   outside .app-shell in the DOM, so var(--accent) etc. (scoped to .app-shell)
+   don't cascade in here — hex values match .app-shell's token values exactly. */
+.dr-trigger { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; border: 1px solid #E1E4EC; border-radius: 6px; padding: 6px 10px; background: #FFFFFF; cursor: pointer; color: #1E2233; }
+.dr-trigger:hover { border-color: #4F5FD1; }
+.dr-menu-item { padding: 7px 10px; border-radius: 5px; font-size: 11.5px; cursor: pointer; color: #1E2233; }
+.dr-menu-item:hover { background: #F7F8FC; }
+.dr-menu-item.active { color: #4A55C4; font-weight: 700; background: #EEF0FE; }
+
+[data-slot="calendar"] { color: #1E2233; font-size: 12px; }
+[data-slot="calendar"] .rdp-month_caption { font-weight: 700; font-size: 12.5px; }
+[data-slot="calendar"] .rdp-weekday { color: #8B92A6; font-weight: 700; font-size: 10px; text-transform: uppercase; }
+[data-slot="calendar"] .rdp-button_previous,
+[data-slot="calendar"] .rdp-button_next { color: #8B92A6; border-radius: 6px; }
+[data-slot="calendar"] .rdp-button_previous:hover,
+[data-slot="calendar"] .rdp-button_next:hover { background: #F7F8FC; color: #1E2233; }
+[data-slot="calendar"] .rdp-day_button { color: #1E2233; border-radius: 6px; font-weight: 500; }
+[data-slot="calendar"] .rdp-day_button:hover { background: #F7F8FC; }
+[data-slot="calendar"] .rdp-outside .rdp-day_button { color: #B4B9C8; }
+[data-slot="calendar"] .rdp-disabled .rdp-day_button { color: #B4B9C8; opacity: .5; }
+[data-slot="calendar"] .rdp-today .rdp-day_button { background: #F7F8FC; font-weight: 800; }
+[data-slot="calendar"] .rdp-day_button[data-selected-single="true"],
+[data-slot="calendar"] .rdp-day_button[data-range-start="true"],
+[data-slot="calendar"] .rdp-day_button[data-range-end="true"] { background: #4F5FD1; color: #FFFFFF; font-weight: 700; }
+[data-slot="calendar"] .rdp-day_button[data-range-middle="true"] { background: #EEF0FE; color: #4A55C4; border-radius: 0; }

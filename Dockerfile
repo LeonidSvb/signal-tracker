@@ -13,5 +13,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /build/nextjs/.next/standalone ./
 COPY --from=builder /build/nextjs/.next/static ./.next/static
+# /api/copy and /api/icp-filter read pipeline/config/*.json via
+# join(process.cwd(), '../pipeline/config/...') — cwd is /app at runtime,
+# so this must land at /pipeline/config, a sibling of /app.
+COPY pipeline/config/ /pipeline/config/
 EXPOSE 3000
 CMD ["node", "server.js"]
