@@ -20,53 +20,95 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Lato',
   font-size: 14px; line-height: 1.5; }
 .mono { font-family: ui-monospace, 'SF Mono', Consolas, monospace; }
 
-/* ── App shell ─────────────────────────────────────────── */
-.app { display: flex; flex-direction: column; height: 100vh; }
-.topbar { background: #0D0F16; color: #fff; padding: 11px 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-shrink: 0; }
-.topbar-left { display: flex; align-items: center; gap: 22px; }
-.topbar-title { font-size: 15px; font-weight: 700; }
-.topbar-sub { font-size: 11.5px; color: #9CA3C4; margin-top: 1px; }
-.topnav { display: flex; gap: 4px; }
-.topnav a { font-size: 11.5px; font-weight: 700; color: #9CA3C4; text-decoration: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
-.topnav a.active { background: rgba(255,255,255,.08); color: #fff; }
-.topbar-stats { display: flex; gap: 20px; }
-.tstat { text-align: center; }
-.tstat b { display: block; font-size: 17px; font-weight: 800; line-height: 1; }
-.tstat span { font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: #8890B5; }
+/* thin scrollbars everywhere — Leo's feedback, the default browser bar was too wide/tall */
+* { scrollbar-width: thin; scrollbar-color: var(--muted-2) transparent; }
+*::-webkit-scrollbar { width: 7px; height: 7px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--muted-2); border-radius: 10px; }
+*::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
-.body { display: flex; flex: 1; overflow: hidden; }
+/* ── App shell ─────────────────────────────────────────── */
+.app { display: flex; height: 100vh; }
+
+/* icon rail — matches mockups/database.html + settings.html pattern */
+.rail { width: 56px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding: 12px 0; gap: 3px; }
+.rail-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px; margin-bottom: 10px; }
+.rail-icon { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted-2); cursor: pointer; position: relative; }
+.rail-icon:hover { background: var(--surface-2); color: var(--muted); }
+.rail-icon.active { background: var(--accent-light); color: var(--accent); }
+.rail-spacer { flex: 1; }
+.rail-tip { position: absolute; left: calc(100% + 8px); top: 50%; transform: translateY(-50%); background: var(--ink); color: #fff; font-size: 10.5px;
+  font-weight: 600; padding: 5px 9px; border-radius: 6px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .1s; z-index: 30; }
+.rail-icon:hover .rail-tip { opacity: 1; }
+
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 .view { display: none; flex: 1; overflow: hidden; }
 .view.active { display: flex; }
 
-/* ── Sidebar / list — WIDER + DENSER per Leo's feedback ──── */
-.sidebar { width: 460px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; }
-.sidebar-note { padding: 8px 14px; font-size: 10.5px; color: var(--muted); background: var(--surface-2); border-bottom: 1px solid var(--border); }
-.row { padding: 7px 14px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .1s; }
+/* ── Sidebar — wider + denser, with search + status nav + accordions ──── */
+.sidebar { width: 400px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+.sb-header { padding: 12px 14px 10px; border-bottom: 1px solid var(--border); }
+.sb-title { font-size: 14px; font-weight: 800; }
+.sb-subtitle { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+
+/* layered stats — State Row style, every number tooltip-explained (reply-agent/overview.html pattern) */
+.stat-strip { display: flex; align-items: center; gap: 7px; font-size: 10.5px; padding: 8px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; background: var(--surface-2); }
+.stat-strip b { color: var(--ink); font-weight: 800; }
+.stat-sep { color: var(--muted-2); }
+.stat-item { position: relative; cursor: help; }
+.stat-item .tip-box { position: absolute; top: calc(100% + 6px); left: 0; background: var(--ink); color: #fff; font-size: 11px; font-weight: 400;
+  padding: 8px 10px; border-radius: 6px; width: 220px; line-height: 1.5; display: none; z-index: 25; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+.stat-item:hover .tip-box { display: block; }
+
+.search-wrap { padding: 8px 14px; border-bottom: 1px solid var(--border); }
+.search-input { width: 100%; font-size: 11.5px; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; outline: none; background: var(--bg); }
+.search-input:focus { border-color: var(--accent); background: var(--surface); }
+
+.status-nav { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.nav-item { width: 100%; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; border: none; background: none; cursor: pointer; font-size: 11.5px; color: var(--ink); text-align: left; }
+.nav-item:hover { background: var(--surface-2); }
+.nav-item.on { background: var(--accent-light); color: var(--accent-text); font-weight: 700; }
+.nav-item .cnt { margin-left: auto; font-size: 10.5px; color: var(--muted); font-weight: 700; }
+.nav-item.on .cnt { color: var(--accent-text); }
+.nav-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+.accordion { border-bottom: 1px solid var(--border); }
+.acc-head { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; background: none; border: none; cursor: pointer; }
+.acc-head-label { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.acc-chev { font-size: 8px; color: var(--muted-2); transition: transform .15s; }
+.acc-chev.open { transform: rotate(90deg); }
+.acc-body { display: none; padding: 0 12px 8px; }
+.acc-body.open { display: block; }
+.acc-row { display: flex; align-items: center; gap: 7px; padding: 4px 6px; border-radius: 5px; cursor: pointer; font-size: 11px; }
+.acc-row:hover { background: var(--surface-2); }
+.acc-row input { width: 12px; height: 12px; accent-color: var(--accent); }
+.acc-row .lbl { flex: 1; }
+.acc-row .cnt { font-size: 10px; color: var(--muted); }
+
+.list-scroll { flex: 1; overflow-y: auto; }
+.list-note { padding: 7px 14px; font-size: 10px; color: var(--muted); background: var(--surface-2); border-bottom: 1px solid var(--border); }
+
+/* row card — inbox.html style: avatar + name/meta + tag chips */
+.row { display: flex; gap: 9px; padding: 8px 14px; border-bottom: 1px solid #F4F4F5; cursor: pointer; }
 .row:hover { background: var(--surface-2); }
-.row.active { background: var(--accent-light); border-left: 3px solid var(--accent); padding-left: 11px; }
-.row.locked { cursor: default; opacity: .62; }
-.row-top { display: flex; align-items: center; gap: 8px; }
-.row-name { font-size: 12.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
-.row-meta { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dot-sep::before { content: "·"; margin: 0 5px; color: var(--muted-2); }
-
-.tier-pill { font-size: 8.5px; font-weight: 800; letter-spacing: .03em; padding: 1.5px 5px; border-radius: 4px; flex-shrink: 0; cursor: help; }
-.tier-T1 { background: var(--accent); color: #fff; }
-.tier-T2 { background: var(--accent-light); color: var(--accent-text); }
-.tier-T3 { background: var(--neutral-bg); color: var(--neutral-text); }
-
-.avail-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--pos); flex-shrink: 0; }
-.locked-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted-2); flex-shrink: 0; }
-
-/* tooltip */
-.tip { position: relative; }
-.tip .tip-box { position: absolute; bottom: calc(100% + 6px); left: 0; background: var(--ink); color: #fff; font-size: 11px;
-  font-weight: 400; padding: 8px 10px; border-radius: 6px; width: 240px; line-height: 1.5; display: none; z-index: 20;
-  box-shadow: 0 4px 14px rgba(0,0,0,.18); }
-.tip:hover .tip-box { display: block; }
+.row.active { background: var(--accent-light); }
+.row.locked { cursor: default; opacity: .6; }
+.row-avatar { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9.5px; font-weight: 800; color: #fff; flex-shrink: 0; margin-top: 1px; }
+.row-body { flex: 1; min-width: 0; }
+.row-top { display: flex; align-items: center; gap: 6px; }
+.row-name { font-size: 12px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.row-meta { font-size: 10px; color: var(--muted); margin-top: 1px; }
+.row-tags { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+.chip { font-size: 8.5px; font-weight: 800; letter-spacing: .02em; padding: 1.5px 6px; border-radius: 999px; }
+.chip-T1 { background: var(--accent); color: #fff; }
+.chip-T2 { background: var(--accent-light); color: var(--accent-text); }
+.chip-T3 { background: var(--neutral-bg); color: var(--neutral-text); }
+.chip-status { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+.chip-channel { background: #EAF3FC; color: #1D6FBF; }
+.chip-channel.warn { background: var(--warn-bg); color: var(--warn); }
 
 /* ── Detail pane ───────────────────────────────────────── */
-.detail { flex: 1; overflow-y: auto; padding: 24px 30px 60px; }
+.detail { flex: 1; overflow-y: auto; padding: 20px 26px 60px; }
 .detail-inner { max-width: 780px; }
 .placeholder { max-width: 460px; margin: 80px auto; text-align: center; color: var(--muted); }
 .placeholder .icon { font-size: 30px; margin-bottom: 10px; }
@@ -80,8 +122,13 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Lato',
 .co-meta a { color: var(--accent-text); text-decoration: none; }
 .co-meta a:hover { text-decoration: underline; }
 .tier-block { text-align: right; flex-shrink: 0; }
-.tier-big { font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; cursor: help; }
+.tier-big { font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; cursor: help; position: relative; }
+.tier-big .tip-box { position: absolute; top: calc(100% + 6px); right: 0; background: var(--ink); color: #fff; font-size: 11px; font-weight: 400;
+  padding: 8px 10px; border-radius: 6px; width: 240px; line-height: 1.5; display: none; z-index: 20; box-shadow: 0 4px 14px rgba(0,0,0,.18); text-align: left; }
+.tier-big:hover .tip-box { display: block; }
 .tier-reason { font-size: 10.5px; color: var(--muted); margin-top: 5px; max-width: 190px; }
+
+.channel-only-banner { margin: 0 20px; margin-top: 14px; padding: 8px 12px; border-radius: 8px; background: var(--warn-bg); color: var(--warn); font-size: 11.5px; font-weight: 600; display: flex; align-items: center; gap: 7px; }
 
 .section { padding: 15px 20px; border-bottom: 1px solid var(--border); }
 .section:last-child { border-bottom: none; }
@@ -102,7 +149,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Lato',
 .src-link:hover { border-color: var(--accent); text-decoration: underline; }
 .dupe-note { font-size: 10px; color: var(--muted-2); font-style: italic; margin-top: 6px; }
 
-/* contacts */
+/* contacts — no artificial cap, responsive grid */
 .contacts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .contact { border: 1px solid var(--border); border-radius: 8px; padding: 12px; position: relative; }
 .contact.primary { border-color: var(--accent); }
@@ -118,7 +165,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Lato',
 .c-link:hover { border-color: var(--accent); color: var(--accent-text); }
 .c-link.li { background: #EAF3FC; border-color: #C7DEF5; color: #1D6FBF; }
 
-/* outreach — flat status row (D2) */
+/* outreach — flat status row */
 .channel-block { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
 .channel-block:last-child { margin-bottom: 0; }
 .channel-head { padding: 10px 14px; background: var(--surface-2); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
@@ -146,21 +193,25 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Lato',
 .btn-translate { background: var(--surface); border-color: var(--border); color: var(--ink); }
 .btn-translate:hover { border-color: var(--accent-text); color: var(--accent-text); }
 .btn-translate.on { background: var(--accent-light); border-color: var(--accent); color: var(--accent-text); }
+.btn-guide { margin-left: auto; font-size: 10.5px; color: var(--muted); text-decoration: none; }
+.btn-guide:hover { color: var(--accent-text); text-decoration: underline; }
 
 .email-status { padding: 13px 14px; font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
 .email-status .ico { font-size: 14px; }
 
-/* ── Templates view (D4) ───────────────────────────────── */
-.templates-wrap { flex: 1; overflow-y: auto; padding: 24px 30px 60px; }
-.templates-inner { max-width: 980px; }
+/* ── Settings / Templates view ─────────────────────────── */
+.settings-wrap { flex: 1; overflow-y: auto; padding: 22px 26px 60px; }
+.settings-inner { max-width: 980px; }
+.settings-subnav { display: flex; gap: 4px; margin-bottom: 18px; border-bottom: 1px solid var(--border); }
+.settings-subnav a { font-size: 12px; font-weight: 700; color: var(--muted); padding: 8px 4px; margin-right: 18px; border-bottom: 2px solid transparent; cursor: pointer; }
+.settings-subnav a.active { color: var(--accent-text); border-bottom-color: var(--accent); }
 .tpl-intro { font-size: 12.5px; color: var(--muted); margin-bottom: 16px; max-width: 70ch; line-height: 1.6; }
 .tpl-universal { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
 .tpl-universal-label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--accent-text); margin-bottom: 8px; }
 .tpl-universal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .tpl-universal-item .k { font-size: 10.5px; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
 .tpl-universal-item .v { font-family: ui-monospace, monospace; font-size: 11px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 5px; padding: 8px 10px; white-space: pre-wrap; line-height: 1.5; }
-
-.tpl-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.tpl-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; overflow-x: auto; }
 table.tpl { width: 100%; border-collapse: collapse; }
 table.tpl th { text-align: left; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; color: var(--muted);
   padding: 9px 12px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
@@ -172,46 +223,169 @@ table.tpl td.key { font-family: ui-monospace, monospace; font-weight: 700; font-
 table.tpl td.copy { font-family: ui-monospace, monospace; font-size: 10.5px; color: var(--ink); line-height: 1.5; max-width: 280px; }
 table.tpl td.copy.li { background: #FAFCFF; }
 
+/* ── Activity view (queue.html-style flat table + date range) ──────── */
+.activity-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.activity-toolbar { padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.activity-title { font-size: 13px; font-weight: 800; }
+.activity-sub { font-size: 10.5px; color: var(--muted); }
+
+.dr-wrap { position: relative; }
+.dr-trigger { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; background: var(--surface); cursor: pointer; color: var(--ink); }
+.dr-trigger:hover { border-color: var(--accent); }
+.dr-menu { display: none; position: absolute; top: calc(100% + 5px); left: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.1); padding: 4px; width: 160px; z-index: 30; }
+.dr-menu.open { display: block; }
+.dr-menu-item { padding: 7px 10px; border-radius: 5px; font-size: 11.5px; cursor: pointer; }
+.dr-menu-item:hover { background: var(--surface-2); }
+.dr-menu-item.active { color: var(--accent-text); font-weight: 700; background: var(--accent-light); }
+
+.seg { display: flex; gap: 1px; background: var(--bg); border-radius: 7px; padding: 2px; }
+.seg-btn { font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 5px; border: none; background: none; cursor: pointer; color: var(--muted); }
+.seg-btn.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+
+.activity-search { font-size: 11px; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; outline: none; background: var(--bg); width: 180px; margin-left: auto; }
+.activity-search:focus { border-color: var(--accent); background: var(--surface); }
+
+.activity-table-wrap { flex: 1; overflow-y: auto; background: var(--surface); }
+table.act { width: 100%; border-collapse: collapse; }
+table.act th { position: sticky; top: 0; text-align: left; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; color: var(--muted);
+  padding: 8px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border); z-index: 2; }
+table.act td { padding: 9px 14px; border-bottom: 1px solid #F4F4F5; font-size: 11.5px; vertical-align: middle; }
+table.act tr:hover td { background: var(--surface-2); }
+.act-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.act-dot.queued { background: var(--accent); }
+.act-dot.skipped_no_campaign { background: var(--muted-2); }
+.act-dot.skipped_validation { background: var(--warn); }
+.act-channel-pill { font-size: 9.5px; font-weight: 800; padding: 2px 7px; border-radius: 999px; text-transform: uppercase; }
+.act-channel-pill.linkedin { background: #EAF3FC; color: #1D6FBF; }
+.act-channel-pill.email { background: var(--neutral-bg); color: var(--neutral-text); }
+.act-status-text { color: var(--muted); font-size: 11px; }
+
 .reset-link { font-size: 10.5px; color: var(--muted-2); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; background: none; border: none; padding: 0; }
 </style>
 </head>
 <body>
 
 <div class="app">
-  <div class="topbar">
-    <div class="topbar-left">
-      <div>
-        <div class="topbar-title">Signal Leads — v2.0 concept</div>
-        <div class="topbar-sub">Philippe Bosquillon · Food Executive Search</div>
-      </div>
-      <div class="topnav">
-        <a class="active" onclick="switchView('leads', this)">Leads</a>
-        <a onclick="switchView('templates', this)">Templates</a>
-      </div>
+  <!-- ═══════════ ICON RAIL ═══════════ -->
+  <div class="rail">
+    <div class="rail-avatar">PB</div>
+    <div class="rail-icon active" onclick="switchView('leads', this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 3 7l9 5 9-5-9-5z"/><path d="M3 12l9 5 9-5M3 17l9 5 9-5"/></svg>
+      <span class="rail-tip">Leads</span>
     </div>
-    <div class="topbar-stats">
-      <div class="tstat"><b>49</b><span>T1</span></div>
-      <div class="tstat"><b>54</b><span>T2</span></div>
-      <div class="tstat"><b>14</b><span>T3</span></div>
-      <div class="tstat"><b>339</b><span>Emails checked</span></div>
+    <div class="rail-icon" onclick="switchView('activity', this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      <span class="rail-tip">Activity</span>
+    </div>
+    <div class="rail-spacer"></div>
+    <div class="rail-icon" onclick="switchView('settings', this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/></svg>
+      <span class="rail-tip">Settings</span>
     </div>
   </div>
 
-  <div class="body">
+  <div class="main">
     <!-- ═══════════ LEADS VIEW ═══════════ -->
     <div class="view active" id="view-leads">
-      <div class="sidebar" id="sidebar">
-        <div class="sidebar-note">32 real companies from the live DB — wider + denser per feedback · DMK &amp; BRATA have full detail wired below</div>
-        <div id="rows"></div>
+      <div class="sidebar">
+        <div class="sb-header">
+          <div class="sb-title">Leads</div>
+          <div class="sb-subtitle">Philippe Bosquillon · Food Executive Search</div>
+        </div>
+
+        <!-- layered, tooltip-explained stats (reply-agent/overview.html State Row pattern) -->
+        <div class="stat-strip">
+          <span class="stat-item"><b>117</b> tiered<span class="tip-box">Companies with a tier assigned by rank_leads.mjs (T1+T2+T3) — out of 768 total companies with any signal.</span></span>
+          <span class="stat-sep">·</span>
+          <span class="stat-item"><b>49</b> T1<span class="tip-box">Highest priority: fresh class-A event, or 2+ different events within 90 days.</span></span>
+          <span class="stat-sep">·</span>
+          <span class="stat-item"><b>54</b> T2<span class="tip-box">Medium priority: fresh class-B event.</span></span>
+          <span class="stat-sep">·</span>
+          <span class="stat-item"><b>14</b> T3<span class="tip-box">Lower priority — older or weaker signal.</span></span>
+          <span class="stat-sep">·</span>
+          <span class="stat-item"><b>279</b>/339 sendable<span class="tip-box">Real MV+BounceBan validation run 2026-07-18: 339 emails checked, 279 came back sendable (217 clean + 62 confirmed catch-all), 10 dead, 50 unknown.</span></span>
+        </div>
+
+        <div class="search-wrap">
+          <input class="search-input" type="text" id="search-box" placeholder="Search company name…" oninput="applyFilters()">
+        </div>
+
+        <div class="status-nav" id="status-nav"></div>
+
+        <div class="accordion">
+          <button class="acc-head" onclick="toggleAcc('tier')">
+            <span class="acc-head-label">Tier</span>
+            <span class="acc-chev" id="chev-tier">▸</span>
+          </button>
+          <div class="acc-body" id="acc-tier"></div>
+        </div>
+        <div class="accordion">
+          <button class="acc-head" onclick="toggleAcc('channel')">
+            <span class="acc-head-label">Channel readiness</span>
+            <span class="acc-chev" id="chev-channel">▸</span>
+          </button>
+          <div class="acc-body" id="acc-channel"></div>
+        </div>
+
+        <div class="list-scroll">
+          <div class="list-note">32 real companies from the live DB · DMK &amp; BRATA (green dot) have full detail wired below</div>
+          <div id="rows"></div>
+        </div>
       </div>
       <div class="detail" id="detail"></div>
     </div>
 
-    <!-- ═══════════ TEMPLATES VIEW (D4) ═══════════ -->
-    <div class="view" id="view-templates">
-      <div class="templates-wrap">
-        <div class="templates-inner">
-          <div class="tpl-intro">One row per signal type — reads directly from <code>pipeline/config/copy_templates.json</code> (the same file <code>build_linkedin_queue.mjs</code> and <code>route_email.mjs</code> use in production, per ADR-009 D4). Step 3 and the follow-up are universal across every signal type by design (ADR-005) — shown once above, not repeated per row.</div>
+    <!-- ═══════════ ACTIVITY VIEW (channel_actions, queue.html-style) ═══════════ -->
+    <div class="view" id="view-activity">
+      <div class="activity-wrap">
+        <div class="activity-toolbar">
+          <div>
+            <div class="activity-title">Outreach activity</div>
+            <div class="activity-sub">Every write to <code>channel_actions</code> — real rows, 2026-07-15 run</div>
+          </div>
+          <div class="dr-wrap" id="dr-wrap">
+            <button class="dr-trigger" onclick="toggleDr()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+              <span id="dr-label">All time</span>
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="dr-menu" id="dr-menu">
+              <div class="dr-menu-item active" onclick="setDr('All time', this)">All time</div>
+              <div class="dr-menu-item" onclick="setDr('Today', this)">Today</div>
+              <div class="dr-menu-item" onclick="setDr('Last 7 days', this)">Last 7 days</div>
+              <div class="dr-menu-item" onclick="setDr('Last 30 days', this)">Last 30 days</div>
+              <div class="dr-menu-item" onclick="setDr('Last 90 days', this)">Last 90 days</div>
+            </div>
+          </div>
+          <div class="seg" id="channel-seg"></div>
+          <input class="activity-search" type="text" placeholder="Search company or contact…" id="act-search" oninput="renderActivity()">
+        </div>
+        <div class="activity-table-wrap">
+          <table class="act">
+            <thead>
+              <tr>
+                <th style="width:20px"></th>
+                <th style="width:90px">Date</th>
+                <th>Company</th>
+                <th>Contact</th>
+                <th style="width:90px">Channel</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="act-rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ SETTINGS VIEW (Templates sub-tab, D4) ═══════════ -->
+    <div class="view" id="view-settings">
+      <div class="settings-wrap">
+        <div class="settings-inner">
+          <div class="settings-subnav">
+            <a class="active">Templates</a>
+          </div>
+          <div class="tpl-intro">One row per signal type — reads directly from <code>pipeline/config/copy_templates.json</code> (the same file <code>build_linkedin_queue.mjs</code> and <code>route_email.mjs</code> use in production, per ADR-009 D4). Step 3 and the follow-up are universal across every signal type by design (ADR-005) — shown once above, not repeated per row. Also linked from each lead's outreach panel as "Full copy guide".</div>
 
           <div class="tpl-universal">
             <div class="tpl-universal-label">Universal — same for every signal type</div>
@@ -242,39 +416,41 @@ table.tpl td.copy.li { background: #FAFCFF; }
 
 <script>
 // ── Real data pulled live from signal_monitoring on 2026-07-19 ──────────────
+// status/channel fields are illustrative for the filter demo (not all 32 companies
+// have real channel_actions rows yet) — DMK and BRATA's are wired to real state.
 const LIST = [
-  {id:'dmk', name:'DMK Deutsches Milchkontor Gmbh', tier:'T1', employees:1005, country:'DE', sources:3, contacts:5, withEmail:5, available:true},
-  {id:'brata', name:'BRATA Produktion GmbH', tier:'T2', employees:300, country:'DE', sources:1, contacts:3, withEmail:0, available:true},
-  {name:'Group of Butchers', tier:'T1', employees:280, country:'NL', sources:2, contacts:3, withEmail:2},
-  {name:'Ingredion Incorporated', tier:'T1', employees:8374, country:'US', sources:4, contacts:5, withEmail:4},
-  {name:'Aryzta', tier:'T1', employees:7700, country:'CH', sources:2, contacts:3, withEmail:2},
-  {name:'Heineken', tier:'T1', employees:1360, country:'BE', sources:1, contacts:4, withEmail:2},
-  {name:'waterdrop®', tier:'T1', employees:400, country:'AT', sources:2, contacts:3, withEmail:3},
-  {name:'Circus', tier:'T1', employees:300, country:'DE', sources:2, contacts:5, withEmail:0},
-  {name:'Vandemoortele USA', tier:'T1', employees:6000, country:'BE', sources:3, contacts:3, withEmail:1},
-  {name:'InfiniteRoots', tier:'T1', employees:200, country:'DE', sources:2, contacts:3, withEmail:1},
-  {name:'Hengstenberg', tier:'T1', employees:2000, country:'DE', sources:1, contacts:6, withEmail:1},
-  {name:'Poulailon', tier:'T1', employees:250, country:'FR', sources:1, contacts:1, withEmail:1},
-  {name:'Planted', tier:'T1', employees:215, country:'DE', sources:2, contacts:1, withEmail:1},
-  {name:'el origen food GmbH', tier:'T1', employees:20, country:'DE', sources:1, contacts:4, withEmail:0},
-  {name:'Culinor', tier:'T1', employees:200, country:'CH', sources:1, contacts:6, withEmail:2},
-  {name:'The Vegetarian Butcher Collective', tier:'T1', employees:127, country:'NL', sources:1, contacts:3, withEmail:0},
-  {name:'Eurolysine', tier:'T1', employees:195, country:null, sources:2, contacts:5, withEmail:2},
-  {name:'Crisp', tier:'T1', employees:405, country:null, sources:1, contacts:3, withEmail:2},
-  {name:'Zertus Gruppe', tier:'T1', employees:42, country:null, sources:1, contacts:4, withEmail:2},
-  {name:'The Nutriment Company', tier:'T1', employees:300, country:null, sources:1, contacts:3, withEmail:2},
-  {name:'Maasoever', tier:'T1', employees:25, country:'NL', sources:1, contacts:4, withEmail:2},
-  {name:'Berief Food Gmbh', tier:'T1', employees:72, country:'DE', sources:2, contacts:1, withEmail:1},
-  {name:'Polaris', tier:'T1', employees:51, country:'FR', sources:1, contacts:1, withEmail:1},
-  {name:'Suntory Beverage & Food Benelux', tier:'T2', employees:71, country:'BE', sources:1, contacts:1, withEmail:0},
-  {name:'Hügli Nahrungsmittel Gmbh', tier:'T2', employees:268, country:'DE', sources:1, contacts:1, withEmail:0},
-  {name:'Henry Lambertz Gmbh & Co Kg', tier:'T2', employees:256, country:'DE', sources:1, contacts:1, withEmail:0},
-  {name:'Bav Institut', tier:'T2', employees:77, country:'DE', sources:1, contacts:1, withEmail:1},
-  {name:"Tout&bon", tier:'T2', employees:158, country:'FR', sources:1, contacts:3, withEmail:3},
-  {name:'Haus Rabenhorst O. Lauffs Gmbh & Co. Kg', tier:'T2', employees:53, country:'DE', sources:1, contacts:1, withEmail:0},
-  {name:'Lactalis Germany', tier:'T3', employees:2500, country:null, sources:1, contacts:8, withEmail:2},
-  {name:'Theo Müller Unternehmensgruppe (UTM)', tier:'T3', employees:35000, country:null, sources:1, contacts:3, withEmail:3},
-  {name:'Corbion', tier:'T3', employees:2299, country:'NL', sources:1, contacts:2, withEmail:0},
+  {id:'dmk', name:'DMK Deutsches Milchkontor Gmbh', tier:'T1', employees:1005, country:'DE', sources:3, contacts:5, withEmail:5, available:true, status:'sent', channel:'both'},
+  {id:'brata', name:'BRATA Produktion GmbH', tier:'T2', employees:300, country:'DE', sources:1, contacts:3, withEmail:0, available:true, status:'sent', channel:'linkedin_only'},
+  {name:'Group of Butchers', tier:'T1', employees:280, country:'NL', sources:2, contacts:3, withEmail:2, status:'new', channel:'both'},
+  {name:'Ingredion Incorporated', tier:'T1', employees:8374, country:'US', sources:4, contacts:5, withEmail:4, status:'replied', channel:'both'},
+  {name:'Aryzta', tier:'T1', employees:7700, country:'CH', sources:2, contacts:3, withEmail:2, status:'new', channel:'both'},
+  {name:'Heineken', tier:'T1', employees:1360, country:'BE', sources:1, contacts:4, withEmail:2, status:'meeting', channel:'both'},
+  {name:'waterdrop®', tier:'T1', employees:400, country:'AT', sources:2, contacts:3, withEmail:3, status:'new', channel:'both'},
+  {name:'Circus', tier:'T1', employees:300, country:'DE', sources:2, contacts:5, withEmail:0, status:'new', channel:'linkedin_only'},
+  {name:'Vandemoortele USA', tier:'T1', employees:6000, country:'BE', sources:3, contacts:3, withEmail:1, status:'sent', channel:'both'},
+  {name:'InfiniteRoots', tier:'T1', employees:200, country:'DE', sources:2, contacts:3, withEmail:1, status:'new', channel:'both'},
+  {name:'Hengstenberg', tier:'T1', employees:2000, country:'DE', sources:1, contacts:6, withEmail:1, status:'new', channel:'both'},
+  {name:'Poulailon', tier:'T1', employees:250, country:'FR', sources:1, contacts:1, withEmail:1, status:'sent', channel:'both'},
+  {name:'Planted', tier:'T1', employees:215, country:'DE', sources:2, contacts:1, withEmail:1, status:'sent', channel:'both'},
+  {name:'el origen food GmbH', tier:'T1', employees:20, country:'DE', sources:1, contacts:4, withEmail:0, status:'new', channel:'linkedin_only'},
+  {name:'Culinor', tier:'T1', employees:200, country:'CH', sources:1, contacts:6, withEmail:2, status:'sent', channel:'both'},
+  {name:'The Vegetarian Butcher Collective', tier:'T1', employees:127, country:'NL', sources:1, contacts:3, withEmail:0, status:'new', channel:'linkedin_only'},
+  {name:'Eurolysine', tier:'T1', employees:195, country:null, sources:2, contacts:5, withEmail:2, status:'sent', channel:'both'},
+  {name:'Crisp', tier:'T1', employees:405, country:null, sources:1, contacts:3, withEmail:2, status:'new', channel:'both'},
+  {name:'Zertus Gruppe', tier:'T1', employees:42, country:null, sources:1, contacts:4, withEmail:2, status:'new', channel:'both'},
+  {name:'The Nutriment Company', tier:'T1', employees:300, country:null, sources:1, contacts:3, withEmail:2, status:'new', channel:'both'},
+  {name:'Maasoever', tier:'T1', employees:25, country:'NL', sources:1, contacts:4, withEmail:2, status:'new', channel:'both'},
+  {name:'Berief Food Gmbh', tier:'T1', employees:72, country:'DE', sources:2, contacts:1, withEmail:1, status:'new', channel:'both'},
+  {name:'Polaris', tier:'T1', employees:51, country:'FR', sources:1, contacts:1, withEmail:1, status:'new', channel:'both'},
+  {name:'Suntory Beverage & Food Benelux', tier:'T2', employees:71, country:'BE', sources:1, contacts:1, withEmail:0, status:'new', channel:'linkedin_only'},
+  {name:'Hügli Nahrungsmittel Gmbh', tier:'T2', employees:268, country:'DE', sources:1, contacts:1, withEmail:0, status:'new', channel:'linkedin_only'},
+  {name:'Henry Lambertz Gmbh & Co Kg', tier:'T2', employees:256, country:'DE', sources:1, contacts:1, withEmail:0, status:'new', channel:'linkedin_only'},
+  {name:'Bav Institut', tier:'T2', employees:77, country:'DE', sources:1, contacts:1, withEmail:1, status:'new', channel:'both'},
+  {name:"Tout&bon", tier:'T2', employees:158, country:'FR', sources:1, contacts:3, withEmail:3, status:'pass', channel:'both'},
+  {name:'Haus Rabenhorst O. Lauffs Gmbh & Co. Kg', tier:'T2', employees:53, country:'DE', sources:1, contacts:1, withEmail:0, status:'new', channel:'linkedin_only'},
+  {name:'Lactalis Germany', tier:'T3', employees:2500, country:null, sources:1, contacts:8, withEmail:2, status:'new', channel:'both'},
+  {name:'Theo Müller Unternehmensgruppe (UTM)', tier:'T3', employees:35000, country:null, sources:1, contacts:3, withEmail:3, status:'new', channel:'both'},
+  {name:'Corbion', tier:'T3', employees:2299, country:'NL', sources:1, contacts:2, withEmail:0, status:'new', channel:'linkedin_only'},
 ];
 
 const TIER_EXPLAIN = {
@@ -282,8 +458,10 @@ const TIER_EXPLAIN = {
   T2: "Medium priority. Has a fresh 'class B' event (expansion, contract win, sector signal).",
   T3: "Lower priority. Older or weaker signal — still worth a look, just not urgent.",
 };
+const STATUS_LABELS = { new: 'New', sent: 'Sent', replied: 'Replied', meeting: 'Meeting', pass: 'Pass' };
+const STATUS_COLORS = { new: 'var(--muted-2)', sent: 'var(--accent)', replied: '#7C3AED', meeting: 'var(--pos)', pass: 'var(--neg)' };
 
-// ── D3: events deduped by source_url, AI-summarized when >=2 unique sources ──
+// ── Full detail for the 2 wired companies — ALL real contacts, not capped at 2 ──
 const DETAIL = {
   dmk: {
     name: 'DMK Deutsches Milchkontor GmbH', industry: 'Food and Beverage Manufacturing', employees: 1005, country: 'DE',
@@ -304,9 +482,13 @@ const DETAIL = {
         { label: 'Mejerimedier', url: '#', date: '2026-06-04' },
       ], dupeNote: null },
     ],
+    // all 5 real contacts (previous mockup capped at 2 — same bug the live LeadCard.tsx has, fixed here)
     contacts: [
       { name: 'Andreas Nagel', title: 'Global GBS / Shared Services Leader — Strategy, Transformation, HR and FI Operations', linkedin: 'https://www.linkedin.com/in/andreaspeternagel', email: 'andreas.nagel@dmk.de', status: 'verified', primary: true },
+      { name: 'Lars Schneider', title: null, linkedin: 'https://www.linkedin.com/in/lars-schneider-248690b6', email: 'lars.schneider@dmk.de', status: 'pending', primary: false },
       { name: 'Merle Niewert', title: 'Head of HR Digitalization & Business Analytics bei DMK Deutsches Milchkontor GmbH', linkedin: 'https://www.linkedin.com/in/merle-niewert-a3800522a', email: 'merle.niewert@dmk.de', status: 'pending', primary: false },
+      { name: 'Christian Balke', title: null, linkedin: 'https://www.linkedin.com/in/christian-balke-b5760b194', email: 'christian.balke@dmk.de', status: 'pending', primary: false },
+      { name: 'Vivien Bellmann', title: 'Management Support Chief People & Service Officer bei DMK Group', linkedin: 'https://www.linkedin.com/in/vivien-bellmann-880b16199', email: 'vivien.bellmann@dmk.de', status: 'pending', primary: false },
     ],
     outreach: {
       contactFirstName: 'Andreas',
@@ -335,9 +517,11 @@ const DETAIL = {
         { label: 'Company site', url: 'https://www.brata.de', date: '2026-06-16' },
       ], dupeNote: null },
     ],
+    // all 3 real contacts, all missing email — genuine LinkedIn-only company
     contacts: [
       { name: 'Stefan Eßer', title: 'Prokurist / Betriebsleiter', linkedin: 'https://linkedin.com/in/stefan-e%C3%9Fer-b343b8106', email: null, status: 'none', primary: true },
       { name: 'Etienne Piehler', title: 'Sales Manager Export at BRATA Paniermehl | Food Coatings & Breadcrumbs', linkedin: 'https://linkedin.com/in/etienne-piehler-552a25251', email: null, status: 'none', primary: false },
+      { name: 'Andy Schmitz', title: 'produktion bei BRATA', linkedin: 'https://linkedin.com/in/andy-schmitz-603560168', email: null, status: 'none', primary: false },
     ],
     outreach: {
       contactFirstName: 'Stefan',
@@ -359,7 +543,6 @@ const DETAIL = {
   },
 };
 
-// D4 — copy_templates.json migrated shape preview (9 keys kept, step1/step2 per key)
 const TEMPLATES = [
   { key: 'HIRING_EXEC', li1: 'saw the {exact_job_title} opening at {company}. I do exec search in food, {market_focus} — open to connecting?', li2: 'Is the {exact_job_title} search still open, or did you already fill it?', em: 'hey {first_name},\n\nsaw {company} is looking for a {exact_job_title} —\nthat\'s exactly what Philippe places, senior food industry execs\nin {market_focus} in about 2 weeks\n\nworth a quick intro?\n\nLeo' },
   { key: 'HIRING_MID', li1: "{company}'s {exact_job_title} posting is exactly the kind of role I place — food operations leadership, {market_focus}. Let's connect.", li2: 'Quick one: is the {exact_job_title} role at {company} still open?', em: 'hey {first_name},\n\nsaw {company} is hiring a {exact_job_title} —\n\nI know someone who specifically places production leadership roles\nat food companies in {market_focus}\n\nworth an intro?\n\nLeo' },
@@ -372,30 +555,125 @@ const TEMPLATES = [
   { key: 'HIRING_STALE', li1: '(same as HIRING_MID — role has been open a while)', li2: 'Still working through the {job_title} search, or has it stalled?', em: 'hey {first_name},\n\nstill seeing the {job_title} role posted —\nif the search isn\'t going the way you hoped, worth a conversation\n\nLeo' },
 ];
 
+// Real channel_actions rows, 2026-07-15 run (client_id=philippe-bosquillon)
+const ACTIVITY = [
+  { company: 'Dmk Deutsches Milchkontor Gmbh', tier: 'T1', contact: 'Vivien Bellmann', channel: 'email', status: 'skipped_validation', date: '2026-07-15' },
+  { company: 'Dmk Deutsches Milchkontor Gmbh', tier: 'T1', contact: 'Lars Schneider', channel: 'linkedin', status: 'queued', date: '2026-07-15' },
+  { company: 'Circular Grain', tier: 'T2', contact: 'Ina Budde', channel: 'email', status: 'skipped_validation', date: '2026-07-15' },
+  { company: 'Circular Grain', tier: 'T2', contact: 'tim gräsing', channel: 'linkedin', status: 'queued', date: '2026-07-15' },
+  { company: 'Intersnack Deutschland Se', tier: 'T2', contact: 'Jan van Den Broek', channel: 'email', status: 'skipped_validation', date: '2026-07-15' },
+  { company: 'Milchwerk Neuburg', tier: 'T2', contact: 'Oliver Richter', channel: 'email', status: 'skipped_no_campaign', date: '2026-07-15', reason: 'no campaign_map[B] configured' },
+  { company: 'Milchwerk Neuburg', tier: 'T2', contact: 'Michael N.', channel: 'linkedin', status: 'queued', date: '2026-07-15' },
+  { company: 'Famille Michaud Apiculteurs', tier: 'T2', contact: 'Vincent Michaud', channel: 'email', status: 'skipped_no_campaign', date: '2026-07-15', reason: 'no campaign_map[C] configured' },
+  { company: 'Famille Michaud Apiculteurs', tier: 'T2', contact: 'Vincent Michaud', channel: 'linkedin', status: 'queued', date: '2026-07-15' },
+  { company: 'Planted', tier: 'T1', contact: 'Oliver Pinkus', channel: 'email', status: 'skipped_no_campaign', date: '2026-07-15', reason: 'no campaign_map[C] configured' },
+  { company: 'Planted', tier: 'T1', contact: 'Oliver Pinkus', channel: 'linkedin', status: 'queued', date: '2026-07-15' },
+  { company: 'Poulailon', tier: 'T1', contact: 'Fabien Poulaillon', channel: 'email', status: 'skipped_no_campaign', date: '2026-07-15', reason: 'no campaign_map[A] configured' },
+  { company: 'Poulailon', tier: 'T1', contact: 'Fabien Poulaillon', channel: 'linkedin', status: 'queued', date: '2026-07-15' },
+  { company: 'Foodimpuls', tier: 'T1', contact: 'Bert Haarsma', channel: 'email', status: 'skipped_no_campaign', date: '2026-07-15', reason: 'no campaign_map[A] configured' },
+  { company: 'St Michel Biscuits', tier: 'T2', contact: 'Franck Garsmeur', channel: 'email', status: 'skipped_no_campaign', date: '2026-07-15', reason: 'no campaign_map[C] configured' },
+  { company: 'Culinor', tier: 'T1', contact: 'Guy De Vos', channel: 'email', status: 'skipped_no_campaign', date: '2026-07-15', reason: 'no campaign_map[A] configured' },
+  { company: 'Group of Butchers', tier: 'T1', contact: 'Bart Dobbelsteen', channel: 'email', status: 'skipped_no_campaign', date: '2026-07-15', reason: 'no campaign_map[A] configured' },
+  { company: 'Eurolysine', tier: 'T1', contact: 'Nicolas Martin', channel: 'email', status: 'skipped_no_campaign', date: '2026-07-15', reason: 'no campaign_map[B] configured' },
+  { company: 'Ingredion Incorporated', tier: 'T1', contact: 'Nancy Wolfe', channel: 'email', status: 'skipped_no_campaign', date: '2026-07-15', reason: 'no campaign_map[C] configured' },
+  { company: 'Aryzta', tier: 'T1', contact: 'Lukas Amrein', channel: 'email', status: 'skipped_no_campaign', date: '2026-07-15', reason: 'no campaign_map[A] configured' },
+];
+const ACTIVITY_STATUS_LABEL = {
+  queued: 'Queued for LinkedIn',
+  skipped_no_campaign: 'Skipped — no PlusVibe campaign configured yet',
+  skipped_validation: 'Skipped — email validation pending',
+};
+
 let selected = 'dmk';
 let statusState = { dmk: 'sent', brata: 'sent' };
 let langState = { dmk: 'en', brata: 'en' };
+let activeStatusFilter = 'all';
+let activeTierFilters = new Set(['T1', 'T2', 'T3']);
+let activeChannelFilters = new Set(['both', 'linkedin_only']);
+let accOpen = { tier: false, channel: false };
+let drLabel = 'All time';
+let activeChannelSeg = 'all';
 
-function countryFlag(c) { return c || ''; }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function avatarColor(name) {
+  const colors = ['#4F5FD1','#0EA5A5','#D97706','#DC2626','#7C3AED','#059669','#DB2777'];
+  let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % colors.length;
+  return colors[h];
+}
+function initials(name) { return name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase(); }
+
+// ── Status nav (inbox.html nav-item pattern) ──────────────────────────────
+function renderStatusNav() {
+  const counts = { all: LIST.length };
+  for (const s of Object.keys(STATUS_LABELS)) counts[s] = LIST.filter(c => c.status === s).length;
+  const items = [{ key: 'all', label: 'All leads', color: null }].concat(
+    Object.entries(STATUS_LABELS).map(([key, label]) => ({ key, label, color: STATUS_COLORS[key] }))
+  );
+  document.getElementById('status-nav').innerHTML = items.map(it =>
+    '<button class="nav-item ' + (activeStatusFilter === it.key ? 'on' : '') + '" onclick="setStatusFilter(\'' + it.key + '\')">' +
+      (it.color ? '<span class="nav-dot" style="background:' + it.color + '"></span>' : '') +
+      it.label + '<span class="cnt">' + counts[it.key] + '</span>' +
+    '</button>'
+  ).join('');
+}
+
+function renderTierAcc() {
+  const counts = { T1: 0, T2: 0, T3: 0 };
+  for (const c of LIST) counts[c.tier]++;
+  document.getElementById('acc-tier').innerHTML = ['T1', 'T2', 'T3'].map(t =>
+    '<label class="acc-row"><input type="checkbox" ' + (activeTierFilters.has(t) ? 'checked' : '') + ' onchange="toggleTierFilter(\'' + t + '\')"><span class="lbl">' + t + '</span><span class="cnt">' + counts[t] + '</span></label>'
+  ).join('');
+}
+
+function renderChannelAcc() {
+  const counts = { both: 0, linkedin_only: 0 };
+  for (const c of LIST) counts[c.channel]++;
+  const labels = { both: 'Has email + LinkedIn', linkedin_only: 'LinkedIn only — no email' };
+  document.getElementById('acc-channel').innerHTML = Object.keys(labels).map(k =>
+    '<label class="acc-row"><input type="checkbox" ' + (activeChannelFilters.has(k) ? 'checked' : '') + ' onchange="toggleChannelFilter(\'' + k + '\')"><span class="lbl">' + labels[k] + '</span><span class="cnt">' + counts[k] + '</span></label>'
+  ).join('');
+}
 
 function renderList() {
-  document.getElementById('rows').innerHTML = LIST.map((c) => {
+  const q = (document.getElementById('search-box')?.value || '').toLowerCase();
+  const filtered = LIST.filter(c =>
+    (activeStatusFilter === 'all' || c.status === activeStatusFilter) &&
+    activeTierFilters.has(c.tier) &&
+    activeChannelFilters.has(c.channel) &&
+    (!q || c.name.toLowerCase().includes(q))
+  );
+  document.getElementById('rows').innerHTML = filtered.map((c) => {
     const isAvail = !!c.available;
     const isActive = isAvail && c.id === selected;
-    const meta = [countryFlag(c.country), c.employees ? c.employees.toLocaleString() + 'p' : null, c.sources + ' src', c.withEmail + '/' + c.contacts + ' email'].filter(Boolean).join(' · ');
+    const meta = [c.country, c.employees ? c.employees.toLocaleString() + 'p' : null, c.sources + ' src'].filter(Boolean).join(' · ');
     const clickHandler = isAvail ? "selectCompany('" + c.id + "')" : 'renderPlaceholder()';
+    const emailChip = c.channel === 'linkedin_only'
+      ? '<span class="chip chip-channel warn">LinkedIn only</span>'
+      : '<span class="chip chip-channel">' + c.withEmail + '/' + c.contacts + ' email</span>';
     return '<div class="row ' + (isActive ? 'active' : '') + ' ' + (isAvail ? '' : 'locked') + '" onclick="' + clickHandler + '">' +
-      '<div class="row-top">' +
-        '<span class="' + (isAvail ? 'avail-dot' : 'locked-dot') + '"></span>' +
-        '<span class="row-name">' + c.name + '</span>' +
-        '<span class="tier-pill tip tier-' + c.tier + '">' + c.tier + '<span class="tip-box">' + TIER_EXPLAIN[c.tier] + '</span></span>' +
+      '<div class="row-avatar" style="background:' + avatarColor(c.name) + (isAvail ? ';box-shadow:0 0 0 2px ' + (isActive ? 'var(--accent)' : 'var(--pos)') : '') + '">' + initials(c.name) + '</div>' +
+      '<div class="row-body">' +
+        '<div class="row-top"><span class="row-name">' + c.name + '</span></div>' +
+        '<div class="row-meta">' + meta + '</div>' +
+        '<div class="row-tags">' +
+          '<span class="chip chip-' + c.tier + '">' + c.tier + '</span>' +
+          '<span class="chip chip-status">' + STATUS_LABELS[c.status] + '</span>' +
+          emailChip +
+        '</div>' +
       '</div>' +
-      '<div class="row-meta">' + meta + '</div>' +
     '</div>';
   }).join('');
 }
 
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function applyFilters() { renderList(); }
+window.setStatusFilter = function (key) { activeStatusFilter = key; renderStatusNav(); renderList(); };
+window.toggleTierFilter = function (t) { activeTierFilters.has(t) ? activeTierFilters.delete(t) : activeTierFilters.add(t); if (!activeTierFilters.size) activeTierFilters.add(t); renderList(); };
+window.toggleChannelFilter = function (c) { activeChannelFilters.has(c) ? activeChannelFilters.delete(c) : activeChannelFilters.add(c); if (!activeChannelFilters.size) activeChannelFilters.add(c); renderList(); };
+window.toggleAcc = function (name) {
+  accOpen[name] = !accOpen[name];
+  document.getElementById('acc-' + name).classList.toggle('open', accOpen[name]);
+  document.getElementById('chev-' + name).classList.toggle('open', accOpen[name]);
+};
 
 function emailPill(status) {
   if (status === 'verified') return '<span class="email-pill pill-verified">✓ Verified</span>';
@@ -407,13 +685,11 @@ function renderEvents(events) {
   return events.map((e) => {
     const badgeClass = e.status === 'active' ? 'badge-active' : 'badge-stale';
     const srcLinks = e.sources.map(s => '<a class="src-link" href="' + s.url + '" target="_blank">↗ ' + esc(s.label) + ' · ' + s.date + '</a>').join('');
-    return '<div class="event">' +
-      '<div class="event-top">' +
+    return '<div class="event"><div class="event-top">' +
         '<div class="event-toprow"><span class="ai-summary"><span class="ai-tag">AI summary</span>' + esc(e.summary) + '</span><span class="event-badge ' + badgeClass + '">' + e.status + '</span></div>' +
         '<div class="event-sources">' + srcLinks + '</div>' +
         (e.dupeNote ? '<div class="dupe-note">' + esc(e.dupeNote) + '</div>' : '') +
-      '</div>' +
-    '</div>';
+      '</div></div>';
   }).join('');
 }
 
@@ -430,20 +706,15 @@ function renderContacts(contacts) {
   }).join('') + '</div>';
 }
 
-// D2 — flat status row + contextual copy text (no forced stepper)
 const STATUSES = [
-  { key: 'new', label: 'New' },
-  { key: 'sent', label: 'Sent' },
-  { key: 'replied', label: 'Replied' },
-  { key: 'meeting', label: 'Meeting' },
-  { key: 'pass', label: 'Pass' },
+  { key: 'new', label: 'New' }, { key: 'sent', label: 'Sent' }, { key: 'replied', label: 'Replied' },
+  { key: 'meeting', label: 'Meeting' }, { key: 'pass', label: 'Pass' },
 ];
 
 function renderOutreach(key) {
   const o = DETAIL[key].outreach;
   const status = statusState[key];
   const lang = langState[key];
-
   const statusBtns = STATUSES.map(s => '<button class="status-btn ' + (status === s.key ? 'on ' + s.key : '') + '" onclick="setStatus(\'' + key + '\',\'' + s.key + '\')">' + s.label + '</button>').join('');
 
   let copyBox = '';
@@ -456,7 +727,6 @@ function renderOutreach(key) {
   } else if (status === 'pass') {
     copyBox = '<div class="copy-box"><div class="cb-label" style="color:var(--muted)">Marked as pass — no further copy needed, no more nudges.</div></div>';
   }
-
   return '<div class="status-row">' + statusBtns + '</div>' + copyBox;
 }
 
@@ -465,6 +735,7 @@ function copyActions(key) {
   return '<div class="cb-actions">' +
     '<button class="btn btn-copy" onclick="copyMsg(this,\'' + key + '\')">⧉ Copy text</button>' +
     '<button class="btn btn-translate ' + (lang === 'de' ? 'on' : '') + '" onclick="toggleLang(\'' + key + '\')">' + (lang === 'de' ? '✓ Showing DE' : '🌐 Translate to DE') + '</button>' +
+    '<a class="btn-guide" onclick="switchView(\'settings\', document.querySelectorAll(\'.rail-icon\')[2])">Full copy guide ↗</a>' +
   '</div>';
 }
 
@@ -476,16 +747,18 @@ function renderEmailStatus(state) {
 
 function renderDetail(key) {
   const d = DETAIL[key];
+  const allNoEmail = d.contacts.every(c => c.status === 'none' || !c.email);
   document.getElementById('detail').innerHTML =
     '<div class="detail-inner">' +
       '<div class="card">' +
         '<div class="card-head">' +
           '<div><div class="co-name">' + esc(d.name) + '</div>' +
           '<div class="co-meta">' + [d.industry, d.employees ? d.employees.toLocaleString() + ' employees' : null, d.country, '<a href="https://' + d.domain + '" target="_blank">' + d.domain + ' ↗</a>', '<a href="' + d.linkedin + '" target="_blank">LinkedIn ↗</a>'].filter(Boolean).join(' <span class="dot-sep"></span> ') + '</div></div>' +
-          '<div class="tier-block"><span class="tier-big tip tier-' + d.tier + '">' + d.tier + '<span class="tip-box">' + TIER_EXPLAIN[d.tier] + ' Rank is an internal sort order within the tier, not shown as a raw number.</span></span><div class="tier-reason">' + esc(d.tier_reason) + '</div></div>' +
+          '<div class="tier-block"><span class="tier-big">' + d.tier + '<span class="tip-box">' + TIER_EXPLAIN[d.tier] + ' Rank is an internal sort order within the tier, not shown as a raw number.</span></span><div class="tier-reason">' + esc(d.tier_reason) + '</div></div>' +
         '</div>' +
+        (allNoEmail ? '<div class="channel-only-banner">⚠ No verified email at this company — LinkedIn is the only channel for all ' + d.contacts.length + ' contacts.</div>' : '') +
         '<div class="section"><div class="section-label">Signals — deduped by source, AI-summarized</div>' + renderEvents(d.events) + '</div>' +
-        '<div class="section"><div class="section-label">Contacts</div>' + renderContacts(d.contacts) + '</div>' +
+        '<div class="section"><div class="section-label">Contacts (' + d.contacts.length + ')</div>' + renderContacts(d.contacts) + '</div>' +
         '<div class="section">' +
           '<div class="section-label">Outreach</div>' +
           '<div class="channel-block">' +
@@ -503,7 +776,7 @@ function renderDetail(key) {
 
 function renderPlaceholder() {
   document.getElementById('detail').innerHTML =
-    '<div class="placeholder"><div class="icon">◇</div><h3>Full detail not part of this preview</h3><p>DMK and BRATA (left) show the complete concept. The rest of the list uses real company names and counts, without the deep-dive wired up for this mock.</p></div>';
+    '<div class="placeholder"><div class="icon">◇</div><h3>Full detail not part of this preview</h3><p>DMK and BRATA (green ring avatar) show the complete concept. The rest of the list uses real company names and counts, without the deep-dive wired up for this mock.</p></div>';
 }
 
 function renderTemplates() {
@@ -511,6 +784,45 @@ function renderTemplates() {
     '<tr><td class="key">' + t.key + '</td><td class="copy li">' + esc(t.li1) + '</td><td class="copy li">' + esc(t.li2) + '</td><td class="copy">' + esc(t.em) + '</td></tr>'
   ).join('');
 }
+
+// ── Activity view ──────────────────────────────────────────────────────
+function renderChannelSeg() {
+  const opts = [{ k: 'all', l: 'All' }, { k: 'linkedin', l: 'LinkedIn' }, { k: 'email', l: 'Email' }];
+  document.getElementById('channel-seg').innerHTML = opts.map(o =>
+    '<button class="seg-btn ' + (activeChannelSeg === o.k ? 'on' : '') + '" onclick="setChannelSeg(\'' + o.k + '\')">' + o.l + '</button>'
+  ).join('');
+}
+window.setChannelSeg = function (k) { activeChannelSeg = k; renderChannelSeg(); renderActivity(); };
+
+function renderActivity() {
+  const q = (document.getElementById('act-search')?.value || '').toLowerCase();
+  const filtered = ACTIVITY.filter(a =>
+    (activeChannelSeg === 'all' || a.channel === activeChannelSeg) &&
+    (!q || a.company.toLowerCase().includes(q) || a.contact.toLowerCase().includes(q))
+  );
+  document.getElementById('act-rows').innerHTML = filtered.map(a =>
+    '<tr><td><span class="act-dot ' + a.status + '"></span></td>' +
+    '<td class="act-status-text">' + a.date + '</td>' +
+    '<td><span class="chip chip-' + a.tier + '" style="margin-right:6px">' + a.tier + '</span>' + esc(a.company) + '</td>' +
+    '<td>' + esc(a.contact) + '</td>' +
+    '<td><span class="act-channel-pill ' + a.channel + '">' + a.channel + '</span></td>' +
+    '<td class="act-status-text">' + ACTIVITY_STATUS_LABEL[a.status] + (a.reason ? ' <span class="mono" style="color:var(--muted-2)">(' + a.reason + ')</span>' : '') + '</td></tr>'
+  ).join('');
+}
+
+window.toggleDr = function () { document.getElementById('dr-menu').classList.toggle('open'); };
+window.setDr = function (label, el) {
+  drLabel = label;
+  document.getElementById('dr-label').textContent = label;
+  document.querySelectorAll('.dr-menu-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('dr-menu').classList.remove('open');
+  // demo only — real build would refilter ACTIVITY by created_at against this range
+};
+document.addEventListener('click', (e) => {
+  const wrap = document.getElementById('dr-wrap');
+  if (wrap && !wrap.contains(e.target)) document.getElementById('dr-menu').classList.remove('open');
+});
 
 window.selectCompany = function (key) { selected = key; renderList(); renderDetail(key); };
 window.setStatus = function (key, status) { statusState[key] = status; document.getElementById('outreach-' + key).innerHTML = renderOutreach(key); };
@@ -524,13 +836,18 @@ window.copyMsg = function (btn, key) {
 window.switchView = function (view, el) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + view).classList.add('active');
-  document.querySelectorAll('.topnav a').forEach(a => a.classList.remove('active'));
-  el.classList.add('active');
+  document.querySelectorAll('.rail-icon').forEach(a => a.classList.remove('active'));
+  if (el) el.classList.add('active');
 };
 
+renderStatusNav();
+renderTierAcc();
+renderChannelAcc();
 renderList();
 renderDetail('dmk');
 renderTemplates();
+renderChannelSeg();
+renderActivity();
 </script>
 </body>
 </html>
