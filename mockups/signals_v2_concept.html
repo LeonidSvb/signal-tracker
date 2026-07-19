@@ -82,6 +82,8 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Lato',
 
 .accordion { border-bottom: 1px solid var(--border); }
 .acc-head { width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: none; border: none; cursor: pointer; }
+.acc-head .tip { margin-left: auto; }
+.acc-head .tip + .acc-chev { margin-left: 0; }
 .acc-head-label { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .tier-mini { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; }
 .tier-mini span { display: flex; align-items: center; gap: 3px; }
@@ -380,6 +382,14 @@ table.act tr:hover td { background: var(--surface-2); }
           </button>
           <div class="acc-body" id="acc-channel"></div>
         </div>
+        <div class="accordion">
+          <button class="acc-head" onclick="toggleAcc('origin')">
+            <span class="acc-head-label">Signal origin</span>
+            <span class="tip"><svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box">Exa (news monitors) and job boards barely overlap — of 409 companies with any signal, only 4 have both. Two mostly-separate populations, not duplicates.</span></span>
+            <span class="acc-chev" id="chev-origin">▸</span>
+          </button>
+          <div class="acc-body" id="acc-origin"></div>
+        </div>
 
         <div class="list-scroll">
           <div class="list-note">32 real companies from the live DB · DMK &amp; BRATA (green dot) have full detail wired below</div>
@@ -437,30 +447,39 @@ table.act tr:hover td { background: var(--surface-2); }
       <div class="settings-wrap">
         <div class="settings-inner">
           <div class="settings-subnav">
-            <a class="active">Templates</a>
+            <a class="active" id="ssnav-templates" onclick="switchSettingsTab('templates', this)">Templates</a>
+            <a id="ssnav-analytics" onclick="switchSettingsTab('analytics', this)">Analytics</a>
           </div>
-          <div class="tpl-intro">One row per signal type — reads directly from <code>pipeline/config/copy_templates.json</code> (the same file <code>build_linkedin_queue.mjs</code> and <code>route_email.mjs</code> use in production, per ADR-009 D4). Step 3 and the follow-up are universal across every signal type by design (ADR-005) — shown once above, not repeated per row. Also linked from each lead's outreach panel as "Full copy guide".</div>
 
-          <div class="tpl-universal">
-            <div class="tpl-universal-label">Universal — same for every signal type</div>
-            <div class="tpl-universal-grid">
-              <div class="tpl-universal-item"><div class="k">Step 3 — propose a call (LinkedIn)</div><div class="v">Good, that's exactly what I help with — worth a quick call to figure out which of these roles matters most right now. {relevant case, if you have one} Here's my calendar: [Calendly link].</div></div>
-              <div class="tpl-universal-item"><div class="k">Follow-up nudge (LinkedIn)</div><div class="v">Hey {first_name} — just checking back in, no worries if it's not the right time.</div></div>
+          <div class="settings-panel active" id="settings-templates">
+            <div class="tpl-intro">One row per signal type — reads directly from <code>pipeline/config/copy_templates.json</code> (the same file <code>build_linkedin_queue.mjs</code> and <code>route_email.mjs</code> use in production, per ADR-009 D4). Step 3 and the follow-up are universal across every signal type by design (ADR-005) — shown once above, not repeated per row. Also linked from each lead's outreach panel as "Full copy guide".</div>
+
+            <div class="tpl-universal">
+              <div class="tpl-universal-label">Universal — same for every signal type</div>
+              <div class="tpl-universal-grid">
+                <div class="tpl-universal-item"><div class="k">Step 3 — propose a call (LinkedIn)</div><div class="v">Good, that's exactly what I help with — worth a quick call to figure out which of these roles matters most right now. {relevant case, if you have one} Here's my calendar: [Calendly link].</div></div>
+                <div class="tpl-universal-item"><div class="k">Follow-up nudge (LinkedIn)</div><div class="v">Hey {first_name} — just checking back in, no worries if it's not the right time.</div></div>
+              </div>
+            </div>
+
+            <div class="tpl-table-wrap">
+              <table class="tpl">
+                <thead>
+                  <tr>
+                    <th>Signal type</th>
+                    <th class="li-col">LinkedIn — Step 1 (connect)</th>
+                    <th class="li-col">LinkedIn — Step 2 (qualify)</th>
+                    <th class="em-col">Email — variant A (Leo)</th>
+                  </tr>
+                </thead>
+                <tbody id="tpl-rows"></tbody>
+              </table>
             </div>
           </div>
 
-          <div class="tpl-table-wrap">
-            <table class="tpl">
-              <thead>
-                <tr>
-                  <th>Signal type</th>
-                  <th class="li-col">LinkedIn — Step 1 (connect)</th>
-                  <th class="li-col">LinkedIn — Step 2 (qualify)</th>
-                  <th class="em-col">Email — variant A (Leo)</th>
-                </tr>
-              </thead>
-              <tbody id="tpl-rows"></tbody>
-            </table>
+          <div class="settings-panel" id="settings-analytics" style="display:none">
+            <div class="tpl-intro">Exa monitor performance (33 monitors, weekly activity, pass/filter breakdown) already has its own dedicated mockup — <code>mockups/exa-analytics.html</code>, ~1,350 lines with real charts. Too large to fold inline here without duplicating it; linking out keeps one source of truth instead of two copies drifting apart.</div>
+            <a class="btn btn-copy" href="exa-analytics.html" target="_blank" style="text-decoration:none">↗ Open Exa Analytics</a>
           </div>
         </div>
       </div>
@@ -472,39 +491,42 @@ table.act tr:hover td { background: var(--surface-2); }
 // ── Real data pulled live from signal_monitoring on 2026-07-19 ──────────────
 // status/channel fields are illustrative for the filter demo (not all 32 companies
 // have real channel_actions rows yet) — DMK and BRATA's are wired to real state.
+// origin is REAL (queried live: signals.source per company) — confirms Exa and
+// job-board populations barely overlap (409 companies total: 227 exa-only,
+// 182 job-board-only, only 4 with both) — a real, non-redundant filter axis.
 const LIST = [
-  {id:'dmk', name:'DMK Deutsches Milchkontor Gmbh', tier:'T1', employees:1005, country:'DE', sources:3, contacts:5, withEmail:5, available:true, status:'sent', channel:'both'},
-  {id:'brata', name:'BRATA Produktion GmbH', tier:'T2', employees:300, country:'DE', sources:1, contacts:3, withEmail:0, available:true, status:'sent', channel:'linkedin_only'},
-  {name:'Group of Butchers', tier:'T1', employees:280, country:'NL', sources:2, contacts:3, withEmail:2, status:'new', channel:'both'},
-  {name:'Ingredion Incorporated', tier:'T1', employees:8374, country:'US', sources:4, contacts:5, withEmail:4, status:'replied', channel:'both'},
-  {name:'Aryzta', tier:'T1', employees:7700, country:'CH', sources:2, contacts:3, withEmail:2, status:'new', channel:'both'},
-  {name:'Heineken', tier:'T1', employees:1360, country:'BE', sources:1, contacts:4, withEmail:2, status:'meeting', channel:'both'},
-  {name:'waterdrop®', tier:'T1', employees:400, country:'AT', sources:2, contacts:3, withEmail:3, status:'new', channel:'both'},
-  {name:'Circus', tier:'T1', employees:300, country:'DE', sources:2, contacts:5, withEmail:0, status:'new', channel:'linkedin_only'},
-  {name:'Vandemoortele USA', tier:'T1', employees:6000, country:'BE', sources:3, contacts:3, withEmail:1, status:'sent', channel:'both'},
-  {name:'InfiniteRoots', tier:'T1', employees:200, country:'DE', sources:2, contacts:3, withEmail:1, status:'new', channel:'both'},
-  {name:'Hengstenberg', tier:'T1', employees:2000, country:'DE', sources:1, contacts:6, withEmail:1, status:'new', channel:'both'},
-  {name:'Poulailon', tier:'T1', employees:250, country:'FR', sources:1, contacts:1, withEmail:1, status:'sent', channel:'both'},
-  {name:'Planted', tier:'T1', employees:215, country:'DE', sources:2, contacts:1, withEmail:1, status:'sent', channel:'both'},
-  {name:'el origen food GmbH', tier:'T1', employees:20, country:'DE', sources:1, contacts:4, withEmail:0, status:'new', channel:'linkedin_only'},
-  {name:'Culinor', tier:'T1', employees:200, country:'CH', sources:1, contacts:6, withEmail:2, status:'sent', channel:'both'},
-  {name:'The Vegetarian Butcher Collective', tier:'T1', employees:127, country:'NL', sources:1, contacts:3, withEmail:0, status:'new', channel:'linkedin_only'},
-  {name:'Eurolysine', tier:'T1', employees:195, country:null, sources:2, contacts:5, withEmail:2, status:'sent', channel:'both'},
-  {name:'Crisp', tier:'T1', employees:405, country:null, sources:1, contacts:3, withEmail:2, status:'new', channel:'both'},
-  {name:'Zertus Gruppe', tier:'T1', employees:42, country:null, sources:1, contacts:4, withEmail:2, status:'new', channel:'both'},
-  {name:'The Nutriment Company', tier:'T1', employees:300, country:null, sources:1, contacts:3, withEmail:2, status:'new', channel:'both'},
-  {name:'Maasoever', tier:'T1', employees:25, country:'NL', sources:1, contacts:4, withEmail:2, status:'new', channel:'both'},
-  {name:'Berief Food Gmbh', tier:'T1', employees:72, country:'DE', sources:2, contacts:1, withEmail:1, status:'new', channel:'both'},
-  {name:'Polaris', tier:'T1', employees:51, country:'FR', sources:1, contacts:1, withEmail:1, status:'new', channel:'both'},
-  {name:'Suntory Beverage & Food Benelux', tier:'T2', employees:71, country:'BE', sources:1, contacts:1, withEmail:0, status:'new', channel:'linkedin_only'},
-  {name:'Hügli Nahrungsmittel Gmbh', tier:'T2', employees:268, country:'DE', sources:1, contacts:1, withEmail:0, status:'new', channel:'linkedin_only'},
-  {name:'Henry Lambertz Gmbh & Co Kg', tier:'T2', employees:256, country:'DE', sources:1, contacts:1, withEmail:0, status:'new', channel:'linkedin_only'},
-  {name:'Bav Institut', tier:'T2', employees:77, country:'DE', sources:1, contacts:1, withEmail:1, status:'new', channel:'both'},
-  {name:"Tout&bon", tier:'T2', employees:158, country:'FR', sources:1, contacts:3, withEmail:3, status:'pass', channel:'both'},
-  {name:'Haus Rabenhorst O. Lauffs Gmbh & Co. Kg', tier:'T2', employees:53, country:'DE', sources:1, contacts:1, withEmail:0, status:'new', channel:'linkedin_only'},
-  {name:'Lactalis Germany', tier:'T3', employees:2500, country:null, sources:1, contacts:8, withEmail:2, status:'new', channel:'both'},
-  {name:'Theo Müller Unternehmensgruppe (UTM)', tier:'T3', employees:35000, country:null, sources:1, contacts:3, withEmail:3, status:'new', channel:'both'},
-  {name:'Corbion', tier:'T3', employees:2299, country:'NL', sources:1, contacts:2, withEmail:0, status:'new', channel:'linkedin_only'},
+  {id:'dmk', name:'DMK Deutsches Milchkontor Gmbh', tier:'T1', employees:1005, country:'DE', sources:3, contacts:5, withEmail:5, available:true, status:'sent', channel:'both', origin:'exa'},
+  {id:'brata', name:'BRATA Produktion GmbH', tier:'T2', employees:300, country:'DE', sources:1, contacts:3, withEmail:0, available:true, status:'sent', channel:'linkedin_only', origin:'job_board'},
+  {name:'Group of Butchers', tier:'T1', employees:280, country:'NL', sources:2, contacts:3, withEmail:2, status:'new', channel:'both', origin:'exa'},
+  {name:'Ingredion Incorporated', tier:'T1', employees:8374, country:'US', sources:4, contacts:5, withEmail:4, status:'replied', channel:'both', origin:'exa'},
+  {name:'Aryzta', tier:'T1', employees:7700, country:'CH', sources:2, contacts:3, withEmail:2, status:'new', channel:'both', origin:'exa'},
+  {name:'Heineken', tier:'T1', employees:1360, country:'BE', sources:1, contacts:4, withEmail:2, status:'meeting', channel:'both', origin:'exa'},
+  {name:'waterdrop®', tier:'T1', employees:400, country:'AT', sources:2, contacts:3, withEmail:3, status:'new', channel:'both', origin:'exa'},
+  {name:'Circus', tier:'T1', employees:300, country:'DE', sources:2, contacts:5, withEmail:0, status:'new', channel:'linkedin_only', origin:'exa'},
+  {name:'Vandemoortele USA', tier:'T1', employees:6000, country:'BE', sources:3, contacts:3, withEmail:1, status:'sent', channel:'both', origin:'exa'},
+  {name:'InfiniteRoots', tier:'T1', employees:200, country:'DE', sources:2, contacts:3, withEmail:1, status:'new', channel:'both', origin:'exa'},
+  {name:'Hengstenberg', tier:'T1', employees:2000, country:'DE', sources:1, contacts:6, withEmail:1, status:'new', channel:'both', origin:'exa'},
+  {name:'Poulailon', tier:'T1', employees:250, country:'FR', sources:1, contacts:1, withEmail:1, status:'sent', channel:'both', origin:'exa'},
+  {name:'Planted', tier:'T1', employees:215, country:'DE', sources:2, contacts:1, withEmail:1, status:'sent', channel:'both', origin:'job_board'},
+  {name:'el origen food GmbH', tier:'T1', employees:20, country:'DE', sources:1, contacts:4, withEmail:0, status:'new', channel:'linkedin_only', origin:'exa'},
+  {name:'Culinor', tier:'T1', employees:200, country:'CH', sources:1, contacts:6, withEmail:2, status:'sent', channel:'both', origin:'exa'},
+  {name:'The Vegetarian Butcher Collective', tier:'T1', employees:127, country:'NL', sources:1, contacts:3, withEmail:0, status:'new', channel:'linkedin_only', origin:'exa'},
+  {name:'Eurolysine', tier:'T1', employees:195, country:null, sources:2, contacts:5, withEmail:2, status:'sent', channel:'both', origin:'exa'},
+  {name:'Crisp', tier:'T1', employees:405, country:null, sources:1, contacts:3, withEmail:2, status:'new', channel:'both', origin:'exa'},
+  {name:'Zertus Gruppe', tier:'T1', employees:42, country:null, sources:1, contacts:4, withEmail:2, status:'new', channel:'both', origin:'exa'},
+  {name:'The Nutriment Company', tier:'T1', employees:300, country:null, sources:1, contacts:3, withEmail:2, status:'new', channel:'both', origin:'exa'},
+  {name:'Maasoever', tier:'T1', employees:25, country:'NL', sources:1, contacts:4, withEmail:2, status:'new', channel:'both', origin:'exa'},
+  {name:'Berief Food Gmbh', tier:'T1', employees:72, country:'DE', sources:2, contacts:1, withEmail:1, status:'new', channel:'both', origin:'exa'},
+  {name:'Polaris', tier:'T1', employees:51, country:'FR', sources:1, contacts:1, withEmail:1, status:'new', channel:'both', origin:'exa'},
+  {name:'Suntory Beverage & Food Benelux', tier:'T2', employees:71, country:'BE', sources:1, contacts:1, withEmail:0, status:'new', channel:'linkedin_only', origin:'job_board'},
+  {name:'Hügli Nahrungsmittel Gmbh', tier:'T2', employees:268, country:'DE', sources:1, contacts:1, withEmail:0, status:'new', channel:'linkedin_only', origin:'job_board'},
+  {name:'Henry Lambertz Gmbh & Co Kg', tier:'T2', employees:256, country:'DE', sources:1, contacts:1, withEmail:0, status:'new', channel:'linkedin_only', origin:'job_board'},
+  {name:'Bav Institut', tier:'T2', employees:77, country:'DE', sources:1, contacts:1, withEmail:1, status:'new', channel:'both', origin:'job_board'},
+  {name:"Tout&bon", tier:'T2', employees:158, country:'FR', sources:1, contacts:3, withEmail:3, status:'pass', channel:'both', origin:'job_board'},
+  {name:'Haus Rabenhorst O. Lauffs Gmbh & Co. Kg', tier:'T2', employees:53, country:'DE', sources:1, contacts:1, withEmail:0, status:'new', channel:'linkedin_only', origin:'job_board'},
+  {name:'Lactalis Germany', tier:'T3', employees:2500, country:null, sources:1, contacts:8, withEmail:2, status:'new', channel:'both', origin:'exa'},
+  {name:'Theo Müller Unternehmensgruppe (UTM)', tier:'T3', employees:35000, country:null, sources:1, contacts:3, withEmail:3, status:'new', channel:'both', origin:'exa'},
+  {name:'Corbion', tier:'T3', employees:2299, country:'NL', sources:1, contacts:2, withEmail:0, status:'new', channel:'linkedin_only', origin:'job_board'},
 ];
 
 const TIER_EXPLAIN = {
@@ -654,7 +676,8 @@ let openContact = { dmk: 0, brata: 0 }; // which contact row is expanded, primar
 let activeStatusFilter = 'all';
 let activeTierFilters = new Set(['T1', 'T2', 'T3']);
 let activeChannelFilters = new Set(['both', 'linkedin_only']);
-let accOpen = { tier: false, channel: false };
+let activeOriginFilters = new Set(['exa', 'job_board']);
+let accOpen = { tier: false, channel: false, origin: false };
 let drLabel = 'All time';
 let activeChannelSeg = 'all';
 
@@ -712,6 +735,15 @@ function renderTierAcc() {
   ).join('');
 }
 
+function renderOriginAcc() {
+  const counts = { exa: 0, job_board: 0 };
+  for (const c of LIST) counts[c.origin]++;
+  const labels = { exa: 'Exa (news monitors)', job_board: 'Job boards' };
+  document.getElementById('acc-origin').innerHTML = Object.keys(labels).map(k =>
+    '<label class="acc-row"><input type="checkbox" ' + (activeOriginFilters.has(k) ? 'checked' : '') + ' onchange="toggleOriginFilter(\'' + k + '\')"><span class="lbl">' + labels[k] + '</span><span class="cnt">' + counts[k] + '</span></label>'
+  ).join('');
+}
+
 function renderChannelAcc() {
   const counts = { both: 0, linkedin_only: 0 };
   for (const c of LIST) counts[c.channel]++;
@@ -727,6 +759,7 @@ function renderList() {
     (activeStatusFilter === 'all' || c.status === activeStatusFilter) &&
     activeTierFilters.has(c.tier) &&
     activeChannelFilters.has(c.channel) &&
+    activeOriginFilters.has(c.origin) &&
     (!q || c.name.toLowerCase().includes(q))
   );
   document.getElementById('rows').innerHTML = filtered.map((c) => {
@@ -756,6 +789,7 @@ function applyFilters() { renderList(); }
 window.setStatusFilter = function (key) { activeStatusFilter = key; toggleStatusNav(); renderStatusNav(); renderList(); };
 window.toggleTierFilter = function (t) { activeTierFilters.has(t) ? activeTierFilters.delete(t) : activeTierFilters.add(t); if (!activeTierFilters.size) activeTierFilters.add(t); renderList(); };
 window.toggleChannelFilter = function (c) { activeChannelFilters.has(c) ? activeChannelFilters.delete(c) : activeChannelFilters.add(c); if (!activeChannelFilters.size) activeChannelFilters.add(c); renderList(); };
+window.toggleOriginFilter = function (o) { activeOriginFilters.has(o) ? activeOriginFilters.delete(o) : activeOriginFilters.add(o); if (!activeOriginFilters.size) activeOriginFilters.add(o); renderList(); };
 window.toggleAcc = function (name) {
   accOpen[name] = !accOpen[name];
   document.getElementById('acc-' + name).classList.toggle('open', accOpen[name]);
@@ -984,10 +1018,17 @@ window.switchView = function (view, el) {
   document.querySelectorAll('.rail-icon').forEach(a => a.classList.remove('active'));
   if (el) el.classList.add('active');
 };
+window.switchSettingsTab = function (tab, el) {
+  document.querySelectorAll('.settings-panel').forEach(p => p.style.display = 'none');
+  document.getElementById('settings-' + tab).style.display = 'block';
+  document.querySelectorAll('.settings-subnav a').forEach(a => a.classList.remove('active'));
+  el.classList.add('active');
+};
 
 renderStatusNav();
 renderTierAcc();
 renderChannelAcc();
+renderOriginAcc();
 renderList();
 renderDetail('dmk');
 renderTemplates();
