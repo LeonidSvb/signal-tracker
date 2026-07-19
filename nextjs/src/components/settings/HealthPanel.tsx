@@ -1,18 +1,14 @@
 "use client";
-import Link from "next/link";
 import { Fragment, useEffect, useState } from "react";
 
-// Minimal Health page — real data behind mockups/settings.html's Health tab markup
-// (PLAN_2026-07-18_backend_hardening.md, C-D6 / Phase 1 item 7). Scoped inline CSS
-// mirrors the mockup's token system (bg #EEF1F7, accent #4F5FD1) rather than the
-// app's shadcn theme — this page is explicitly a small approved exception to the
-// "no frontend work" rule, not the start of a redesign, so it stays self-contained.
-//
-// Icon rail added 2026-07-19 (Leo: "health страничка тоже должна это сохранять" —
-// every page should carry the same persistent nav strip, reply-agent style). Only
-// Leads (real, "/") and Health (real, this page) are wired — Settings/Analytics
-// aren't real Next.js routes yet (only exist as mockups/*.html), so no rail icon
-// for them here until the real frontend rebuild adds those routes for real.
+// Real Health panel — ported from the former standalone /health route into
+// Settings > System (2026-07-19, Stage 9 Chrome pass: Leo pointed out the
+// mockup's separate-page Health link was carelessness to preserve, not a
+// deliberate choice — Settings' own tab pattern already exists for exactly
+// this). Scoped inline CSS (.health-page ...) kept from the original page —
+// still mirrors the mockup's own token system rather than app-shell.css's,
+// but now scoped under .health-page so it can't leak into (or collide with)
+// Settings' own .card etc.
 
 type StageRun = {
   script: string;
@@ -59,7 +55,7 @@ function fmt(dt: string | null) {
   return dt.slice(0, 16).replace("T", " ") + " UTC";
 }
 
-export default function HealthPage() {
+export default function HealthPanel() {
   const [data, setData] = useState<HealthData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -80,21 +76,9 @@ export default function HealthPage() {
   }, []);
 
   return (
-    <div className="health-shell">
-      <div className="health-rail">
-        <div className="health-rail-avatar">PB</div>
-        <Link href="/" className="health-rail-icon" title="Leads">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2 3 7l9 5 9-5-9-5z"/><path d="M3 12l9 5 9-5M3 17l9 5 9-5"/></svg>
-        </Link>
-        <div style={{ flex: 1 }} />
-        <div className="health-rail-icon active" title="Health">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-        </div>
-      </div>
-      <div className="health-main">
-      <div className="health-page">
+    <div className="health-page">
       <style dangerouslySetInnerHTML={{ __html: `
-        .health-page { background:#EEF1F7; min-height:100vh; padding:24px; font-family:-apple-system,'Lato',sans-serif; color:#2A2E3D; }
+        .health-page { font-family:-apple-system,'Lato',sans-serif; color:#2A2E3D; }
         .health-page .card { background:#fff; border:1px solid #E4E7EF; border-radius:10px; overflow:hidden; margin-bottom:20px; }
         .health-page h1 { font-size:18px; font-weight:700; margin-bottom:2px; }
         .health-page .sub { font-size:11.5px; color:#8A8FA3; margin-bottom:18px; }
@@ -106,18 +90,10 @@ export default function HealthPage() {
         .health-page .mono { font-family:ui-monospace,monospace; font-size:10.5px; }
         .health-page .muted { color:#8A8FA3; }
         .health-page .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:10px; font-weight:700; }
-        .pill-ok { background:#E4F5E9; color:#1E8A4C; }
-        .pill-warn { background:#FDF3D8; color:#A8720A; }
-        .pill-missing { background:#F1EBFB; color:#7A5FC7; }
+        .health-page .pill-ok { background:#E4F5E9; color:#1E8A4C; }
+        .health-page .pill-warn { background:#FDF3D8; color:#A8720A; }
+        .health-page .pill-missing { background:#F1EBFB; color:#7A5FC7; }
         .health-page .err { color:#C0392B; font-size:10.5px; }
-        .health-shell { display:flex; height:100vh; overflow:hidden; }
-        .health-rail { width:56px; background:#fff; border-right:1px solid #E4E7EF; display:flex; flex-direction:column; align-items:center; padding:12px 0; gap:4px; flex-shrink:0; }
-        .health-rail-avatar { width:32px; height:32px; border-radius:999px; background:#4F5FD1; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:11px; margin-bottom:12px; }
-        .health-rail-icon { width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#A6ACBD; text-decoration:none; }
-        .health-rail-icon:hover { background:#F2F4F9; color:#5C6478; }
-        .health-rail-icon.active { background:#EEF0FE; color:#4F5FD1; }
-        .health-main { flex:1; overflow-y:auto; }
-        .health-page { min-height:auto; }
         .health-page .runs-btn { background:none; border:1px solid #E4E7EF; border-radius:6px; padding:2px 7px; font-size:10px; font-weight:700; color:#5C6478; cursor:pointer; }
         .health-page .runs-btn:hover { background:#F5F6FA; }
         .health-page .rollup { font-size:10.5px; color:#8A8FA3; margin:8px 14px 4px; }
@@ -244,8 +220,6 @@ export default function HealthPage() {
           </div>
         </>
       )}
-      </div>
-      </div>
     </div>
   );
 }

@@ -4,15 +4,17 @@ import "../app-shell.css";
 import Rail from "@/components/Rail";
 import TemplatesPanel from "@/components/settings/TemplatesPanel";
 import IcpFilterPanel from "@/components/settings/IcpFilterPanel";
+import HealthPanel from "@/components/settings/HealthPanel";
 
 // Real Settings page (Stage 7) — grouped sidebar, 1:1 with reply-agent/settings.html's
 // pattern already established in mockups/settings.html and signals_v2_concept.html.
-// ICP Filter is now a REAL inline panel (not an external link to the old mockup) per
-// the Stage 7 task — both Templates and ICP Filter read live pipeline config via
-// /api/copy and /api/icp-filter. Health stays an external link to the real live page
-// (it's a separate Next.js route with its own rail already, per Stage 4/Health work).
+// Templates, ICP Filter and Health are all real inline panels reading live data
+// (/api/copy, /api/icp-filter, /api/health) — no external links. Health used to be
+// a separate /health route with its own rail (Stage 4); moved in here 2026-07-19
+// (Leo: the mockup's separate-page Health link was carelessness to preserve, not a
+// deliberate call — Settings' own tab pattern already fit it).
 
-type Section = "templates" | "icpfilter";
+type Section = "templates" | "icpfilter" | "health";
 
 export default function SettingsPage() {
   const [section, setSection] = useState<Section>("templates");
@@ -36,15 +38,16 @@ export default function SettingsPage() {
                 ICP Filter
               </div>
               <div className="settings-group-label">System</div>
-              <a href="https://philippe.pamelacoreypc.com/health" className="settings-nav-item" target="_blank" rel="noopener noreferrer">
+              <div className={`settings-nav-item ${section === "health" ? "active" : ""}`} onClick={() => setSection("health")}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
-                Health ↗ <span className="settings-nav-badge">live</span>
-              </a>
+                Health <span className="settings-nav-badge">live</span>
+              </div>
             </div>
           </div>
           <div className="settings-content">
             {section === "templates" && <TemplatesPanel />}
             {section === "icpfilter" && <IcpFilterPanel />}
+            {section === "health" && <HealthPanel />}
           </div>
         </div>
       </div>
