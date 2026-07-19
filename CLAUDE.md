@@ -32,7 +32,6 @@ nextjs/              — Next.js 14 фронт + API routes
   src/app/page.tsx   — трекер лидов
   src/hooks/useLeads.ts — читает signal_monitoring schema
 scripts/
-  deploy.ps1         — деплой на VPS
   discovery/         — одноразовые скрипты с датой в имени
 enrichment/          — исторические CSV + llm_cache.json (КРИТИЧНО, gitignored)
 ```
@@ -64,6 +63,10 @@ Monitor ID → (signal_type, country) маппинг сейчас захардк
 (`MONITOR_LABELS`, TS-словарь) — единый на один deployment/CLIENT_SLUG. Известное
 ограничение при переходе на мульти-клиентский фронт, см. PLAN doc.
 Полная архитектура + история инцидента: `docs/EXA_INTEGRATION.md`.
+
+## Deploy — фронтенд
+
+`git push origin main` → Coolify auto-deploy (root `Dockerfile`, Traefik → philippe.pamelacoreypc.com). Единственный путь; проверка "какой коммит на проде" и история снесённого systemd-пути — `docs/deploy.md`.
 
 ## Pipeline — как запускать
 
