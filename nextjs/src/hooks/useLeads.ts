@@ -17,6 +17,7 @@ export function useCompanyList(clientSlug: string) {
   const [companies, setCompanies] = useState<CompanyListItem[]>([]);
   const [clientId, setClientId] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const sb = createClient();
@@ -84,9 +85,10 @@ export function useCompanyList(clientSlug: string) {
     }
     load();
     return () => { cancelled = true; };
-  }, [clientSlug]);
+  }, [clientSlug, reloadKey]);
 
-  return { companies, clientId, loading };
+  const refetch = useCallback(() => setReloadKey((k) => k + 1), []);
+  return { companies, clientId, loading, refetch };
 }
 
 function groupBy<T, K>(rows: T[], key: (row: T) => K): Map<K, T[]> {
@@ -132,6 +134,7 @@ function groupSignalsIntoEvents(signals: Signal[]): CompanyEvent[] {
 export function useCompanyDetail(companyId: string | null, clientId: string) {
   const [detail, setDetail] = useState<CompanyDetail | null>(null);
   const [loading, setLoading] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!companyId || !clientId) { setDetail(null); return; }
@@ -173,9 +176,10 @@ export function useCompanyDetail(companyId: string | null, clientId: string) {
     }
     load();
     return () => { cancelled = true; };
-  }, [companyId, clientId]);
+  }, [companyId, clientId, reloadKey]);
 
-  return { detail, loading };
+  const refetch = useCallback(() => setReloadKey((k) => k + 1), []);
+  return { detail, loading, refetch };
 }
 
 // ── Per-contact status write (migration 009, contact_state) ──

@@ -15,8 +15,8 @@ export default function Home() {
   const router = useRouter();
   const [moduleTab, setModuleTab] = useState<"leads" | "activity">("leads");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { companies, clientId, loading } = useCompanyList(CLIENT_SLUG);
-  const { detail } = useCompanyDetail(selectedId, clientId);
+  const { companies, clientId, loading, refetch: refetchList } = useCompanyList(CLIENT_SLUG);
+  const { detail, refetch: refetchDetail } = useCompanyDetail(selectedId, clientId);
   const { notes, addNote } = useNotes(selectedId);
   const setContactStatus = useSetContactStatus();
   const sendableStats = useSendableStats(clientId);
@@ -56,7 +56,7 @@ export default function Home() {
                     notes={notes}
                     addNote={addNote}
                     setContactStatus={setContactStatus}
-                    onStatusChanged={() => { /* useCompanyList refetches on next mount; live re-sort is a follow-up */ }}
+                    onStatusChanged={() => { refetchDetail(); refetchList(); }}
                     onOpenTemplatesGuide={() => router.push("/settings")}
                   />
                 ) : (
