@@ -53,17 +53,29 @@ source's URL is shown as a direct link (drill-down gap Leo flagged — the
 data already existed, just wasn't surfaced).
 
 **D4 — `copy_templates.json` becomes the single source of truth**, closing
-the divergence flagged in ADR-005. Migration approach (Fable's correction
-to an initial 10→6 key-collapse proposal, which would have broken the
-EMAIL A/B/C variants that genuinely differ per key): keep all 9 existing
-signal-type keys as-is; add `li_step1_connection` / `li_step2_qualify` PER
-KEY (the 5 HIRING_* keys duplicate the same playbook text — accepted
-duplication, zero risk to existing email logic); add `li_step3_call` and
-`li_followup` as TOP-LEVEL fields, not per-key, because the playbook
-deliberately made these universal across all signal types (ADR-005) — the
-JSON structure should reflect that design intent, not flatten it away.
-`route_email.mjs` is untouched by this migration; only the LinkedIn-reading
-code (`build_linkedin_queue.mjs`, and the future frontend) changes.
+the divergence flagged in ADR-005. ~~Migration approach (Fable's correction
+to an initial 10→6 key-collapse proposal...): keep all 9 existing signal-type
+keys as-is; add `li_step1_connection` / `li_step2_qualify` PER KEY...; add
+`li_step3_call` and `li_followup` as TOP-LEVEL fields...~~ **SUPERSEDED
+2026-07-19 (Stage 3, frontend build session) — this plan was written against
+the OLD v1 LinkedIn spec (2026-07-15) and never actually landed.** The real
+playbook was rewritten to v2 on 2026-07-17
+(`clients/philippe-bosquillon/copy/copy_signals_linkedin.txt`), which
+explicitly states "Follow-up'ов от Philippe НЕТ" — LinkedIn is connection
+note + first message ONLY, by design (any reply routes to Leo, not a
+scripted step 3/follow-up sequence). This also matches **D2 above**, in this
+same ADR, rejecting the rigid step-tracker concept — `li_step3_call`/
+`li_followup` would have reintroduced exactly what D2 already rejected.
+`copy_templates.json` was re-transcribed to the real v2 shape on 2026-07-17
+(`_meta.linkedin_resynced_at`) using its own field names
+(`li_connection_note`/`li_first_message` per key, `li_variant_1_appointee`/
+`li_variant_2_hr_or_ceo_nearby` for CLEVEL's two write-to targets) —
+`copyEngine.mjs`/`build_linkedin_queue.mjs` already read these correctly.
+Nothing needed migrating; Stage 3 added shape-validation tests
+(`pipeline/test/copyEngine.test.mjs`) instead, including an explicit
+assertion that the stale planned field names never landed. `route_email.mjs`
+was verified untouched, as originally planned — it never reads any `li_*`
+field.
 
 **D5 — Translation: on-demand via a new `localizeMessage()`, not by
 stretching `localizeHookLine()`.** `localizeHookLine()` (ADR-004) is
@@ -85,9 +97,10 @@ raw number in the UI, used purely to order companies within a tier.
 string mean, since neither is self-explanatory to Philippe.
 
 ## Consequences
-- Requires migration 007 (`signals.event_summary` — not yet written).
-- `copy_templates.json` migration touches data the live pipeline reads in
-  production (`build_linkedin_queue.mjs`) — schema change, not cosmetic;
-  needs the same care as any other production data migration.
-- `localizeMessage()` + `/api/translate` are net-new build items, not
-  covered by any existing HANDOFF/PLAN doc before this session.
+- Migration 007 (`signals.event_summary`) — applied 2026-07-19 (Stage 1,
+  `docs/HANDOFF_2026-07-19_frontend_build.md`), `summarizeEvent()` wired
+  eagerly into `rank_leads.mjs` (Stage 2).
+- `copy_templates.json` — no migration needed after all (see D4 above,
+  superseded 2026-07-19); the file and its consumers were already correct.
+- `localizeMessage()` + `/api/translate` — still net-new, not yet built
+  (Stage 4 of the frontend build handoff).

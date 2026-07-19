@@ -183,6 +183,37 @@ Respond with ONLY a JSON object: {"groups": [[1,2], [3]]} — an array of arrays
   return { groups: parsed.groups };
 }
 
+// summarizeEvent — B2/D3 in docs/adr/009-frontend-v2-concept.md, Q2 in
+// docs/PLAN_2026-07-19_react_migration_prep.md §0. Called EAGERLY from
+// rank_leads.mjs (not lazily from the frontend) whenever an event_key group has
+// >=2 unique source_urls — Fable's cost/accuracy call, same table as sameEvent()
+// (cents-scale, gpt-oss-120b, cache-first). Single-source events never reach this
+// function; the frontend falls back to the signal's own title for those (free).
+//
+// members: [{title, source, pub_date}] — every unique-source_url signal in one
+// event, already deduped by the caller. Produces ONE synthesis sentence for the
+// event drill-down (e.g. "DMK is investing €25m in lactoferrin production at its
+// German dairy plant — confirmed by 3 independent outlets").
+export async function summarizeEvent(companyName, members) {
+  if (!OPENROUTER_KEY) return null;
+  if (!members?.length) return null;
+
+  const sorted = [...members].sort((a, b) => new Date(a.pub_date || 0) - new Date(b.pub_date || 0));
+  const prompt = `Philippe Bosquillon is a food industry executive search specialist. The following ${sorted.length} news items, published by different outlets, are confirmed to describe the SAME real-world event concerning "${companyName}".
+
+${sorted.map((m, i) => `${i + 1}. "${m.title}" (${m.source || 'unknown source'}, ${m.pub_date || 'date unknown'})`).join('\n')}
+
+Write ONE sentence synthesizing what actually happened — specific (amounts, locations, roles, timing) when the sources give specifics, no fluff, no hedging. State it as fact, third person, present tense for an ongoing situation or past tense for something completed. Do NOT mention "sources," "outlets," "reports," or the fact that multiple articles exist — just state what happened, then note the confirmation count separately.
+
+Respond with ONLY a JSON object: {"summary": "<one sentence stating the event>", "confirmed_by": ${sorted.length}}`;
+
+  const text = await callLLM(prompt);
+  const parsed = parseJsonLoose(text);
+  if (!parsed?.summary) return null;
+  const confirmedBy = Number.isFinite(parsed.confirmed_by) ? parsed.confirmed_by : sorted.length;
+  return { summary: `${parsed.summary} — confirmed by ${confirmedBy} independent outlet${confirmedBy === 1 ? '' : 's'}.` };
+}
+
 export async function classifyCompany({ headline = null, signalType = null, country = null, pubDate = null, candidates }) {
   if (!OPENROUTER_KEY) return null;
   if (!candidates?.length) return null;

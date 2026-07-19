@@ -65,27 +65,54 @@ Second review round (2026-07-19, later same night) — 5 more decisions:
   of the product. Unlinked from settings.html's rail and mockups/index.html
   (marked "retired" there, file kept for reference only, not deleted).
 
-REAL BUILD — still open, not started (all called out inline in the mockup's
-comments too):
-- Migration 007: signals.event_summary column (for the AI-summary feature —
-  new summarizeEvent() fn, same OpenRouter infra as sameEvent(), only spends
-  when >=2 unique source_urls exist per event; single-source = free).
-- Migration 008: channel_actions' unique constraint needs contact_id folded in
-  (client_id, company_id, contact_id, channel, event_key) — found live 2026-07-19,
-  the column already exists but isn't part of the constraint, so two different
-  contacts at one company/event collide today. channelActionKey() in
-  pipeline/lib/channelActions.mjs needs the same fix.
-- copy_templates.json migration: add li_step1_connection/li_step2_qualify PER
-  signal-type key (9 keys, unchanged), li_step3_call/li_followup as TOP-LEVEL
-  fields (universal by design, don't duplicate 9x). route_email.mjs untouched.
-- localizeMessage() (sibling to localizeHookLine(), full multi-line messages,
-  don't stretch the hook-line-shaped prompt) + /api/translate Next.js route
-  (copyEngine.mjs is a pipeline Node module, unreachable directly from the VPS
-  frontend).
-- Real React/Next.js rebuild of nextjs/src/app/page.tsx + components against
-  this mockup — the actual "внедряем фронтенд" work.
-NEXT: hand this off — Fable/Sonnet split for the real build, same pattern as
-the backend hardening handoff.
+REAL BUILD — Sonnet execution session, 2026-07-19 (docs/HANDOFF_2026-07-19_frontend_build.md):
+- Stage 1 DONE: migrations 007 (signals.event_summary), 008
+  (channel_actions unique constraint widened to include contact_id — found
+  live 2026-07-19, two different contacts at one company/event were
+  colliding on the old 4-column constraint), 009 (contact_state, per Fable's
+  Q1 decision) — all three applied live and verified via REST queries.
+  channelActionKey() and its two callers (route_email.mjs,
+  build_linkedin_queue.mjs) updated to the new 5-arg key shape; a real
+  ordering bug found and fixed in both callers (dedup key was built before
+  the contact was picked — worked under the old company+event-only key,
+  broke under the new per-contact one).
+- Stage 2 DONE: summarizeEvent() added next to sameEvent()
+  (companyClassifier.mjs, same model/infra), wired eagerly into
+  rank_leads.mjs per Fable's Q2 decision — cache-first
+  (exa/cache/event_summary_cache.json), only for events with >=2 unique
+  source_urls that don't already carry an up-to-date summary
+  (uniqueSourceCount()/needsEventSummary(), new pure functions in
+  eventGrouping.mjs, unit tested). Verified against REAL data with --llm:
+  34 real events summarized, quality matches ADR-009 D3's example exactly
+  (DMK's €25m lactoferrin plant — real output even more precise: "confirmed
+  by 7 independent outlets" vs the ADR's illustrative "3"). Side finding
+  (not fixed, out of scope): Nestlé/yfood's real acquisition is currently
+  split across TWO event_key groups (one MA-typed, one CONTRACT-typed) with
+  near-identical event_summary text — a pre-existing event-grouping gap
+  (same real event, different signal_type classifications, never merged by
+  the cross-type Q6 dedup), not something Stage 2 introduced or was asked
+  to fix.
+- Stage 3 DONE, but NOT as originally planned: the copy_templates.json
+  migration (li_step1_connection/li_step2_qualify per key, li_step3_call/
+  li_followup as top-level fields) turned out to be based on a STALE spec
+  (v1, 2026-07-15). The real playbook was rewritten to v2 on 2026-07-17
+  (clients/philippe-bosquillon/copy/copy_signals_linkedin.txt) — explicitly
+  "Follow-up'ов от Philippe НЕТ," LinkedIn is connection note + first
+  message ONLY by design (any reply routes to Leo, no scripted step
+  3/follow-up). copy_templates.json was already re-transcribed to match v2
+  on 2026-07-17, and copyEngine.mjs/build_linkedin_queue.mjs already read
+  the real field names (li_connection_note/li_first_message per key,
+  li_variant_1_appointee/li_variant_2_hr_or_ceo_nearby for CLEVEL) — nothing
+  needed migrating. Fabricating li_step3_call/li_followup would have
+  reintroduced the exact rigid step-tracker ADR-009's own D2 decision
+  already rejected. route_email.mjs confirmed untouched (verified it never
+  reads any li_* field). Added shape-validation tests instead
+  (pipeline/test/copyEngine.test.mjs) — validates the REAL current shape,
+  plus an explicit assertion that the stale field names never landed.
+  ADR-009 D4 updated to reflect this finding.
+- Stage 4+ (localizeMessage()/api/translate, frontend foundation, Leads
+  module, Activity/Settings, Analytics, full Chrome debugging pass) — next,
+  per the handoff doc's stage order.
 
 === PREP DONE 2026-07-19 — React migration prep doc ===
 Full doc: docs/PLAN_2026-07-19_react_migration_prep.md — read this FIRST in

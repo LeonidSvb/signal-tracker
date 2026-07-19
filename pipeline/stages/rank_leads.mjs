@@ -17,19 +17,24 @@
 //      member signal ids).
 //   3. event classification (A2 class table via lib/eventClass.mjs; HIRING splits
 //      into EXEC/MID/STALE per posting band + age, 2+ open postings = HIRING_SURGE).
+//   3b. event_summary (D3 in docs/adr/009-frontend-v2-concept.md, Q2 in
+//      docs/PLAN_2026-07-19_react_migration_prep.md §0) — eager, cache-first
+//      (exa/cache/event_summary_cache.json, keyed by sorted member ids), one
+//      summarizeEvent() LLM call per event with >=2 unique source_urls that
+//      doesn't already have an up-to-date summary. Single-source events and
+//      already-summarized-and-unchanged events never reach the LLM.
 //   4. ICP gate — sourcing.companies by domain: reject → tier NULL 'icp_reject';
 //      unscored/needs_website/missing → tier NULL 'needs_screen'; only pass is tiered.
 //   5. tier + rank per A2 → companies.tier/rank/tier_reason/ranked_at,
-//      signals.event_key (both migration-005 columns — LIVE writes fail loudly
-//      until Leo applies db/migrations/005_scoring_routing.sql; dry run never
-//      touches them, reads are slim-selected so pre-migration dry runs work today).
+//      signals.event_key, signals.event_summary (migration 005/007 columns —
+//      both live as of 2026-07-19).
 //
 // Modes:
-//   (default)  DRY RUN — zero writes, zero LLM. Q6 clusters use CACHED verdicts only;
-//              unconfirmed clusters stay unmerged and are counted as pending_llm.
-//   --llm      dry run + sameEvent() LLM calls for uncached clusters (OpenRouter =
-//              paid → needs Leo's "запускай", cents-scale).
-//   --live     everything: LLM + DB writes. Needs migration 005 + Leo's go.
+//   (default)  DRY RUN — zero writes, zero LLM. Q6 clusters + event_summary use
+//              CACHED verdicts only; uncached ones stay pending_llm.
+//   --llm      dry run + sameEvent()/summarizeEvent() LLM calls for uncached
+//              items (OpenRouter = paid → needs Leo's "запускай", cents-scale).
+//   --live     everything: LLM + DB writes.
 //
 // Run from signals/: node --env-file=nextjs/.env.local pipeline/stages/rank_leads.mjs [--llm] [--live]
 
@@ -44,6 +49,7 @@ import { expiresAt, isStale } from '../lib/staleness.mjs';
 import {
   buildInitialGroups, findCandidateClusters, applySameEventGroups,
   finalizeEvents, classifyEvent, tierCompany,
+  uniqueSourceCount, needsEventSummary,
 } from '../lib/eventGrouping.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
@@ -55,11 +61,12 @@ const LLM = LIVE || args.includes('--llm');
 
 const RUN_DIR = join(__dir, `../runs/rank_leads_${new Date().toISOString().slice(0, 10)}`);
 const CACHE_PATH = join(__dir, '../../exa/cache/same_event_cache.json');
+const SUMMARY_CACHE_PATH = join(__dir, '../../exa/cache/event_summary_cache.json');
 
 const normDomain = d => String(d || '').toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].trim() || null;
 
-function loadCache() {
-  try { return existsSync(CACHE_PATH) ? JSON.parse(readFileSync(CACHE_PATH, 'utf8')) : {}; } catch { return {}; }
+function loadCache(path) {
+  try { return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : {}; } catch { return {}; }
 }
 
 function writeCheckpoint(state) {
@@ -80,8 +87,10 @@ export async function run() {
   const runId = LIVE ? await startRun({ clientId, script: 'rank_leads', source: 'scoring' }) : null;
 
   // Slim selects (F1): no raw_data, no 005 columns — dry runs work pre-migration.
+  // event_summary added (007/D3/Q2) — needed to detect which events already have
+  // one so we don't re-spend an LLM call on an unchanged event every run.
   const [allSignals, companies, contacts] = await Promise.all([
-    selectAll('signals', { client_id: clientId }, { select: 'id,company_id,signal_type,title,source,source_url,pub_date,status,expires_at' }),
+    selectAll('signals', { client_id: clientId }, { select: 'id,company_id,signal_type,title,source,source_url,pub_date,status,expires_at,event_summary' }),
     selectAll('companies', { client_id: clientId }, { select: 'id,name,domain,hq_country' }),
     selectAll('contacts', { client_id: clientId }, { select: 'id,company_id,email,linkedin_url' }),
   ]);
@@ -121,11 +130,16 @@ export async function run() {
     byCompany.get(s.company_id).push(s);
   }
 
-  const cache = loadCache();
+  const cache = loadCache(CACHE_PATH);
   let cacheDirty = false;
   const clusterStats = { found: 0, fromCache: 0, llmCalls: 0, pendingLlm: 0 };
-  let sameEventFn = null;
-  if (LLM) ({ sameEvent: sameEventFn } = await import('../lib/companyClassifier.mjs'));
+  let sameEventFn = null, summarizeEventFn = null;
+  if (LLM) ({ sameEvent: sameEventFn, summarizeEvent: summarizeEventFn } = await import('../lib/companyClassifier.mjs'));
+
+  const summaryCache = loadCache(SUMMARY_CACHE_PATH);
+  let summaryCacheDirty = false;
+  const summaryStats = { eligible: 0, fromCache: 0, llmCalls: 0, pendingLlm: 0, alreadyUpToDate: 0 };
+  const companiesById = new Map(companies.map(c => [c.id, c]));
 
   const companyEvents = new Map(); // company_id -> classified events
   let companiesDone = 0;
@@ -151,13 +165,44 @@ export async function run() {
       if (groups) applySameEventGroups(uf, cluster, groups);
     }
     const events = finalizeEvents(sigs, uf).map(ev => ({ ...ev, ...classifyEvent(ev, { now }) }));
+
+    // ── 3. event_summary (D3/Q2) — eager, cache-first, per-event. Single-source
+    // events (uniqueSourceCount < 2) never reach the LLM — frontend falls back to
+    // the signal's own title for those, free. Events whose members already carry
+    // one matching summary (needsEventSummary === false) are skipped too — no
+    // point re-spending on an event nothing changed about since the last run.
+    const company = companiesById.get(companyId);
+    for (const ev of events) {
+      if (uniqueSourceCount(ev.members) < 2) continue;
+      if (!needsEventSummary(ev.members)) { summaryStats.alreadyUpToDate++; continue; }
+      summaryStats.eligible++;
+      const summaryKey = ev.memberIds.slice().sort().join('|');
+      let summary = summaryCache[summaryKey]?.summary || null;
+      if (summary) {
+        summaryStats.fromCache++;
+      } else if (summarizeEventFn && company) {
+        const result = await summarizeEventFn(company.name, ev.members.map(m => ({ title: m.title, source: m.source, pub_date: m.pub_date })));
+        if (result?.summary) {
+          summary = result.summary;
+          summaryCache[summaryKey] = { summary, at: new Date().toISOString() };
+          summaryCacheDirty = true;
+          summaryStats.llmCalls++;
+        }
+      } else {
+        summaryStats.pendingLlm++; // dry run without --llm: no summary generated this run (conservative)
+      }
+      if (summary) ev.summary = summary;
+    }
+
     companyEvents.set(companyId, events);
     if (++companiesDone % 50 === 0) writeCheckpoint({ phase: 'grouping', companiesDone, of: byCompany.size });
   }
   if (cacheDirty) writeFileSync(CACHE_PATH, JSON.stringify(cache, null, 2));
+  if (summaryCacheDirty) writeFileSync(SUMMARY_CACHE_PATH, JSON.stringify(summaryCache, null, 2));
   const totalEvents = [...companyEvents.values()].reduce((n, e) => n + e.length, 0);
   console.log(`events: ${signals.length - noCompany} signals (${noCompany} without company skipped) → ${totalEvents} events across ${byCompany.size} companies`);
   console.log(`Q6 clusters: ${clusterStats.found} found | ${clusterStats.fromCache} cached | ${clusterStats.llmCalls} LLM calls | ${clusterStats.pendingLlm} pending LLM (unmerged this run)`);
+  console.log(`event_summary: ${summaryStats.eligible} eligible (>=2 sources) | ${summaryStats.alreadyUpToDate} already up to date | ${summaryStats.fromCache} cached | ${summaryStats.llmCalls} LLM calls | ${summaryStats.pendingLlm} pending LLM`);
 
   // ── 4. ICP gate via sourcing.companies ─────────────────────────────────────
   const sourcingClientId = await getSourcingClientId(CLIENT_SLUG);
@@ -206,17 +251,22 @@ export async function run() {
     else tierDist.no_fresh_event++;
   }
 
-  // ── 6. LIVE writes (migration-005 columns — fails loudly pre-migration) ────
+  // ── 6. LIVE writes (migration-005/007 columns) ─────────────────────────────
   if (LIVE) {
     writeCheckpoint({ phase: 'writing', companies: results.length });
+    let summariesWritten = 0;
     for (const [companyId, events] of companyEvents) {
-      for (const ev of events) await patch('signals', 'id', ev.memberIds, { event_key: ev.eventKey });
+      for (const ev of events) {
+        const data = { event_key: ev.eventKey };
+        if (ev.summary) { data.event_summary = ev.summary; summariesWritten++; }
+        await patch('signals', 'id', ev.memberIds, data);
+      }
     }
     const rankedAt = new Date().toISOString();
     for (const r of results) {
       await patch('companies', 'id', [r.company.id], { tier: r.tier, rank: r.rank, tier_reason: r.tierReason, ranked_at: rankedAt });
     }
-    console.log(`LIVE: event_key written for ${totalEvents} events, tier/rank for ${results.length} companies`);
+    console.log(`LIVE: event_key written for ${totalEvents} events (${summariesWritten} with a fresh event_summary), tier/rank for ${results.length} companies`);
   }
 
   // ── 7. manifest + acceptance output ────────────────────────────────────────
@@ -238,6 +288,11 @@ export async function run() {
     company: r.company.name, signals: r.signalCount, events: r.events.length,
     eventTypes: r.events.map(e => `${e.type}(${e.memberIds.length})`).join(' '), tier: r.tier || r.tierReason,
   })));
+  const summarized = acceptance.flatMap(r => r.events.filter(e => e.summary));
+  if (summarized.length) {
+    console.log('=== event_summary sample (acceptance companies) ===');
+    for (const e of summarized) console.log(`  [${e.type}] ${e.summary}`);
+  }
 
   const manifest = {
     date: new Date().toISOString(), mode: LIVE ? 'live' : LLM ? 'dry_llm' : 'dry_run',
@@ -245,6 +300,7 @@ export async function run() {
     expire_pass: { newly_stale: newlyStale.length, expires_at_recomputed: expiresFix.length, applied: LIVE },
     companies_with_signals: byCompany.size, events_total: totalEvents,
     events_per_company: eventsPerCompany, clusters: clusterStats,
+    event_summary: summaryStats,
     tier_distribution: tierDist, event_type_distribution: classDist,
     acceptance: acceptance.map(r => ({ company: r.company.name, signals: r.signalCount, events: r.events.length, tier: r.tier, tier_reason: r.tierReason })),
     status: 'complete',

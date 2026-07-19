@@ -198,6 +198,35 @@ export function classifyEvent(event, { now = Date.now() } = {}) {
   return { type, cls: eventClass(type) };
 }
 
+// ── event summary gate (D3 in docs/adr/009-frontend-v2-concept.md; Q2 in
+//    docs/PLAN_2026-07-19_react_migration_prep.md §0) ────────────────────────
+
+// Dedupe an event's members by source_url — the whole point of D3: raw signal
+// count (multiple Exa monitors catching the identical URL) != real distinct
+// source count. A signal with no source_url can't be deduped against another
+// one, so each counts as its own source.
+export function uniqueSourceCount(members) {
+  const urls = new Set();
+  let noUrl = 0;
+  for (const m of members) {
+    if (m.source_url) urls.add(m.source_url);
+    else noUrl++;
+  }
+  return urls.size + noUrl;
+}
+
+// True when event_summary should be (re)generated for this event's members:
+// either none of them have one yet (never generated), or they disagree (a
+// late-arriving signal re-folded into an already-summarized event — cheapest
+// possible "member set changed" detector, no separate timestamp needed).
+// False when every member already carries the SAME non-null summary — already
+// correct, no LLM call needed.
+export function needsEventSummary(members) {
+  const summaries = new Set(members.map(m => m.event_summary || null));
+  if (summaries.size === 1) return summaries.has(null); // all null = never generated; all-same-non-null = up to date
+  return true; // disagreement = re-fold happened, regenerate
+}
+
 // ── tier + rank (A2) ──────────────────────────────────────────────────────────
 
 // staleness window lookup: HIRING_* sub-classes share the HIRING window

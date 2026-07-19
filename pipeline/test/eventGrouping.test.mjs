@@ -5,6 +5,7 @@ import {
   normTitle, titleWordSet, jaccard, isHiringType, UnionFind,
   buildInitialGroups, findCandidateClusters, applySameEventGroups,
   finalizeEvents, classifyEvent, hiringExecBand, tierCompany,
+  uniqueSourceCount, needsEventSummary,
 } from '../lib/eventGrouping.mjs';
 
 const NOW = new Date('2026-07-15T00:00:00.000Z').getTime();
@@ -192,4 +193,37 @@ test('isHiringType covers subtypes', () => {
   assert.ok(isHiringType('HIRING'));
   assert.ok(isHiringType('HIRING_EXEC'));
   assert.ok(!isHiringType('MA'));
+});
+
+// ── event_summary gate (D3/Q2) ────────────────────────────────────────────────
+
+test('uniqueSourceCount: same source_url across monitors counts once (DMK case)', () => {
+  const url = 'https://outlet.de/dmk-25m';
+  const members = [
+    { source_url: url }, { source_url: url }, { source_url: url },
+    { source_url: 'https://other.de/x' },
+  ];
+  assert.equal(uniqueSourceCount(members), 2);
+});
+
+test('uniqueSourceCount: single-source event stays below the >=2 threshold', () => {
+  assert.equal(uniqueSourceCount([{ source_url: 'https://a/1' }]), 1);
+});
+
+test('uniqueSourceCount: signals with no source_url each count as their own source', () => {
+  assert.equal(uniqueSourceCount([{ source_url: null }, { source_url: null }]), 2);
+});
+
+test('needsEventSummary: true when no member has a summary yet', () => {
+  assert.equal(needsEventSummary([{ event_summary: null }, { event_summary: null }]), true);
+});
+
+test('needsEventSummary: false when every member already shares the same summary', () => {
+  const s = 'DMK is investing €25m — confirmed by 3 independent outlets.';
+  assert.equal(needsEventSummary([{ event_summary: s }, { event_summary: s }]), false);
+});
+
+test('needsEventSummary: true when members disagree (late re-fold into an already-summarized event)', () => {
+  const s = 'DMK is investing €25m — confirmed by 2 independent outlets.';
+  assert.equal(needsEventSummary([{ event_summary: s }, { event_summary: s }, { event_summary: null }]), true);
 });
