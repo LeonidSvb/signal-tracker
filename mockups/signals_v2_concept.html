@@ -64,7 +64,15 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Lato',
 .search-input { width: 100%; font-size: 11.5px; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; outline: none; background: var(--bg); }
 .search-input:focus { border-color: var(--accent); background: var(--surface); }
 
-.status-nav { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+/* status filter — collapsed accordion, header shows current selection (reply-agent
+   mixes always-visible primary items with collapsed secondary lists; ours is a
+   secondary lens like Labels/Campaigns there, so it collapses the same way) */
+.status-nav { border-bottom: 1px solid var(--border); }
+.status-nav-head { width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: none; border: none; cursor: pointer; }
+.status-nav-head-label { font-size: 11.5px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 6px; }
+.status-nav-head .cnt { font-size: 10.5px; color: var(--muted); font-weight: 700; }
+.status-nav-body { display: none; padding: 0 8px 6px; }
+.status-nav-body.open { display: block; }
 .nav-item { width: 100%; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; border: none; background: none; cursor: pointer; font-size: 11.5px; color: var(--ink); text-align: left; }
 .nav-item:hover { background: var(--surface-2); }
 .nav-item.on { background: var(--accent-light); color: var(--accent-text); font-weight: 700; }
@@ -73,8 +81,11 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Lato',
 .nav-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 
 .accordion { border-bottom: 1px solid var(--border); }
-.acc-head { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; background: none; border: none; cursor: pointer; }
+.acc-head { width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: none; border: none; cursor: pointer; }
 .acc-head-label { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.tier-mini { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; }
+.tier-mini span { display: flex; align-items: center; gap: 3px; }
+.tier-mini .dot { width: 6px; height: 6px; border-radius: 50%; }
 .acc-chev { font-size: 8px; color: var(--muted-2); transition: transform .15s; }
 .acc-chev.open { transform: rotate(90deg); }
 .acc-body { display: none; padding: 0 12px 8px; }
@@ -149,21 +160,26 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Lato',
 .src-link:hover { border-color: var(--accent); text-decoration: underline; }
 .dupe-note { font-size: 10px; color: var(--muted-2); font-style: italic; margin-top: 6px; }
 
-/* contacts — no artificial cap, responsive grid */
-.contacts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.contact { border: 1px solid var(--border); border-radius: 8px; padding: 12px; position: relative; }
-.contact.primary { border-color: var(--accent); }
-.c-priority { position: absolute; top: 10px; right: 10px; font-size: 8.5px; font-weight: 800; text-transform: uppercase; color: var(--accent-text); }
-.c-name { font-size: 13.5px; font-weight: 700; padding-right: 50px; }
-.c-title { font-size: 11px; color: var(--muted); margin: 2px 0 8px; min-height: 14px; }
-.email-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; margin-bottom: 8px; }
-.pill-verified { background: var(--pos-bg); color: var(--pos); }
-.pill-pending { background: var(--warn-bg); color: var(--warn); }
-.pill-none { background: var(--neutral-bg); color: var(--neutral-text); }
-.c-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-.c-link { font-size: 11.5px; font-weight: 600; padding: 5px 9px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
-.c-link:hover { border-color: var(--accent); color: var(--accent-text); }
-.c-link.li { background: #EAF3FC; border-color: #C7DEF5; color: #1D6FBF; }
+/* contacts — compact single-column list, no artificial cap (was a 2-col card grid
+   that grew to ~500px for 5 contacts; each row is now ~40px regardless of count) */
+.contacts-list { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.c-row { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-bottom: 1px solid #F0F1F5; position: relative; }
+.c-row:last-child { border-bottom: none; }
+.c-row.primary { border-left: 3px solid var(--accent); padding-left: 9px; background: var(--accent-light); }
+.c-avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; color: #fff; flex-shrink: 0; }
+.c-info { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 7px; }
+.c-name { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; max-width: 40%; }
+.c-title { font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.c-status { display: inline-flex; align-items: center; gap: 4px; font-size: 9.5px; font-weight: 700; flex-shrink: 0; white-space: nowrap; }
+.c-status-dot { width: 6px; height: 6px; border-radius: 50%; }
+.c-status.verified { color: var(--pos); } .c-status.verified .c-status-dot { background: var(--pos); }
+.c-status.pending { color: var(--warn); } .c-status.pending .c-status-dot { background: var(--warn); }
+.c-status.none { color: var(--neutral-text); } .c-status.none .c-status-dot { background: var(--muted-2); }
+.c-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.c-icon-btn { width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); display: flex; align-items: center; justify-content: center; text-decoration: none; }
+.c-icon-btn:hover { border-color: var(--accent); color: var(--accent-text); }
+.c-icon-btn.li:hover { border-color: #1D6FBF; color: #1D6FBF; }
+.c-icon-btn.disabled { opacity: .3; pointer-events: none; }
 
 /* outreach — flat status row */
 .channel-block { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
@@ -293,15 +309,10 @@ table.act tr:hover td { background: var(--surface-2); }
           <div class="sb-subtitle">Philippe Bosquillon · Food Executive Search</div>
         </div>
 
-        <!-- layered, tooltip-explained stats (reply-agent/overview.html State Row pattern) -->
+        <!-- layered, tooltip-explained stats (reply-agent/overview.html State Row pattern) —
+             per-tier breakdown lives in the Tier accordion below instead of duplicating it here -->
         <div class="stat-strip">
           <span class="stat-item"><b>117</b> tiered<span class="tip-box">Companies with a tier assigned by rank_leads.mjs (T1+T2+T3) — out of 768 total companies with any signal.</span></span>
-          <span class="stat-sep">·</span>
-          <span class="stat-item"><b>49</b> T1<span class="tip-box">Highest priority: fresh class-A event, or 2+ different events within 90 days.</span></span>
-          <span class="stat-sep">·</span>
-          <span class="stat-item"><b>54</b> T2<span class="tip-box">Medium priority: fresh class-B event.</span></span>
-          <span class="stat-sep">·</span>
-          <span class="stat-item"><b>14</b> T3<span class="tip-box">Lower priority — older or weaker signal.</span></span>
           <span class="stat-sep">·</span>
           <span class="stat-item"><b>279</b>/339 sendable<span class="tip-box">Real MV+BounceBan validation run 2026-07-18: 339 emails checked, 279 came back sendable (217 clean + 62 confirmed catch-all), 10 dead, 50 unknown.</span></span>
         </div>
@@ -310,11 +321,19 @@ table.act tr:hover td { background: var(--surface-2); }
           <input class="search-input" type="text" id="search-box" placeholder="Search company name…" oninput="applyFilters()">
         </div>
 
-        <div class="status-nav" id="status-nav"></div>
+        <div class="status-nav">
+          <button class="status-nav-head" onclick="toggleStatusNav()">
+            <span class="status-nav-head-label" id="status-nav-head-label"><span class="nav-dot" id="status-nav-head-dot" style="display:none"></span>All leads</span>
+            <span class="cnt" id="status-nav-head-cnt" style="margin-left:auto"></span>
+            <span class="acc-chev" id="chev-status">▸</span>
+          </button>
+          <div class="status-nav-body" id="status-nav-body"></div>
+        </div>
 
         <div class="accordion">
           <button class="acc-head" onclick="toggleAcc('tier')">
             <span class="acc-head-label">Tier</span>
+            <span class="tier-mini" id="tier-mini"></span>
             <span class="acc-chev" id="chev-tier">▸</span>
           </button>
           <div class="acc-body" id="acc-tier"></div>
@@ -602,26 +621,49 @@ function avatarColor(name) {
 }
 function initials(name) { return name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase(); }
 
-// ── Status nav (inbox.html nav-item pattern) ──────────────────────────────
+// ── Status nav — collapsed accordion, header reflects current selection ──────
+// (reply-agent's own sidebar mixes both patterns: one always-visible primary item
+// plus collapsed secondary lists like Labels/Campaigns — ours is the secondary
+// kind, so it collapses the same way, defaulting to closed / "All leads".)
+let statusNavOpen = false;
+
 function renderStatusNav() {
   const counts = { all: LIST.length };
   for (const s of Object.keys(STATUS_LABELS)) counts[s] = LIST.filter(c => c.status === s).length;
   const items = [{ key: 'all', label: 'All leads', color: null }].concat(
     Object.entries(STATUS_LABELS).map(([key, label]) => ({ key, label, color: STATUS_COLORS[key] }))
   );
-  document.getElementById('status-nav').innerHTML = items.map(it =>
+
+  document.getElementById('status-nav-body').innerHTML = items.map(it =>
     '<button class="nav-item ' + (activeStatusFilter === it.key ? 'on' : '') + '" onclick="setStatusFilter(\'' + it.key + '\')">' +
       (it.color ? '<span class="nav-dot" style="background:' + it.color + '"></span>' : '') +
       it.label + '<span class="cnt">' + counts[it.key] + '</span>' +
     '</button>'
   ).join('');
+
+  const current = items.find(it => it.key === activeStatusFilter);
+  document.getElementById('status-nav-head-label').innerHTML =
+    (current.color ? '<span class="nav-dot" style="background:' + current.color + '"></span>' : '') + current.label;
+  document.getElementById('status-nav-head-cnt').textContent = counts[activeStatusFilter];
 }
+
+window.toggleStatusNav = function () {
+  statusNavOpen = !statusNavOpen;
+  document.getElementById('status-nav-body').classList.toggle('open', statusNavOpen);
+  document.getElementById('chev-status').classList.toggle('open', statusNavOpen);
+};
+
+const TIER_DOT_COLOR = { T1: 'var(--accent)', T2: 'var(--accent-text)', T3: 'var(--neutral-text)' };
 
 function renderTierAcc() {
   const counts = { T1: 0, T2: 0, T3: 0 };
   for (const c of LIST) counts[c.tier]++;
   document.getElementById('acc-tier').innerHTML = ['T1', 'T2', 'T3'].map(t =>
     '<label class="acc-row"><input type="checkbox" ' + (activeTierFilters.has(t) ? 'checked' : '') + ' onchange="toggleTierFilter(\'' + t + '\')"><span class="lbl">' + t + '</span><span class="cnt">' + counts[t] + '</span></label>'
+  ).join('');
+  // mini breakdown shown on the collapsed header itself — no need to open just to see the split
+  document.getElementById('tier-mini').innerHTML = ['T1', 'T2', 'T3'].map(t =>
+    '<span><span class="dot" style="background:' + TIER_DOT_COLOR[t] + '"></span>' + counts[t] + '</span>'
   ).join('');
 }
 
@@ -666,7 +708,7 @@ function renderList() {
 }
 
 function applyFilters() { renderList(); }
-window.setStatusFilter = function (key) { activeStatusFilter = key; renderStatusNav(); renderList(); };
+window.setStatusFilter = function (key) { activeStatusFilter = key; toggleStatusNav(); renderStatusNav(); renderList(); };
 window.toggleTierFilter = function (t) { activeTierFilters.has(t) ? activeTierFilters.delete(t) : activeTierFilters.add(t); if (!activeTierFilters.size) activeTierFilters.add(t); renderList(); };
 window.toggleChannelFilter = function (c) { activeChannelFilters.has(c) ? activeChannelFilters.delete(c) : activeChannelFilters.add(c); if (!activeChannelFilters.size) activeChannelFilters.add(c); renderList(); };
 window.toggleAcc = function (name) {
@@ -675,10 +717,10 @@ window.toggleAcc = function (name) {
   document.getElementById('chev-' + name).classList.toggle('open', accOpen[name]);
 };
 
-function emailPill(status) {
-  if (status === 'verified') return '<span class="email-pill pill-verified">✓ Verified</span>';
-  if (status === 'pending') return '<span class="email-pill pill-pending">◐ Pending recheck</span>';
-  return '<span class="email-pill pill-none">No email found — LinkedIn only</span>';
+function statusInline(status) {
+  if (status === 'verified') return '<span class="c-status verified"><span class="c-status-dot"></span>Verified</span>';
+  if (status === 'pending') return '<span class="c-status pending"><span class="c-status-dot"></span>Pending</span>';
+  return '<span class="c-status none"><span class="c-status-dot"></span>No email</span>';
 }
 
 function renderEvents(events) {
@@ -693,15 +735,20 @@ function renderEvents(events) {
   }).join('');
 }
 
+const EMAIL_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>';
+const LI_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>';
+
 function renderContacts(contacts) {
-  return '<div class="contacts-grid">' + contacts.map(c => {
-    const emailAction = c.status === 'verified' ? '<a class="c-link" href="mailto:' + c.email + '">✉ ' + c.email + '</a>' : '';
-    return '<div class="contact ' + (c.primary ? 'primary' : '') + '">' +
-      (c.primary ? '<span class="c-priority">Primary</span>' : '') +
-      '<div class="c-name">' + esc(c.name) + '</div>' +
-      '<div class="c-title">' + esc(c.title || '') + '</div>' +
-      emailPill(c.status) +
-      '<div class="c-actions">' + emailAction + '<a class="c-link li" href="' + c.linkedin + '" target="_blank">in LinkedIn</a></div>' +
+  return '<div class="contacts-list">' + contacts.map(c => {
+    const emailHref = c.status === 'verified' ? 'mailto:' + c.email : null;
+    return '<div class="c-row ' + (c.primary ? 'primary' : '') + '">' +
+      '<div class="c-avatar" style="background:' + avatarColor(c.name) + '">' + initials(c.name) + '</div>' +
+      '<div class="c-info"><span class="c-name">' + esc(c.name) + '</span><span class="c-title">' + esc(c.title || '') + '</span></div>' +
+      statusInline(c.status) +
+      '<div class="c-actions">' +
+        (emailHref ? '<a class="c-icon-btn" href="' + emailHref + '" title="' + esc(c.email) + '">' + EMAIL_ICON + '</a>' : '<span class="c-icon-btn disabled">' + EMAIL_ICON + '</span>') +
+        '<a class="c-icon-btn li" href="' + c.linkedin + '" target="_blank" title="Open LinkedIn profile">' + LI_ICON + '</a>' +
+      '</div>' +
     '</div>';
   }).join('') + '</div>';
 }
