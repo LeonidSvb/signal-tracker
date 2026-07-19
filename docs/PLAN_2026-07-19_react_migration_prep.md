@@ -6,42 +6,78 @@ implementation session** — this doc is research + decisions, not code.
 
 ---
 
-## 0. FOR FABLE — 2 open questions this prep did NOT resolve
+## 0. The 2 hard questions — RESOLVED (Fable, 2026-07-19)
 
-These are the two hardest architectural calls surfaced by this audit. Leo
-explicitly deferred both to a Fable session rather than deciding blind — read
-the relevant sections below first (§2's "Open question" and the
-`event_summary` row in §2's detail-panel table), then decide.
+Both were deferred by Leo to a Fable pass. Decided after reading migration
+005's actual DDL, `channelActions.mjs`, `eventGrouping.mjs`, and the
+`same_event_cache.json` state (46 cached clusters, model `gpt-oss-120b`).
 
-**Q1 — Where does per-contact CRM status live?**
-The mockup's `statusState` (new/sent/replied/meeting/pass, per contact) has
-no clean home in the current schema:
-- `app_state` is scoped to `(client_id, company_id)` — wrong grain, one row
-  per company not per contact.
-- `channel_actions` has a `contact_id` column but a *different* status
-  vocabulary describing outreach mechanics (`validated/pushed/skipped_*` for
-  email, `queued/exported/done/skipped` for LinkedIn), not CRM funnel stage.
+**Q1 — Per-contact CRM status → new table `contact_state` (migration 009).**
 
-Options on the table (not a recommendation, Fable should weigh with full
-schema context): (a) new migration widening `app_state` to be
-`contact_id`-scoped instead of `company_id`-scoped, (b) derive a CRM-stage
-label from `channel_actions.status` via a mapping function instead of storing
-one at all, (c) something else once Fable sees the full picture. This blocks
-the Leads detail panel's per-contact status buttons from being real.
+Ruled out first: deriving CRM stage from `channel_actions` is semantically
+impossible, not just awkward — `replied`/`meeting`/`pass` are *human-observed
+conversation outcomes* (Philippe sees a LinkedIn reply and clicks a button);
+`channel_actions` records what the *machine* did (`pushed`/`queued`/
+`exported`). No mapping function can produce "replied" from mechanics that
+can't observe replies. So a stored, human-written status is required.
 
-**Q2 — When does `events[].summary` get generated?**
-The event drill-down's AI one-line synthesis (e.g. "DMK is investing €25m...")
-has zero backing column today (blocks on Migration 007,
-`signals.event_summary`) — the storage side is already decided. What's open
-is the *generation trigger*: (a) synchronously in `rank_leads.mjs`'s weekly
-run, whenever an `event_key` group gets ≥2 sources (cheap, but adds to the
-pipeline run's wall-clock and OpenRouter spend even for events nobody looks
-at), or (b) lazily from a Next.js API route the first time a user actually
-expands that event's drill-down, caching the result into
-`signals.event_summary` after the first call (never wasted on unopened
-events, but the first open of any given event eats a visible API round-trip).
-Depends on real OpenRouter per-call cost and how often new events actually
-appear — Fable should pull real numbers before deciding.
+Ruled out second: widening `app_state` to contact grain. `app_state` has
+live company-scoped rows today (statuses Leo/Philippe already clicked in the
+old frontend). Altering its unique constraint and mixing two grains in one
+table (some rows company-level, some contact-level) makes every query
+carry a "which grain is this row" branch forever, and risks the existing
+data during backfill. Additive beats destructive.
+
+Decision — additive migration 009:
+
+```sql
+create table signal_monitoring.contact_state (
+  id         uuid primary key default gen_random_uuid(),
+  client_id  uuid references clients(id)   on delete cascade,
+  company_id uuid references companies(id) on delete cascade,  -- denormalized, cheap joins (same as notes/channel_actions)
+  contact_id uuid references contacts(id)  on delete cascade,
+  status     text not null check (status in ('new','sent','replied','meeting','pass')),
+  updated_by text,
+  updated_at timestamptz default now(),
+  unique (client_id, contact_id)
+);
+```
+
+Company-level chip in the sidebar = the mockup's `aggregateStatus()` (pure
+function, most-advanced-wins, `pass` only when ALL contacts passed) computed
+in the frontend over that company's `contact_state` rows — **with fallback to
+`app_state.status` when a company has zero contact_state rows**, so every
+existing status Philippe already set keeps displaying correctly through the
+transition. `app_state` stays untouched (it also still backs the old
+frontend until cutover); retire it later once contact-level data covers
+everything, as its own explicit step — not silently.
+
+**Q2 — `event_summary` generation → eager, inside `rank_leads.mjs`.**
+
+The economics make lazy generation solve a problem that doesn't exist:
+- Model is `gpt-oss-120b` — fractions of a cent per call.
+- Multi-source events (the only ones that get a summary — single-source
+  events stay `event_summary = NULL` and the UI falls back to the signal's
+  own title, per the already-decided "single-source = free" rule) are rare:
+  a handful per run across ~400 companies.
+- Leo already made this exact tradeoff call on 2026-07-17 for `sameEvent()`
+  (documented in `eventGrouping.mjs`): "accuracy over OpenRouter cost here
+  (cents)". Same table, same model, same answer.
+
+Lazy would buy pennies and cost: a new API route, the OpenRouter key moved
+into the VPS frontend env, a second DB writer from the frontend side,
+loading/timeout/error states in the UI, and a visible wait on first open.
+Eager costs: a few cached-first LLM calls inside a stage that already makes
+cached-first LLM calls with the same infra (`companyClassifier.mjs` +
+file cache, same pattern as `same_event_cache.json`).
+
+Implementation notes for the build session: `summarizeEvent()` lives next to
+`sameEvent()` in `companyClassifier.mjs`; called only when an event has ≥2
+unique `source_url`s; result written to `signals.event_summary` on **all
+member rows** (denormalized like `event_key`); regenerate only when the
+member set changes (cheapest detector: a member row with NULL summary inside
+an event that has one → re-fold happened → regenerate once); file-cache
+keyed by sorted member ids so pipeline re-runs never re-spend.
 
 ---
 
@@ -145,19 +181,16 @@ should be ported as-is, just fed by a real query instead of 2 hand-built objects
 | Pipeline stages, drill-down (7d rollup + last 5 runs) | `pipeline_runs` | 🟢 real, live, already deployed to `/health` this session |
 | Database tables (last write per table) | Live `MAX(timestamp)` query per table | 🟢 real, live, already deployed this session |
 
-### Open question this audit surfaced (not yet answered)
+### Open question this audit surfaced — RESOLVED, see §0 (Q1)
 
 `companies.tier`/`rank` come from `rank_leads.mjs`. `app_state.status` is the
 existing CRM status field (`new/sent/replied/meeting/pass`) written by the old
 frontend's `setStatus()`. `channel_actions.status` is a *different* status
 vocabulary (`validated/pushed/skipped_no_email/...` for email,
 `queued/exported/done/skipped` for LinkedIn) describing outreach-*mechanics*,
-not CRM funnel stage. **The mockup's per-contact `statusState` (new/sent/
-replied/meeting/pass) doesn't map cleanly onto either table as-is** — decide
-during implementation whether per-contact CRM status is a new column
-(`app_state` scoped to `contact_id` instead of just `company_id`) or derived
-from `channel_actions`. This wasn't resolved in the mockup phase and needs a
-real decision before the Leads detail panel can be wired for real.
+not CRM funnel stage. The mockup's per-contact `statusState` maps onto
+neither as-is — resolved in §0: new `contact_state` table (migration 009),
+company chip derived via `aggregateStatus()` with `app_state` fallback.
 
 ---
 
@@ -327,11 +360,12 @@ projects.
 Not a task breakdown (that's for the implementation session itself), just
 sequencing logic based on the dependency chain this audit surfaced:
 
-1. **Fable session**: resolve the two open questions in Section 0 (per-contact
-   status storage, event-summary generation trigger) — blocks the detail
-   panel's status chip, Activity tab, and the event drill-down respectively.
-2. Migration 007 (`event_summary`) + `summarizeEvent()`, built per Q2's
-   decision — blocks the event drill-down, one of the most-used UI elements.
+1. ~~Fable session: resolve the two §0 questions~~ — DONE 2026-07-19, both
+   decided in §0 (Q1: `contact_state` table, migration 009; Q2: eager
+   generation in `rank_leads.mjs`).
+2. Migrations 007 (`event_summary`) + 009 (`contact_state`) +
+   `summarizeEvent()` per Q2's decision — blocks the event drill-down and
+   the per-contact status buttons.
 3. Migration 008 (`channel_actions` contact_id in the unique constraint) —
    blocks per-contact outreach state being real instead of colliding.
 4. `copy_templates.json` restructure — blocks Templates panel + real

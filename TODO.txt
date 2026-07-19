@@ -112,11 +112,17 @@ here; (5) checked for an existing HTML→React skill — none exists, not
 proposing one be built for a single migration; (6) suggested build order
 updated below.
 
-Updated same day (Leo review round 2): doc now leads with a §0 "FOR FABLE"
-block — the two hardest open questions (per-contact CRM status storage,
-event-summary generation trigger: eager in rank_leads.mjs vs lazy on first
-drill-down open) explicitly flagged for a Fable session to decide, not
-guessed at here. Also added §2.5 (reuse outreach-cockpit's IconRail.tsx and
+Updated same day (Leo review round 2): doc now leads with a §0 block — the
+two hardest open questions, RESOLVED by Fable same day: (Q1) per-contact CRM
+status → NEW table contact_state, migration 009 (additive; deriving from
+channel_actions is semantically impossible — replied/meeting are
+human-observed, mechanics can't know them; widening app_state mixes grains
+and risks live rows), company chip = aggregateStatus() over contact_state
+with app_state fallback during transition; (Q2) event_summary → EAGER in
+rank_leads.mjs (gpt-oss-120b costs cents, multi-source events are rare,
+same infra as sameEvent() already in that stage; lazy would add an API
+route + frontend OpenRouter key + visible first-open wait to save pennies —
+same tradeoff Leo already called on 2026-07-17 for sameEvent()). Also added §2.5 (reuse outreach-cockpit's IconRail.tsx and
 DateRangePicker.tsx near-verbatim — same shadcn/Radix/Tailwind foundation,
 build tool doesn't matter for plain React components; also grab the shadcn
 primitives cockpit already added that we don't have yet: calendar/popover/
