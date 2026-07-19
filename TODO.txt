@@ -110,9 +110,30 @@ Tailwind override footguns, DOM-idiom-to-React transliteration traps,
 mockup data-shape assumptions being flatly wrong) — each with how to avoid it
 here; (5) checked for an existing HTML→React skill — none exists, not
 proposing one be built for a single migration; (6) suggested build order
-based on the dependency chain the audit surfaced (open question → migration
-007 → migration 008 → copy_templates.json → localizeMessage() → THEN the
-React rebuild itself, so it isn't blocked mid-flight on a missing column).
+updated below.
+
+Updated same day (Leo review round 2): doc now leads with a §0 "FOR FABLE"
+block — the two hardest open questions (per-contact CRM status storage,
+event-summary generation trigger: eager in rank_leads.mjs vs lazy on first
+drill-down open) explicitly flagged for a Fable session to decide, not
+guessed at here. Also added §2.5 (reuse outreach-cockpit's IconRail.tsx and
+DateRangePicker.tsx near-verbatim — same shadcn/Radix/Tailwind foundation,
+build tool doesn't matter for plain React components; also grab the shadcn
+primitives cockpit already added that we don't have yet: calendar/popover/
+dropdown-menu/dialog/select/checkbox/tabs) and §2.5's sibling on the accordion
+filter — no cockpit equivalent, build fresh, it's small. Also added §2.6
+performance section (Leo: current live frontend loads slow, rebuild should
+match real-SaaS load times "in reasonable measure") — Next.js App Router's
+route-level code splitting is automatic IF Settings/Analytics become real
+routes instead of one mega-component's view-switcher (decide this before
+building, expensive to change after); next/dynamic for the Analytics charts
+so they don't bundle into the initial Leads load; slim the Leads list's
+Supabase select() to sidebar-only fields instead of full company+signals+
+contacts+app_state fetched upfront for all ~30 companies, full detail fetched
+lazily per-company on click. Build order in the doc now: Fable session first
+→ migration 007 → migration 008 → copy_templates.json → localizeMessage() →
+pull in reusable components → decide routing → THEN the React rebuild with
+the fetch/lazy-load choices applied from the start, not retrofitted.
 
 === STATUS 2026-07-19 — FRONTEND v2.0 CONCEPT: design agreed, mockup in progress (historical — superseded by the finalized block above) ===
 Full decision record: docs/adr/009-frontend-v2-concept.md (D1-D6). Summary:

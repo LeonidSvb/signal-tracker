@@ -6,6 +6,45 @@ implementation session** — this doc is research + decisions, not code.
 
 ---
 
+## 0. FOR FABLE — 2 open questions this prep did NOT resolve
+
+These are the two hardest architectural calls surfaced by this audit. Leo
+explicitly deferred both to a Fable session rather than deciding blind — read
+the relevant sections below first (§2's "Open question" and the
+`event_summary` row in §2's detail-panel table), then decide.
+
+**Q1 — Where does per-contact CRM status live?**
+The mockup's `statusState` (new/sent/replied/meeting/pass, per contact) has
+no clean home in the current schema:
+- `app_state` is scoped to `(client_id, company_id)` — wrong grain, one row
+  per company not per contact.
+- `channel_actions` has a `contact_id` column but a *different* status
+  vocabulary describing outreach mechanics (`validated/pushed/skipped_*` for
+  email, `queued/exported/done/skipped` for LinkedIn), not CRM funnel stage.
+
+Options on the table (not a recommendation, Fable should weigh with full
+schema context): (a) new migration widening `app_state` to be
+`contact_id`-scoped instead of `company_id`-scoped, (b) derive a CRM-stage
+label from `channel_actions.status` via a mapping function instead of storing
+one at all, (c) something else once Fable sees the full picture. This blocks
+the Leads detail panel's per-contact status buttons from being real.
+
+**Q2 — When does `events[].summary` get generated?**
+The event drill-down's AI one-line synthesis (e.g. "DMK is investing €25m...")
+has zero backing column today (blocks on Migration 007,
+`signals.event_summary`) — the storage side is already decided. What's open
+is the *generation trigger*: (a) synchronously in `rank_leads.mjs`'s weekly
+run, whenever an `event_key` group gets ≥2 sources (cheap, but adds to the
+pipeline run's wall-clock and OpenRouter spend even for events nobody looks
+at), or (b) lazily from a Next.js API route the first time a user actually
+expands that event's drill-down, caching the result into
+`signals.event_summary` after the first call (never wasted on unopened
+events, but the first open of any given event eats a visible API round-trip).
+Depends on real OpenRouter per-call cost and how often new events actually
+appear — Fable should pull real numbers before deciding.
+
+---
+
 ## 1. Old React frontend — verdict: gut the UI, keep the data-fetching infra
 
 Current `nextjs/src/` is small (17 files). Assessed each piece:
@@ -122,6 +161,83 @@ real decision before the Leads detail panel can be wired for real.
 
 ---
 
+## 2.5. Reusable components from outreach-cockpit — don't rebuild these from scratch
+
+Both projects share the same foundation (shadcn/ui + Radix + Tailwind) — the
+build tool differs (Vite vs Next.js) but that's irrelevant to plain React
+component code. Checked `outreach-cockpit/src/` for components that are
+generic (not reply-agent-specific) and map onto pieces of
+`signals_v2_concept.html`:
+
+**Copy near-verbatim, just re-parametrize:**
+- `src/components/shell/IconRail.tsx` — same icon-rail pattern as our mockup
+  (avatar, module icons, spacer, Settings pinned to bottom). Swap the `ITEMS`
+  array for our modules (Leads/Analytics/Settings) and the color tokens for
+  ours; the component logic is untouched.
+- `src/shared/ui/DateRangePicker.tsx` — a real, finished, parametrized
+  date-range picker (presets + manual calendar range + Cancel/Apply), built
+  on shadcn `Calendar` (range mode) + `Popover`. Its own comment says it was
+  built explicitly to replace the mockup's "hand-rolled month-grid/rounding
+  math... throwaway markup for approving the design, not meant to ship" —
+  exactly our situation with the Activity tab's `dr-wrap`/`dr-menu` vanilla-JS
+  date picker. Use this instead of porting our mockup's version.
+
+**Copy the shadcn primitives we don't have yet** (plain shadcn files, not
+cockpit-specific — cockpit already did the "add this shadcn component"
+step for us): `calendar.tsx`, `popover.tsx`, `dropdown-menu.tsx`,
+`dialog.tsx`, `select.tsx`, `checkbox.tsx`, `tabs.tsx`. Our `nextjs/` already
+has `badge.tsx`/`button.tsx`/`textarea.tsx` plus the underlying Radix/CVA/
+clsx/tailwind-merge deps — same shadcn setup, these just fill in the rest.
+
+**No equivalent exists in cockpit, build fresh (small, low-risk):**
+- The filter accordion (Tier / Channel readiness / Signal origin, collapsible
+  sections with live counts) — cockpit has no accordion component. Not worth
+  pulling in a third-party lib for this; a plain `useState`-driven
+  expand/collapse per section is a few lines.
+- The grouped Settings sidebar (group labels + nav items + active panel
+  switch) — structurally simple, no reason to hunt for a match.
+
+---
+
+## 2.6. Performance — lazy loading, matches real-SaaS load times
+
+Leo's explicit ask: the current live frontend loads noticeably slower than a
+typical SaaS product, and the rebuild should fix that "in reasonable measure"
+— not a rewrite-everything performance project, but real frontend hygiene
+that a from-scratch Next.js build gets mostly for free if set up correctly
+from the start rather than retrofitted:
+
+- **Route-level code splitting is automatic in Next.js App Router** — each
+  `app/*/page.tsx` is already its own chunk. The one thing to actually decide:
+  whether Settings/Analytics become real routes (`app/settings/page.tsx`,
+  `app/analytics/page.tsx`) instead of client-side view-switching inside one
+  giant component (`signals_v2_concept.html`'s `switchView()` pattern) — real
+  routes get real code-splitting + real URLs (shareable, back-button-correct)
+  for free; a single mega-component doesn't.
+- **`next/dynamic` for anything genuinely heavy and not needed on first
+  paint** — the Exa Analytics charts (currently hand-rolled canvas/SVG bar
+  charts in the mockup) are the obvious candidate: lazy-load that whole
+  module only when the Analytics route is actually visited, not bundled into
+  the initial Leads page load.
+- **Don't over-fetch on the Leads list.** `useLeads.ts`'s current pattern
+  pulls `companies`/`signals`/`contacts`/`app_state` *in full* for every
+  company up front (§1 above) — fine at today's ~30-company scale, but worth
+  deciding now whether the list view needs a slimmer `select()` (just the
+  sidebar's fields) with the full detail fetched lazily per-company on click,
+  matching the mockup's own "list-only vs. fully wired" distinction from §2.
+  This is the single highest-leverage fetch change since the sidebar loads
+  before anything else.
+- **Images/avatars**: nothing in the mockup uses real images today (initials
+  in colored circles, computed client-side) — no `next/image` migration
+  needed unless that changes.
+- Out of scope for this prep doc (Fable/implementation-session call, needs
+  real profiling once there's a real build to profile): bundle-size budget,
+  whether to add React Query/SWR for cache-and-revalidate instead of the
+  current raw `useEffect` fetch, Supabase query-level pagination if the lead
+  count grows well past today's ~30-400 range.
+
+---
+
 ## 3. Lessons from outreach-cockpit's own HTML→React port
 
 `C:\Users\79818\Desktop\outreach-cockpit` already did exactly this kind of
@@ -211,16 +327,26 @@ projects.
 Not a task breakdown (that's for the implementation session itself), just
 sequencing logic based on the dependency chain this audit surfaced:
 
-1. Resolve the open question in Section 2 (per-contact status: new column vs.
-   derived) — blocks the detail panel's status chip and Activity tab.
-2. Migration 007 (`event_summary`) + `summarizeEvent()` — blocks the event
-   drill-down, one of the most-used UI elements.
+1. **Fable session**: resolve the two open questions in Section 0 (per-contact
+   status storage, event-summary generation trigger) — blocks the detail
+   panel's status chip, Activity tab, and the event drill-down respectively.
+2. Migration 007 (`event_summary`) + `summarizeEvent()`, built per Q2's
+   decision — blocks the event drill-down, one of the most-used UI elements.
 3. Migration 008 (`channel_actions` contact_id in the unique constraint) —
    blocks per-contact outreach state being real instead of colliding.
 4. `copy_templates.json` restructure — blocks Templates panel + real
    LinkedIn/email copy generation matching the mockup's per-key shape.
 5. `localizeMessage()` + `/api/translate` — blocks the DE-language toggle on
    anything beyond the initial connection hook line.
-6. Only then the React rebuild itself — by this point every field in Section
-   2 is either 🟢 or has its 🔴/🟡 gap closed, so the build isn't blocked
-   mid-flight discovering a missing column.
+6. Pull in the reusable components from Section 2.5 (`IconRail`,
+   `DateRangePicker`, missing shadcn primitives) before writing any new
+   component that would duplicate them — cheap to do early, avoids a
+   find-and-replace pass later.
+7. Decide the routing question from Section 2.6 (real `/settings` +
+   `/analytics` routes vs. single-page view-switching) — affects how every
+   subsequent component is structured, expensive to change after the fact.
+8. The React rebuild itself, with the Section 2.6 fetch/lazy-load choices
+   applied from the start (slim list-view `select()`, `next/dynamic` for the
+   Analytics charts) rather than retrofitted after — by this point every
+   field in Section 2 is either 🟢 or has its 🔴/🟡 gap closed, so the build
+   isn't blocked mid-flight discovering a missing column.

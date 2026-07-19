@@ -10,6 +10,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 - `docs/PLAN_2026-07-19_react_migration_prep.md` — prep doc for the real React rebuild session: old-frontend keep/delete verdict, full field-by-field data-source audit of `signals_v2_concept.html` (what's live-real vs. needs a build step vs. currently mock), 7 pitfalls mined from outreach-cockpit's own past HTML→React port with concrete avoidance notes, and a suggested build order.
+- Same doc, same-day update: §0 flags the 2 hardest open architecture questions (per-contact status storage, event-summary generation trigger) explicitly for a Fable session rather than deciding blind; §2.5 catalogs reusable components from `outreach-cockpit` (`IconRail.tsx`, `DateRangePicker.tsx`, missing shadcn primitives — same shadcn/Radix/Tailwind foundation as ours) to avoid rebuilding them from scratch; §2.6 adds performance requirements (lazy-loading, route-level code splitting, slimmer initial fetch) so the rebuild matches real-SaaS load times instead of the current frontend's slow load.
 
 ### Fixed
 - Real `/health` Next.js page had no persistent nav at all — added the same icon rail as the mockups (PB avatar, Leads → real `/`, Health active). Settings/Analytics rail icons intentionally NOT added yet since those aren't real Next.js routes (mockups only) — adding a rail icon to a page that doesn't exist would just be a second kind of dead link.
