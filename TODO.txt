@@ -172,27 +172,91 @@ REAL BUILD — Sonnet execution session, 2026-07-19 (docs/HANDOFF_2026-07-19_fro
   this stage. Built with 2 honest real segments (Raw/Passed ICP) instead.
   Chart interactivity (ctrl-zoom, spline smoothing, hover bubbles) also
   simplified to plain real SVG/CSS — same real data, less physics.
-- Stage 9 PARTIAL: automated verification only, Chrome extension was not
-  connected this session (checked twice) — the mandatory interactive/visual
-  pass could not run. Did everything possible without it instead: all 4 real
-  routes (/, /settings, /analytics, /health) verified 200 via curl with no
-  "Application error"/hydration-failure markers in the SSR'd HTML; a REAL
-  end-to-end write test against production via the anon key (same
-  permission path the browser uses, not service role) — contact_state
-  upsert→status-change→read-back→cleanup, and a notes insert→cleanup — both
-  confirmed working through RLS with real data, not just "the code compiles
-  or the service-role key can write". `npm run build` clean throughout every
-  stage, 53/53 pipeline tests + 15/15 frontend vitest tests green
-  throughout, no stray console.log/debugger/TODO markers in new code.
-  REMAINING: a real Claude-in-Chrome visual/interactive pass (page-by-page
-  against signals_v2_concept.html side-by-side, every click path, console
-  errors, network failures) once the extension is connected — this is the
-  one thing this session genuinely could not do, not skipped by choice.
-- NOT pushed to origin — ~13 commits ahead of main as of this session's end.
-  Push (= Coolify prod rebuild) needs Leo's explicit go per the handoff's
-  own rule; pipeline changes (Stages 1-4) also need the VPS pipeline copy
-  refreshed separately (same rsync/scp path as the backend-hardening
-  deploy), not just a git push.
+- Stage 9 DONE (2026-07-19/20, follow-up session once the Chrome extension
+  connected): full interactive/visual pass across Leads, Activity, Settings
+  (Templates/ICP Filter/Health), Analytics, cross-page rail nav — every real
+  bug found was fixed and deployed the same session, not just logged. Real
+  bugs found and fixed, in the order hit:
+  1. /api/copy + /api/icp-filter 500'd in prod — Coolify's Docker image
+     (root Dockerfile) never copied pipeline/config/*.json in; added
+     `COPY pipeline/config/ /pipeline/config/` to the runner stage.
+  2. Deploy path was actually confusing/dead: scripts/deploy.ps1 -> systemd
+     on :3099 never served the public domain (Coolify's Docker container
+     always did) — same incident class as outreach-cockpit's documented
+     "orphaned container". Removed deploy.ps1, nextjs/Dockerfile (dead
+     duplicate), the systemd unit + its VPS dirs; wrote docs/deploy.md
+     (single real path + commit-verification recipe). Rotated the VPS
+     account password (was hardcoded in the deleted script).
+  3. Calendar (DateRangePicker's Calendar) had zero real CSS — cockpit's
+     own calendar.tsx is written in Tailwind-v4-only syntax this project's
+     v3.4 can't compile, so a literal port wasn't viable. Rewrote CSS from
+     scratch against the actual cockpit reference
+     (mockups/reply-agent/detailed-analytics.html): 3-letter weekday labels
+     (was 2-letter uppercase), one uniform solid range fill rounded only at
+     true start/end (was two different treatments), 27px circular cells at
+     11.5px type (was 36px/14px), ring-not-fill hover, fixed locale (was
+     showing "май" not "May" — browser-locale leak, pinned to date-fns
+     enUS). Also found and killed the real "wrong font/clipped corners/cut
+     off on the right" cause: captionLayout="dropdown" rendered actual
+     native <select> elements (un-stylable OS chrome) — switched to
+     captionLayout="label" (plain text + the existing chevron buttons).
+  4. ContactRow's copy vars.company was hardcoded to "" — every connection-
+     note read "...at , Lars" with a bare comma. Threaded company.name
+     through as a real prop.
+  5. Daily Signal Quality funnel chart was hand-rolled SVG/CSS with real
+     bugs: /api/analytics's funnelDaily/volumeDaily only included days that
+     had a signal (a zero-signal day was missing from the array, not a
+     zero entry) — invisible at 60 days, broke completely at 7 days (1 bar
+     instead of 7). Rebuilt the whole Analytics chart layer on recharts
+     (same library outreach-cockpit's own dashboards use) with clickable
+     legends (verified: toggling a series removes it from the DOM), real
+     labeled Y-axis (was hidden), and allDaysInRange() zero-fill. Also
+     renamed "Exa Analytics" -> "Analytics" (aggregates 6 sources, not just
+     Exa) and dropped two debug-sounding captions.
+  6. Two color-contrast bugs: chart legend swatches for light colors were
+     nearly invisible against white (no border — added one); "Filtered/
+     pending" bar segment used a near-white lavender fill unreadable as a
+     distinct second color — switched to this app's real --muted-2 grey.
+  7. Status buttons (New/Sent/Replied/Meeting/Pass) wrote to contact_state
+     successfully every time (verified via network — real 200s) but
+     onStatusChanged was a literal no-op ("useCompanyList refetches on next
+     mount" — it never did, no hook had any refetch mechanism at all).
+     Clicking a status silently persisted while the UI kept showing the OLD
+     status forever. Added reloadKey-based refetch() to useCompanyList/
+     useCompanyDetail, wired both into onStatusChanged. Verified: click
+     Replied -> active state swaps instantly, no reload.
+  8. IcpFilterPanel's TagChips used tag text as React key — a real config
+     array had "Directeur" twice, real duplicate-key console warning.
+     Keyed by `${text}-${index}` instead.
+  9. Health page's <style>{`...'Lato'...`}</style> (raw JSX text child)
+     produced a genuine hydration mismatch (SSR HTML-escapes the quote,
+     client re-render didn't match) — full client-side re-render on every
+     load. Switched to dangerouslySetInnerHTML, the correct pattern for
+     raw CSS text.
+  10. OPENROUTER_KEY was never added to Coolify's env store (only existed
+      in gitignored nextjs/.env.local) — /api/translate 500'd in prod.
+      Hotfixed directly into Coolify's app .env + documented that this is
+      NOT durable (Coolify regenerates that file every deploy) — Leo needs
+      to add it via the Coolify UI for real.
+  11. Health was a separate /health route with its own duplicate rail
+      (health-rail/health-shell) — Leo, mid-pass: "должен быть просто
+      переключение между вкладками настроек... в мокапе было из-за
+      небрежности". Asked before reworking (real structural change, not a
+      one-liner) — confirmed, folded into Settings as a third tab
+      (components/settings/HealthPanel.tsx), deleted app/health/.
+  Search (Sidebar's company-name filter) and the Tier/Channel/Origin
+  accordion filters were checked and found correct — an earlier apparent
+  "search doesn't filter" reading turned out to be Chrome-extension
+  click/type flakiness in the test harness itself, confirmed by calling
+  the real onChange handler directly (117 -> 1 companies, correct).
+  9 commits this pass: f5f4a44, ed0f24b, f2411d7, 9035fc6, ece9ccc, 445c0e1,
+  6df2796, 5769c3a, 2c0566f, a0c5929 — all pushed and live on prod.
+- Pipeline VPS copy (Stages 1-4 code) refreshed separately via tar+scp to
+  /opt/apps/projects/philippe-signals-pipeline/ — the live cron job was
+  still running the OLD 2-arg channelActionKey() against the NEW 3-column
+  DB constraint (migration 008) until this session caught and fixed it;
+  smoke-tested with a real --dry-run (73 leads routed, no crash) before
+  confirming.
 
 === PREP DONE 2026-07-19 — React migration prep doc ===
 Full doc: docs/PLAN_2026-07-19_react_migration_prep.md — read this FIRST in

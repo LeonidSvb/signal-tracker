@@ -19,8 +19,19 @@ The full real React rebuild against `mockups/signals_v2_concept.html`, executed 
 - **Settings**: real page, ICP Filter promoted from an external link to a genuine inline panel (new `/api/icp-filter` route); Templates panel reads live `copy_templates.json` via new `GET /api/copy`, without the mockup's fabricated "Universal Step 3" block.
 - **Analytics**: real page, `next/dynamic`-loaded (confirmed: 1.93kB route vs. the Leads page's 128kB — genuinely code-split). New `/api/analytics` route aggregates real `raw_signals` data. Disclosed scope reduction: the mockup's 4-segment funnel needs data (`raw_signals.company_id`/`contact_id`) that doesn't exist in the schema — built 2 honest real segments instead of 4 approximated ones.
 
-### Known limitation
-- Stage 9 (full Claude-in-Chrome visual/interactive debugging pass) could not run this session — the browser extension was not connected (checked twice). Did everything possible without it instead: all 4 real routes verified 200 with no crash markers via curl; a real end-to-end write/read test against production through the anon key (same permission path the browser uses) for both `contact_state` and `notes`. The interactive/visual pass against `signals_v2_concept.html` side-by-side is still needed before this ships to Leo's phone/desktop.
+### Fixed — Stage 9, the real Chrome visual/interactive pass (2026-07-19/20)
+Ran once the browser extension connected. Found and fixed real bugs, each deployed the same session (commits `f5f4a44`..`a0c5929`):
+- `/api/copy` + `/api/icp-filter` 500'd in prod — the Coolify Docker image never copied `pipeline/config/*.json` in; fixed the Dockerfile, and while there discovered the actual deploy topology was a dead-end trap (`scripts/deploy.ps1`→systemd never served the public domain, Coolify's Docker container always did) — deleted the dead path, wrote `docs/deploy.md`, rotated the exposed VPS password.
+- Calendar had zero real CSS (cockpit's own `calendar.tsx` is Tailwind-v4-only syntax this project's v3.4 can't compile) — rewrote against the actual cockpit reference: 3-letter weekday labels, one uniform solid range fill, 27px cells, fixed locale (was leaking "май" from the browser), and swapped `captionLayout="dropdown"` (renders real un-stylable native `<select>`s) for plain text + the existing chevrons.
+- Connection-note copy always read "...at , Lars" — `vars.company` was hardcoded to `""`.
+- Analytics' funnel/volume charts silently dropped zero-signal days from the API response (fine at 60 days, broke completely at 7 — 1 bar instead of 7); rebuilt the chart layer on `recharts` with real clickable legends, a labeled Y-axis, and a zero-fill date range. Renamed "Exa Analytics" → "Analytics" (aggregates 6 sources).
+- Two near-invisible chart colors (legend swatches, "Filtered/pending" bar) fixed to real, visible values.
+- Status buttons (New/Sent/Replied/…) wrote to `contact_state` successfully every time but the UI never refreshed — `onStatusChanged` was a literal no-op. Added real `refetch()` to both list/detail hooks.
+- A duplicate React key (`IcpFilterPanel`), a `<style>`-tag hydration mismatch (`HealthPanel`), and a missing `OPENROUTER_KEY` in Coolify's env store (translate 500'd) — all fixed/hotfixed.
+- Health was a separate `/health` route with its own duplicate rail — folded into Settings as a third tab per Leo's call mid-pass (asked first, this was a real structural change).
+- Also refreshed the pipeline's live VPS cron copy (`/opt/apps/projects/philippe-signals-pipeline/`) — it was still running the OLD 2-arg `channelActionKey()` against the NEW 3-column DB constraint from migration 008, a real live-production risk caught before it caused a bad dedup.
+
+Full bug-by-bug detail: `TODO.txt`'s Stage 9 entry.
 
 ### Added
 - `docs/PLAN_2026-07-19_react_migration_prep.md` — prep doc for the real React rebuild session: old-frontend keep/delete verdict, full field-by-field data-source audit of `signals_v2_concept.html` (what's live-real vs. needs a build step vs. currently mock), 7 pitfalls mined from outreach-cockpit's own past HTML→React port with concrete avoidance notes, and a suggested build order.
