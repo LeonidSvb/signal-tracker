@@ -32,6 +32,22 @@ function dayKey(iso: string | null): string | null {
   return iso.slice(0, 10);
 }
 
+// Both daily charts previously only included days that actually had a row —
+// a day with zero signals was simply missing from the array instead of a
+// zero-height entry, so a 7-day window with signals on only 1 real day
+// rendered as a single bar/point instead of 7 (one necessarily at 0). Fixes
+// the "chart looks broken/sparse at narrow ranges" bug (Stage 9 Chrome pass).
+function allDaysInRange(from: string, to: string): string[] {
+  const days: string[] = [];
+  const cur = new Date(from + 'T00:00:00Z');
+  const end = new Date(to + 'T00:00:00Z');
+  while (cur <= end) {
+    days.push(cur.toISOString().slice(0, 10));
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return days;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -75,9 +91,8 @@ export async function GET(req: NextRequest) {
       entry.raw++;
       if (r.status === 'passed_icp') entry.passed++;
     }
-    const funnelDaily = Array.from(byDay.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, v]) => ({ date, ...v }));
+    const funnelDays = fromParam && toParam ? allDaysInRange(fromParam, toParam) : Array.from(byDay.keys()).sort();
+    const funnelDaily = funnelDays.map((date) => ({ date, ...(byDay.get(date) ?? { raw: 0, passed: 0 }) }));
 
     // Volume by source, daily, all sources
     const sources = ['exa', 'linkedin', 'indeed', 'stepstone', 'xing', 'cadremploi'];
@@ -90,9 +105,8 @@ export async function GET(req: NextRequest) {
       const src = sources.includes(r.source) ? r.source : null;
       if (src) entry[src]++;
     }
-    const volumeDaily = Array.from(byDaySource.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, v]) => ({ date, ...v }));
+    const volumeDays = fromParam && toParam ? allDaysInRange(fromParam, toParam) : Array.from(byDaySource.keys()).sort();
+    const volumeDaily = volumeDays.map((date) => ({ date, ...(byDaySource.get(date) ?? Object.fromEntries(sources.map((s) => [s, 0]))) }));
 
     // By signal type (monitor_label prefix before '|', e.g. 'MA|DE' -> 'MA')
     const typeCounts = new Map<string, number>();

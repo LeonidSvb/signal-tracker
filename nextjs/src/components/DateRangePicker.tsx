@@ -103,7 +103,7 @@ export default function DateRangePicker({ presets, presetId, range, onApply }: P
           <Calendar
             mode="range"
             numberOfMonths={1}
-            captionLayout="dropdown"
+            captionLayout="label"
             locale={enUS}
             selected={pendingRange ? { from: pendingRange.from, to: pendingRange.to } : undefined}
             onSelect={pickCalendarRange}

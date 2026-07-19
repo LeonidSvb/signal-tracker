@@ -72,7 +72,7 @@ function LegendSwatch({ color, label, active, onClick, round }: { color: string;
         color: active ? "var(--ink)" : "var(--muted)",
       }}
     >
-      <span style={{ width: 8, height: 8, borderRadius: round ? "50%" : 2, background: color, display: "inline-block", flexShrink: 0 }} />
+      <span style={{ width: 8, height: 8, borderRadius: round ? "50%" : 2, background: color, border: "1px solid rgba(30,34,51,0.15)", display: "inline-block", flexShrink: 0 }} />
       {label}
     </button>
   );
@@ -102,10 +102,10 @@ function FunnelChart({ data }: { data: AnalyticsData["funnelDaily"] }) {
         <LegendSwatch color="#E4E7FB" label="Filtered / pending" active={showFiltered} onClick={() => setShowFiltered((v) => !v)} />
       </div>
       <ResponsiveContainer width="100%" height={150}>
-        <ComposedChart data={chartData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }} barCategoryGap={1}>
+        <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }} barCategoryGap="30%">
           <CartesianGrid vertical={false} stroke="#E1E4EC" strokeDasharray="4 4" />
           <XAxis dataKey="date" tickFormatter={fmtDate} tick={{ fontSize: 9, fill: "#8B92A6" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-          <YAxis hide />
+          <YAxis allowDecimals={false} tick={{ fontSize: 9, fill: "#8B92A6" }} axisLine={false} tickLine={false} width={28} />
           <Tooltip content={<FunnelTooltip />} cursor={{ fill: "#F7F8FC" }} />
           <Bar dataKey="passed" stackId="s" fill="#4F5FD1" radius={[0, 0, 0, 0]} isAnimationActive hide={!showPassed} />
           <Bar dataKey="filteredOnly" stackId="s" fill="#E4E7FB" radius={[2, 2, 0, 0]} isAnimationActive hide={!showFiltered} />
@@ -127,10 +127,10 @@ function VolumeChart({ data }: { data: Record<string, number | string>[] }) {
         ))}
       </div>
       <ResponsiveContainer width="100%" height={150}>
-        <LineChart data={data} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+        <LineChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid vertical={false} stroke="#E1E4EC" strokeDasharray="4 4" />
           <XAxis dataKey="date" tickFormatter={fmtDate} tick={{ fontSize: 9, fill: "#8B92A6" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-          <YAxis hide />
+          <YAxis allowDecimals={false} tick={{ fontSize: 9, fill: "#8B92A6" }} axisLine={false} tickLine={false} width={28} />
           <Tooltip
             labelFormatter={(l) => fmtDate(String(l))}
             contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #E1E4EC" }}
