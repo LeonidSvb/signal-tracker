@@ -87,6 +87,33 @@ comments too):
 NEXT: hand this off — Fable/Sonnet split for the real build, same pattern as
 the backend hardening handoff.
 
+=== PREP DONE 2026-07-19 — React migration prep doc ===
+Full doc: docs/PLAN_2026-07-19_react_migration_prep.md — read this FIRST in
+the implementation session, before touching code. Covers: (1) old React
+verdict — delete UI components (LeadCard/Sidebar/ContactCard/Header/page.tsx),
+KEEP lib/supabase.ts + useLeads.ts's fetch pattern + useNotes()'s realtime
+subscription, they're real working infra not disposable; (2) field-by-field
+data-source audit of the whole mockup — what's 🟢 live-real, 🟡 mechanism
+exists but needs a build step, 🔴 currently mock/illustrative (biggest gaps:
+events[].summary has NO backing column at all — migration 007 blocks it;
+outreach.sent/replied/meeting has no generation function —
+localizeMessage() blocks it; per-company status/channel on 30/32 companies is
+flat-out hardcoded in the mockup, only DMK/BRATA are real); (3) one NEW open
+question this audit surfaced and did NOT resolve: per-contact CRM status
+(new/sent/replied/meeting/pass) doesn't map cleanly onto either app_state
+(company-scoped) or channel_actions (different status vocabulary) as they
+exist today — needs a real decision before the detail panel can be wired;
+(4) 7 concrete pitfalls mined from outreach-cockpit's own HTML→React port of
+mockups/reply-agent (reading mockups from memory instead of line-by-line,
+skipping live browser verification, display/logic path drift, shadcn
+Tailwind override footguns, DOM-idiom-to-React transliteration traps,
+mockup data-shape assumptions being flatly wrong) — each with how to avoid it
+here; (5) checked for an existing HTML→React skill — none exists, not
+proposing one be built for a single migration; (6) suggested build order
+based on the dependency chain the audit surfaced (open question → migration
+007 → migration 008 → copy_templates.json → localizeMessage() → THEN the
+React rebuild itself, so it isn't blocked mid-flight on a missing column).
+
 === STATUS 2026-07-19 — FRONTEND v2.0 CONCEPT: design agreed, mockup in progress (historical — superseded by the finalized block above) ===
 Full decision record: docs/adr/009-frontend-v2-concept.md (D1-D6). Summary:
 - Real DB data throughout the mockup (many companies list-only, DMK+BRATA full

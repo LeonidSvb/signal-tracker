@@ -8,6 +8,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added
+- `docs/PLAN_2026-07-19_react_migration_prep.md` — prep doc for the real React rebuild session: old-frontend keep/delete verdict, full field-by-field data-source audit of `signals_v2_concept.html` (what's live-real vs. needs a build step vs. currently mock), 7 pitfalls mined from outreach-cockpit's own past HTML→React port with concrete avoidance notes, and a suggested build order.
+
 ### Fixed
 - Real `/health` Next.js page had no persistent nav at all — added the same icon rail as the mockups (PB avatar, Leads → real `/`, Health active). Settings/Analytics rail icons intentionally NOT added yet since those aren't real Next.js routes (mockups only) — adding a rail icon to a page that doesn't exist would just be a second kind of dead link.
 - `mockups/exa-analytics.html` had NO icon rail at all — just a floating X-close button back to settings.html. That's why the nav strip appeared to "disappear" when switching into Analytics. Added the same rail markup/order (avatar, Leads, Analytics active, spacer, Settings) used by settings.html and signals_v2_concept.html, matching reply-agent/inbox.html + settings.html's actually-identical rail across pages.
