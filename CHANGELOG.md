@@ -9,6 +9,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ## [Unreleased]
 
 ### Fixed
+- Real `/health` Next.js page had no persistent nav at all — added the same icon rail as the mockups (PB avatar, Leads → real `/`, Health active). Settings/Analytics rail icons intentionally NOT added yet since those aren't real Next.js routes (mockups only) — adding a rail icon to a page that doesn't exist would just be a second kind of dead link.
 - `mockups/exa-analytics.html` had NO icon rail at all — just a floating X-close button back to settings.html. That's why the nav strip appeared to "disappear" when switching into Analytics. Added the same rail markup/order (avatar, Leads, Analytics active, spacer, Settings) used by settings.html and signals_v2_concept.html, matching reply-agent/inbox.html + settings.html's actually-identical rail across pages.
 - Real `/health` page was missing an entire section: reply-agent's Health concept (CONCEPTS.md §6.7/6.8) keeps "Database tables" (MAX(write-timestamp) per table, no drilldown — a table has no "run" concept) separate from "Sync jobs"/pipeline stages (which DO get the Runs▾ drilldown). Ours only had the stages section. Added a Database tables card (9 real schema_monitoring tables, live MAX(timestamp) query per table, stale-after-14-days warn pill) to `api/health/route.ts` + `health/page.tsx`.
 
