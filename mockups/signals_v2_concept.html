@@ -42,8 +42,17 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Lato',
 .rail-icon:hover .rail-tip { opacity: 1; }
 
 .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-.view { display: none; flex: 1; overflow: hidden; }
+.view { display: none; flex: 1; overflow: hidden; flex-direction: column; }
 .view.active { display: flex; }
+
+/* module tab bar — Leads/Activity switcher inside the Leads rail destination,
+   matches reply-agent/inbox.html's own Inbox/Overview switcher exactly */
+.module-tabbar { height: 36px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; gap: 18px; flex-shrink: 0; }
+.module-tab { font-size: 12px; font-weight: 700; color: var(--muted); cursor: pointer; padding: 9px 0; border-bottom: 2px solid transparent; }
+.module-tab.active { color: var(--ink); border-bottom-color: var(--accent); }
+.module-body { flex: 1; display: flex; overflow: hidden; }
+.module-panel { display: none; flex: 1; overflow: hidden; }
+.module-panel.active { display: flex; }
 
 /* ── Sidebar — wider + denser, with search + status nav + accordions ──── */
 .sidebar { width: 400px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
@@ -326,12 +335,8 @@ table.act tr:hover td { background: var(--surface-2); }
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 3 7l9 5 9-5-9-5z"/><path d="M3 12l9 5 9-5M3 17l9 5 9-5"/></svg>
       <span class="rail-tip">Leads</span>
     </div>
-    <div class="rail-icon" onclick="switchView('activity', this)">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-      <span class="rail-tip">Activity</span>
-    </div>
     <div class="rail-spacer"></div>
-    <div class="rail-icon" onclick="switchView('settings', this)">
+    <div class="rail-icon" id="rail-settings" onclick="switchView('settings', this)">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/></svg>
       <span class="rail-tip">Settings</span>
     </div>
@@ -340,6 +345,17 @@ table.act tr:hover td { background: var(--surface-2); }
   <div class="main">
     <!-- ═══════════ LEADS VIEW ═══════════ -->
     <div class="view active" id="view-leads">
+      <!-- module tab bar — Leads/Activity are the same domain (Activity is what
+           actually happened as a result of using Leads), so they share one rail
+           destination with a lightweight switcher, matching reply-agent's own
+           Inbox/Overview split. Settings stays a separate rail icon — it's config/
+           reference, not part of this module's day-to-day navigation. -->
+      <div class="module-tabbar">
+        <span class="module-tab active" id="mtab-leads-panel" onclick="switchModuleTab('leads-panel', this)">Leads</span>
+        <span class="module-tab" id="mtab-activity-panel" onclick="switchModuleTab('activity-panel', this)">Activity</span>
+      </div>
+      <div class="module-body">
+      <div class="module-panel active" id="leads-panel">
       <div class="sidebar">
         <div class="sb-header">
           <div class="sb-title">Leads</div>
@@ -392,15 +408,14 @@ table.act tr:hover td { background: var(--surface-2); }
         </div>
 
         <div class="list-scroll">
-          <div class="list-note">32 real companies from the live DB · DMK &amp; BRATA (green dot) have full detail wired below</div>
+          <div class="list-note">32 companies<span class="tip"><svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box">Real company names/counts from the live DB. DMK &amp; BRATA (green ring avatar) have the full detail view wired for this mock — the rest show list data only.</span></span></div>
           <div id="rows"></div>
         </div>
       </div>
       <div class="detail" id="detail"></div>
-    </div>
+      </div>
 
-    <!-- ═══════════ ACTIVITY VIEW (channel_actions, queue.html-style) ═══════════ -->
-    <div class="view" id="view-activity">
+      <div class="module-panel" id="activity-panel">
       <div class="activity-wrap">
         <div class="activity-toolbar">
           <div>
@@ -439,6 +454,8 @@ table.act tr:hover td { background: var(--surface-2); }
             <tbody id="act-rows"></tbody>
           </table>
         </div>
+      </div>
+      </div>
       </div>
     </div>
 
@@ -753,10 +770,26 @@ function renderChannelAcc() {
   ).join('');
 }
 
+// Company-level status = the most advanced status among its contacts, EXCEPT pass
+// doesn't dominate: one contact passing shouldn't hide that another is still live.
+// Only shows 'pass' when EVERY contact has passed. Real logic for DMK/BRATA (which
+// have actual per-contact statusState); the other 30 companies use a single
+// illustrative status field since they don't have per-contact mock data.
+const FUNNEL_RANK = { new: 0, sent: 1, replied: 2, meeting: 3 };
+function aggregateStatus(statuses) {
+  const active = statuses.filter(s => s !== 'pass');
+  if (!active.length) return 'pass';
+  return active.reduce((best, s) => (FUNNEL_RANK[s] > FUNNEL_RANK[best] ? s : best), active[0]);
+}
+function companyStatus(c) {
+  if (c.id && statusState[c.id]) return aggregateStatus(Object.values(statusState[c.id]));
+  return c.status;
+}
+
 function renderList() {
   const q = (document.getElementById('search-box')?.value || '').toLowerCase();
   const filtered = LIST.filter(c =>
-    (activeStatusFilter === 'all' || c.status === activeStatusFilter) &&
+    (activeStatusFilter === 'all' || companyStatus(c) === activeStatusFilter) &&
     activeTierFilters.has(c.tier) &&
     activeChannelFilters.has(c.channel) &&
     activeOriginFilters.has(c.origin) &&
@@ -770,6 +803,10 @@ function renderList() {
     const emailChip = c.channel === 'linkedin_only'
       ? '<span class="chip chip-channel warn">LinkedIn only</span>'
       : '<span class="chip chip-channel">' + c.withEmail + '/' + c.contacts + ' email</span>';
+    const status = companyStatus(c);
+    const statusChip = c.id
+      ? '<span class="chip chip-status tip">' + STATUS_LABELS[status] + '<span class="tip-box">Most advanced status across ' + c.contacts + ' contacts (pass only shown if every contact passed) — try changing a contact\'s status in the detail panel.</span></span>'
+      : '<span class="chip chip-status">' + STATUS_LABELS[status] + '</span>';
     return '<div class="row ' + (isActive ? 'active' : '') + ' ' + (isAvail ? '' : 'locked') + '" onclick="' + clickHandler + '">' +
       '<div class="row-avatar" style="background:' + avatarColor(c.name) + (isAvail ? ';box-shadow:0 0 0 2px ' + (isActive ? 'var(--accent)' : 'var(--pos)') : '') + '">' + initials(c.name) + '</div>' +
       '<div class="row-body">' +
@@ -777,7 +814,7 @@ function renderList() {
         '<div class="row-meta">' + meta + '</div>' +
         '<div class="row-tags">' +
           '<span class="chip chip-' + c.tier + '">' + c.tier + '</span>' +
-          '<span class="chip chip-status">' + STATUS_LABELS[c.status] + '</span>' +
+          statusChip +
           emailChip +
         '</div>' +
       '</div>' +
@@ -891,7 +928,7 @@ function copyActions(companyKey, i) {
   return '<div class="cb-actions" onclick="event.stopPropagation()">' +
     '<button class="btn btn-copy" onclick="copyMsg(this,\'' + msgId + '\')">⧉ Copy text</button>' +
     '<button class="btn btn-translate ' + (lang === 'de' ? 'on' : '') + '" onclick="toggleContactLang(\'' + companyKey + '\',' + i + ')">' + (lang === 'de' ? '✓ Showing DE' : '🌐 Translate to DE') + '</button>' +
-    '<a class="btn-guide" onclick="switchView(\'settings\', document.querySelectorAll(\'.rail-icon\')[2])">Full copy guide ↗</a>' +
+    '<a class="btn-guide" onclick="switchView(\'settings\', document.getElementById(\'rail-settings\'))">Full copy guide ↗</a>' +
   '</div>';
 }
 
@@ -931,7 +968,7 @@ function renderDetail(key) {
         '<div class="card-head">' +
           '<div><div class="co-name">' + esc(d.name) + '</div>' +
           '<div class="co-meta">' + [d.industry, d.employees ? d.employees.toLocaleString() + ' employees' : null, d.country, '<a href="https://' + d.domain + '" target="_blank">' + d.domain + ' ↗</a>', '<a href="' + d.linkedin + '" target="_blank">LinkedIn ↗</a>'].filter(Boolean).join('<span class="dot-sep"></span>') + '</div></div>' +
-          '<div class="tier-block"><span class="tier-big">' + d.tier + '<span class="tip-box">' + TIER_EXPLAIN[d.tier] + ' Rank is an internal sort order within the tier, not shown as a raw number.</span></span><div class="tier-reason">' + esc(d.tier_reason) + '</div></div>' +
+          '<div class="tier-block"><span class="tier-big">' + d.tier + '<span class="tip-box">' + TIER_EXPLAIN[d.tier] + ' Rank is an internal sort order within the tier, not shown as a raw number.</span></span><div class="tier-reason">' + esc(d.tier_reason) + ' <span class="tip" style="vertical-align:-1px"><svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box" style="right:0;left:auto;">The day count is age of the EVENT (its publish date), not how long ago we found it — a freshly-discovered but old story still counts as stale.</span></span></div></div>' +
         '</div>' +
         (allNoEmail ? '<div class="channel-only-banner">⚠ No verified email at this company — LinkedIn is the only channel for all ' + d.contacts.length + ' contacts.</div>' : '') +
         '<div class="section"><div class="section-label">Signals<span class="tip"><svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box">Deduped by source URL, then AI-summarized into one line per real-world event — a story caught by 3 Exa monitor categories still counts as 1 signal, not 3.</span></span></div>' + renderEvents(d.events) + '</div>' +
@@ -1001,6 +1038,7 @@ window.toggleContact = function (companyKey, i) {
 window.setContactStatus = function (companyKey, i, status) {
   statusState[companyKey][i] = status;
   renderDetail(selected);
+  renderList(); // sidebar's aggregate status chip depends on this company's contacts
 };
 window.toggleContactLang = function (companyKey, i) {
   langState[companyKey][i] = (langState[companyKey][i] === 'de') ? 'en' : 'de';
@@ -1022,6 +1060,12 @@ window.switchSettingsTab = function (tab, el) {
   document.querySelectorAll('.settings-panel').forEach(p => p.style.display = 'none');
   document.getElementById('settings-' + tab).style.display = 'block';
   document.querySelectorAll('.settings-subnav a').forEach(a => a.classList.remove('active'));
+  el.classList.add('active');
+};
+window.switchModuleTab = function (panelId, el) {
+  document.querySelectorAll('.module-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(panelId).classList.add('active');
+  document.querySelectorAll('.module-tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
 };
 
