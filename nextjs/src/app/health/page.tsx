@@ -93,7 +93,7 @@ export default function HealthPage() {
       </div>
       <div className="health-main">
       <div className="health-page">
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         .health-page { background:#EEF1F7; min-height:100vh; padding:24px; font-family:-apple-system,'Lato',sans-serif; color:#2A2E3D; }
         .health-page .card { background:#fff; border:1px solid #E4E7EF; border-radius:10px; overflow:hidden; margin-bottom:20px; }
         .health-page h1 { font-size:18px; font-weight:700; margin-bottom:2px; }
@@ -124,7 +124,7 @@ export default function HealthPage() {
         .health-page .run-row { display:grid; grid-template-columns:110px 70px 90px 1fr; gap:8px; padding:5px 14px; font-size:10.5px; border-bottom:1px solid #F4F4F5; }
         .health-page .run-row:last-child { border-bottom:none; }
         .health-page .run-detail { background:#FAFBFD; }
-      `}</style>
+      ` }} />
 
       <h1>Health</h1>
       <div className="sub">

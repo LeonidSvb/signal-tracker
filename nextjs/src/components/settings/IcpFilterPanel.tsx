@@ -23,7 +23,7 @@ interface IcpConfig {
 function TagChips({ items, neg }: { items: string[]; neg?: boolean }) {
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-      {items.map((t) => <span key={t} className={`tag-chip ${neg ? "neg" : ""}`}>{t}</span>)}
+      {items.map((t, i) => <span key={`${t}-${i}`} className={`tag-chip ${neg ? "neg" : ""}`}>{t}</span>)}
     </div>
   );
 }
