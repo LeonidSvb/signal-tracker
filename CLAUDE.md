@@ -1,6 +1,9 @@
 STATUS: ACTIVE
 DESC: Signal monitoring system for Philippe Bosquillon — food industry job boards + Exa news monitors → Supabase → Next.js tracker at https://philippe.pamelacoreypc.com
 
+## Mockups/UI iteration
+- Не публиковать как Artifact, если не попросили напрямую — делать локальный HTML-файл в `mockups/` или `docs/`, редактировать напрямую, быстрее для итерации.
+
 ## Structure
 
 ```

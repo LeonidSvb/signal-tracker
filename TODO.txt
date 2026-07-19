@@ -1,9 +1,41 @@
 SIGNAL SYSTEM — Philippe Bosquillon
-Updated: 2026-07-18
+Updated: 2026-07-19
 Full plan: signals/PRD.md | Architecture: docs/OVERVIEW.md | DB: docs/SCHEMA.md
 Exa architecture + incident history: docs/EXA_INTEGRATION.md
 Scoring/routing spec: clients/philippe-bosquillon/docs/HANDOFF_2026-07-15_scoring_two_channel.md
 Client-facing outreach flow (final): clients/philippe-bosquillon/docs/linkedin_email_flow_philippe_2026-07-17.html
+Architecture decisions (backfilled 2026-07-19): docs/adr/README.md — read this before
+re-litigating a past design choice, it's probably already got a documented reason.
+
+=== STATUS 2026-07-19 — FRONTEND v2.0 CONCEPT: design agreed, mockup in progress ===
+Full decision record: docs/adr/009-frontend-v2-concept.md (D1-D6). Summary:
+- Real DB data throughout the mockup (many companies list-only, DMK+BRATA full
+  detail) — local HTML file in mockups/, NOT an Artifact (CLAUDE.md rule added).
+- Status model: flat single-row (new/sent/replied/meeting/pass, like current
+  React), NOT a forced step-tracker — Leo's own catch, real conversations
+  aren't linear. Playbook copy (ADR-005) shown contextually per active status,
+  not gating advancement.
+- Event display: dedupe signals by source_url first (found live: DMK's "5
+  signals" = 3 real sources + 2 literal monitor-duplicates of one URL), then
+  AI-summarize via new summarizeEvent() only when >=2 unique sources remain
+  (single-source events = free, summary is just the title). Needs migration
+  007 (signals.event_summary column) — NOT WRITTEN YET.
+- copy_templates.json becomes the single source of truth for LinkedIn copy
+  (closes the ADR-005 divergence between the JSON and the HTML playbook).
+  Migration approach: keep all 9 existing signal-type keys, add
+  li_step1_connection/li_step2_qualify PER KEY, add li_step3_call/li_followup
+  as TOP-LEVEL fields (universal by playbook design, don't duplicate 9x).
+  route_email.mjs untouched — only LinkedIn-reading code changes. NOT DONE YET.
+- Translation: new localizeMessage() (sibling to existing localizeHookLine(),
+  don't stretch the hook-line-shaped prompt) + a future /api/translate Next.js
+  route (copyEngine.mjs is a pipeline Node module, not reachable directly from
+  the VPS frontend) — "Translate" button next to "Copy", not automatic.
+  NOT BUILT YET, mockup can show it statically.
+- rank (0-11) = internal sort key only, never shown raw on UI. tier/tier_reason
+  need a tooltip (not self-explanatory to Philippe as-is).
+NEXT: finish the local mockup file with D1-D6 folded in, review with Leo again
+before writing any production code (migration 007, copy_templates.json
+migration, summarizeEvent(), localizeMessage(), /api/translate all still open).
 
 === STATUS 2026-07-18 (night) — PHASE 3 DONE: VPS deploy + crontab live ===
 Pipeline now runs on the VPS (152.53.194.162), NOT Leo's Windows machine:
