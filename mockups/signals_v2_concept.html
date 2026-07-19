@@ -146,19 +146,32 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Lato',
 .section-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
 
 /* events — AI summary + deduped sources */
-.event { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
-.event:last-child { margin-bottom: 0; }
-.event-top { padding: 11px 13px; }
-.event-toprow { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 5px; }
-.event-badge { font-size: 9.5px; font-weight: 800; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; flex-shrink: 0; }
+/* events — compact single-column list matching the contacts row rhythm.
+   Summary is the "headline" (always visible); sources + dupe-note are the
+   "citation" — genuinely secondary, so they sit behind a click, unlike
+   contacts where every field is primary info needed immediately. */
+.events-list { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.event-row { border-bottom: 1px solid #F0F1F5; }
+.event-row:last-child { border-bottom: none; }
+.event-head { display: flex; align-items: center; gap: 9px; padding: 8px 12px; cursor: pointer; }
+.event-head:hover { background: var(--surface-2); }
+.event-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.event-dot.active { background: var(--pos); }
+.event-dot.stale { background: var(--muted-2); }
+.event-summary { flex: 1; min-width: 0; font-size: 12px; font-weight: 600; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.event-badge { font-size: 9px; font-weight: 800; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; flex-shrink: 0; }
 .badge-active { background: var(--pos-bg); color: var(--pos); }
 .badge-stale { background: var(--neutral-bg); color: var(--neutral-text); }
-.ai-summary { font-size: 13px; font-weight: 600; line-height: 1.45; }
+.event-chev { font-size: 8px; color: var(--muted-2); transition: transform .15s; flex-shrink: 0; }
+.event-chev.open { transform: rotate(90deg); }
+.event-body { display: none; padding: 0 12px 10px 30px; }
+.event-body.open { display: block; }
+.event-summary-full { font-size: 12px; line-height: 1.5; margin-bottom: 8px; }
 .ai-tag { font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--accent-text); background: var(--accent-light); padding: 1.5px 5px; border-radius: 4px; margin-right: 6px; vertical-align: 1px; }
-.event-sources { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.event-sources { display: flex; gap: 6px; flex-wrap: wrap; }
 .src-link { font-size: 10.5px; color: var(--accent-text); text-decoration: none; border: 1px solid var(--border); padding: 3px 8px; border-radius: 999px; background: var(--surface-2); }
 .src-link:hover { border-color: var(--accent); text-decoration: underline; }
-.dupe-note { font-size: 10px; color: var(--muted-2); font-style: italic; margin-top: 6px; }
+.dupe-note { font-size: 10px; color: var(--muted-2); font-style: italic; margin-top: 8px; }
 
 /* contacts — compact single-column list, no artificial cap (was a 2-col card grid
    that grew to ~500px for 5 contacts; each row is now ~40px regardless of count) */
@@ -724,16 +737,30 @@ function statusInline(status) {
 }
 
 function renderEvents(events) {
-  return events.map((e) => {
+  return '<div class="events-list">' + events.map((e, i) => {
     const badgeClass = e.status === 'active' ? 'badge-active' : 'badge-stale';
     const srcLinks = e.sources.map(s => '<a class="src-link" href="' + s.url + '" target="_blank">↗ ' + esc(s.label) + ' · ' + s.date + '</a>').join('');
-    return '<div class="event"><div class="event-top">' +
-        '<div class="event-toprow"><span class="ai-summary"><span class="ai-tag">AI summary</span>' + esc(e.summary) + '</span><span class="event-badge ' + badgeClass + '">' + e.status + '</span></div>' +
+    const rowId = 'ev-' + i;
+    return '<div class="event-row">' +
+      '<div class="event-head" onclick="toggleEvent(\'' + rowId + '\')">' +
+        '<span class="event-dot ' + e.status + '"></span>' +
+        '<span class="event-summary" title="' + esc(e.summary) + '">' + esc(e.summary) + '</span>' +
+        '<span class="event-badge ' + badgeClass + '">' + e.status + '</span>' +
+        '<span class="event-chev" id="chev-' + rowId + '">▸</span>' +
+      '</div>' +
+      '<div class="event-body" id="body-' + rowId + '">' +
+        '<div class="event-summary-full"><span class="ai-tag">AI summary</span>' + esc(e.summary) + '</div>' +
         '<div class="event-sources">' + srcLinks + '</div>' +
         (e.dupeNote ? '<div class="dupe-note">' + esc(e.dupeNote) + '</div>' : '') +
-      '</div></div>';
-  }).join('');
+      '</div>' +
+    '</div>';
+  }).join('') + '</div>';
 }
+
+window.toggleEvent = function (rowId) {
+  document.getElementById('body-' + rowId).classList.toggle('open');
+  document.getElementById('chev-' + rowId).classList.toggle('open');
+};
 
 const EMAIL_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>';
 const LI_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>';
