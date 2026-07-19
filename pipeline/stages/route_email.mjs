@@ -5,11 +5,9 @@
 // email, validates it via the MV+BounceBan cascade, generates per-lead copy from the
 // playbook, and pushes to the matching PlusVibe evergreen campaign.
 //
-// STATUS: coded to the migration-005 schema (companies.tier/rank, signals.event_key,
-// channel_actions) exactly as specced in B1/A7 — UNRUNNABLE until Fable applies that
-// migration and lands rank_leads.mjs (which populates tier/rank/event_key). This is
-// expected per SONNET-FIRST MODE ("safe to BUILD but NOT RUN"). Do not remove this
-// note until migration 005 is live and a real dry run has been verified against it.
+// STATUS: migration 005 is live (verified 2026-07-19 via a real REST query —
+// companies.tier/rank/event_key all populated). Migration 008 (2026-07-19) widened
+// channel_actions' unique constraint to include contact_id — see channelActions.mjs.
 //
 // Safety: DRY RUN by default — prints the would-push list (company, tier, contact,
 // validation verdict path, template key, lang), zero external calls beyond the free
@@ -82,8 +80,6 @@ function loadClientConfig() {
 
 export async function run() {
   console.log(`\n=== route_email.mjs === mode=${LIVE ? `LIVE (limit=${LIMIT})` : 'DRY RUN'}`);
-  console.log('NOTE: this stage depends on migration 005 (companies.tier/rank, signals.event_key,');
-  console.log('channel_actions) — will error until Fable applies it and rank_leads.mjs has run.\n');
 
   mkdirSync(RUN_DIR, { recursive: true });
   const config = { mode: LIVE ? 'live' : 'dry_run', limit: LIMIT, date: new Date().toISOString() };
@@ -99,7 +95,7 @@ export async function run() {
     selectAll('companies', { client_id: clientId }),
     selectAll('signals', { client_id: clientId }),
     selectAll('contacts', { client_id: clientId }),
-    loadChannelActions(clientId, 'email').catch(e => { console.log(`[warn] channel_actions not queryable yet (expected pre-migration-005): ${e.message}`); return []; }),
+    loadChannelActions(clientId, 'email').catch(e => { console.log(`[warn] channel_actions query failed: ${e.message}`); return []; }),
   ]);
 
   const existingActions = indexChannelActions(channelActionRows);
@@ -127,12 +123,15 @@ export async function run() {
     const primarySignal = pickPrimarySignal(signalsByCompany.get(company.id) || []);
     if (!primarySignal || !primarySignal.event_key) continue; // no event_key yet = rank_leads hasn't grouped this company
 
-    const key = channelActionKey(company.id, primarySignal.event_key);
-    const existingAction = existingActions.get(key);
-    if (existingAction && !isRetryable(existingAction)) continue; // terminal outcome, don't re-touch (e.g. already pushed or validated dead)
-
+    // Contact picked BEFORE the existingActions lookup (migration 008): the dedup
+    // key is now per-contact, not just per-company/event, so contact_id must be
+    // known first.
     const contact = pickContact(primarySignal.signal_type, companyContacts.slice(0, 3));
     if (!contact) continue;
+
+    const key = channelActionKey(company.id, contact.id, primarySignal.event_key);
+    const existingAction = existingActions.get(key);
+    if (existingAction && !isRetryable(existingAction)) continue; // terminal outcome, don't re-touch (e.g. already pushed or validated dead)
 
     candidates.push({ company, signal: primarySignal, contact, existingAction });
     if (candidates.length >= LIMIT) break;
@@ -140,7 +139,7 @@ export async function run() {
   console.log(`candidates (tiered, has contact+email, no prior channel_action for this event): ${candidates.length}`);
 
   if (!candidates.length) {
-    console.log('\nNothing to route. Likely reasons: migration 005 not applied yet, rank_leads.mjs has not run, or every eligible event is already actioned.');
+    console.log('\nNothing to route. Likely reasons: rank_leads.mjs has not run recently, or every eligible event is already actioned.');
     if (LIVE) await finishRun(runId, { status: 'success', stats: { scraped: 0, pushed: 0 } });
     return { candidates: 0, pushed: 0 };
   }

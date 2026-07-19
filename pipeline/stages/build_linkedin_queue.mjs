@@ -5,12 +5,13 @@
 // No daily quota, no cap — items leave the list when their event window expires or
 // get marked done/skipped (mark_linkedin_done.mjs), so the list can never pile up.
 //
-// STATUS: coded to the migration-005 schema exactly as specced in B1/A7 —
-// UNRUNNABLE until Fable applies that migration and lands rank_leads.mjs (which
-// populates tier/rank/event_key). Expected per SONNET-FIRST MODE. Read-only against
-// signals/companies/contacts either way (no external API calls except the LLM hook
-// localization inside copyEngine.fill, and even that is skipped when lang==='en' or
-// the item was already snapshotted in channel_actions.detail on an earlier day).
+// STATUS: migration 005 is live (verified 2026-07-19 via a real REST query —
+// companies.tier/rank/event_key all populated). Migration 008 (2026-07-19) widened
+// channel_actions' unique constraint to include contact_id — see channelActions.mjs.
+// Read-only against signals/companies/contacts either way (no external API calls
+// except the LLM hook localization inside copyEngine.fill, and even that is skipped
+// when lang==='en' or the item was already snapshotted in channel_actions.detail on
+// an earlier day).
 //
 // Run: node --env-file=nextjs/.env.local pipeline/stages/build_linkedin_queue.mjs [--out=path] [--live]
 //   --live: actually write channel_actions status='queued' rows for first-seen items
@@ -46,8 +47,6 @@ function esc(s) {
 
 export async function run() {
   console.log(`\n=== build_linkedin_queue.mjs === mode=${LIVE ? 'LIVE (writes channel_actions, may spend LLM calls)' : 'PREVIEW (read-only)'}`);
-  console.log('NOTE: depends on migration 005 (companies.tier/rank, signals.event_key, channel_actions)');
-  console.log('— will show zero rows until Fable applies it and rank_leads.mjs has run.\n');
 
   const clientId = await getClientId(CLIENT_SLUG);
 
@@ -55,7 +54,7 @@ export async function run() {
     selectAll('companies', { client_id: clientId }),
     selectAll('signals', { client_id: clientId }),
     selectAll('contacts', { client_id: clientId }),
-    loadChannelActions(clientId, 'linkedin').catch(e => { console.log(`[warn] channel_actions not queryable yet (expected pre-migration-005): ${e.message}`); return []; }),
+    loadChannelActions(clientId, 'linkedin').catch(e => { console.log(`[warn] channel_actions query failed: ${e.message}`); return []; }),
   ]);
 
   const existingActions = indexChannelActions(channelActionRows);
@@ -84,19 +83,22 @@ export async function run() {
     const primarySignal = [...companySignals].sort((a, b) => (b.score || 0) - (a.score || 0))[0];
     if (!primarySignal.event_key) continue; // rank_leads hasn't grouped this company yet
 
-    const key = channelActionKey(company.id, primarySignal.event_key);
-    const existing = existingActions.get(key);
-    if (existing && ['done', 'skipped'].includes(existing.status)) continue; // E1.1 — dropped once actioned
     if (isStale(primarySignal.signal_type, primarySignal.pub_date)) continue; // E1.1 — expired events self-clean
 
     const companyContacts = contactsByCompany.get(company.id) || [];
     // E1.2 — prefer contacts WITH linkedin_url; T1 with none falls back to email-only
     // (excluded from this queue — it's covered by the email channel independently).
+    // Picked BEFORE the existingActions lookup (migration 008): the dedup key is now
+    // per-contact, not just per-company/event, so contact_id must be known first.
     const liContact = companyContacts.find(c => c.linkedin_url) || null;
     if (!liContact) {
       if (company.tier === 'T1') console.log(`  [T1 no-linkedin-contact, email-only] ${company.name}`);
       continue;
     }
+
+    const key = channelActionKey(company.id, liContact.id, primarySignal.event_key);
+    const existing = existingActions.get(key);
+    if (existing && ['done', 'skipped'].includes(existing.status)) continue; // E1.1 — dropped once actioned
 
     rows.push({ company, signal: primarySignal, contact: liContact, existingAction: existing });
   }

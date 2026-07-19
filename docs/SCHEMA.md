@@ -1,6 +1,7 @@
 # Database Schema
 Schema: `signal_monitoring` | Supabase self-hosted на 152.53.194.162
-Last updated: 2026-07-15 (migration 005 — event_key / tier / channel_actions; статус: SQL написан, НЕ применён к живой базе)
+Last updated: 2026-07-19 (migrations 001-006 применены и подтверждены живым REST-запросом;
+007/008/009 добавлены этой сессией — SQL написан, применяет Leo через туннель, см. низ файла)
 
 ---
 
@@ -11,9 +12,10 @@ clients
   └── companies         (client_id FK)
   │     └── signals     (company_id FK)
   │     └── contacts    (company_id FK)
+  │     │     └── contact_state (contact_id FK, UNIQUE per client+contact) [009]
   │     └── app_state   (company_id FK, UNIQUE per client+company)
   │     └── notes       (company_id FK, append-only)
-  │     └── channel_actions (company_id FK, UNIQUE per client+company+channel+event_key)
+  │     └── channel_actions (company_id+contact_id FK, UNIQUE per client+company+contact+channel+event_key) [008]
   └── raw_signals       (client_id FK, run_id FK)
   └── pipeline_runs     (client_id FK)
 ```
@@ -137,6 +139,7 @@ UNIQUE: (client_id, linkedin_url)
 | angle | text | LLM: угол захода для outreach |
 | meta | jsonb | Экспериментальные поля |
 | event_key | text | (005) id события: наименьший uuid сигнала в группе. Несколько строк = одно реальное событие → один event_key. Пишет rank_leads.mjs |
+| event_summary | text | (007) AI-синтез события в одну строку, пишется на ВСЕ member-строки одного event_key. NULL если событие single-source (без LLM-вызова — фронт fallback на title). Генерирует summarizeEvent() (companyClassifier.mjs), вызывается eagerly из rank_leads.mjs |
 | created_at / updated_at | timestamptz | |
 
 INDEX: (client_id, event_key)
@@ -179,13 +182,40 @@ CRM статус — одна строка на пару (client, company).
 | updated_by | text | leo / philippe / client_name |
 
 UNIQUE: (client_id, company_id)
+Статус: остаётся источником для старого фронтенда до полного перехода на contact_state (009).
+Новый фронтенд читает per-contact статус из contact_state, с fallback на app_state для
+компаний без единой строки contact_state — см. docs/PLAN_2026-07-19_react_migration_prep.md §0 Q1.
 
 ---
 
-## channel_actions (005 — SQL написан, ещё не применён)
+## contact_state (009 — новая, SQL написан, применяет Leo)
 
-Состояние обоих каналов outreach: одна строка на (company, channel, event).
-Идемпотентность: одно событие никогда не стреляет дважды в один канал;
+Per-contact CRM-статус (new/sent/replied/meeting/pass) — человеко-наблюдаемый исход
+переписки, не автоматика. НЕ выводится из channel_actions (там механика доставки:
+pushed/queued/..., машина не видит ответов) и НЕ пишется в app_state (тот company-scoped,
+уже содержит живые строки — трогать нельзя). Обоснование: docs/PLAN_2026-07-19_react_migration_prep.md §0 Q1.
+
+| Колонка | Тип | Описание |
+|---------|-----|---------|
+| id | uuid PK | |
+| client_id | uuid FK | |
+| company_id | uuid FK | → companies (денормализовано, как в notes/channel_actions) |
+| contact_id | uuid FK | → contacts |
+| status | text | new / sent / replied / meeting / pass (check constraint) |
+| updated_by | text | leo / philippe |
+| updated_at | timestamptz | |
+
+UNIQUE: (client_id, contact_id)
+Company-level чип в сайдбаре = aggregateStatus() (most-advanced wins, pass только если
+ВСЕ контакты passed) поверх contact_state-строк компании, fallback на app_state.status
+если у компании ещё нет ни одной contact_state-строки.
+
+---
+
+## channel_actions (005 применена; 008 расширяет constraint — SQL написан, применяет Leo)
+
+Состояние обоих каналов outreach: одна строка на (company, contact, channel, event).
+Идемпотентность: одно событие никогда не стреляет дважды в один канал ОДНОМУ контакту;
 НОВОЕ событие той же компании стреляет снова — так задумано (A7).
 
 | Колонка | Тип | Описание |
@@ -200,7 +230,10 @@ UNIQUE: (client_id, company_id)
 | detail | jsonb | Вердикты валидации, PV campaign id, снапшот сгенерированного копи |
 | created_at / updated_at | timestamptz | |
 
-UNIQUE: (client_id, company_id, channel, event_key)
+UNIQUE: (client_id, company_id, contact_id, channel, event_key) — расширено миграцией 008
+(2026-07-19): было (client_id, company_id, channel, event_key), два разных контакта на
+одну компанию/событие коллизили (только у одного могла быть строка). Найдено живым запросом
+против реальных строк из прогона route_email.mjs 2026-07-15.
 
 ---
 
@@ -242,4 +275,11 @@ ssh -i ~/.ssh/id_ed25519_hostinger -L 5434:localhost:5434 leonid@152.53.194.162 
 
 # Применить миграцию
 psql -h localhost -p 5434 -U postgres -d postgres -f db/migrations/003_monitoring_schema.sql
+```
+
+Ожидают применения (2026-07-19, Stage 1 фронтенд-билда):
+```powershell
+psql -h localhost -p 5434 -U postgres -d postgres -f db/migrations/007_event_summary.sql
+psql -h localhost -p 5434 -U postgres -d postgres -f db/migrations/008_channel_actions_contact_id.sql
+psql -h localhost -p 5434 -U postgres -d postgres -f db/migrations/009_contact_state.sql
 ```

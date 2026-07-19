@@ -3,17 +3,17 @@
 // build_linkedin_queue.mjs (E1) — both channels use the SAME table so a company's
 // email and LinkedIn state are looked up and written the same way.
 //
-// UNRUNNABLE until migration 005 lands (table doesn't exist yet) — that's expected,
-// this module is built to the spec now so D4/E1 can be wired up the moment Fable
-// applies the migration, per SONNET-FIRST MODE.
-//
 // channel_actions columns (A7):
 //   id uuid PK, client_id FK, company_id FK, contact_id FK nullable,
 //   event_key text, channel text ('email'|'linkedin'),
 //   status text (email: 'validated'|'pushed'|'skipped_no_email'|'skipped_validation';
 //                linkedin: 'queued'|'exported'|'done'|'skipped'),
 //   detail jsonb, created_at/updated_at
-//   UNIQUE (client_id, company_id, channel, event_key)
+//   UNIQUE (client_id, company_id, contact_id, channel, event_key) — widened
+//   2026-07-19 (migration 008) to include contact_id: the OLD 4-column
+//   constraint let two different contacts at one company/event collide (only
+//   one could have a row), found live via a real query against
+//   channel_actions rows from the 2026-07-15 route_email.mjs run.
 
 import { selectAll, insert, patch } from './supabase.mjs';
 
@@ -21,13 +21,15 @@ export async function loadChannelActions(clientId, channel) {
   return selectAll('channel_actions', { client_id: clientId, channel });
 }
 
-// key = `${company_id}::${event_key}` — matches the UNIQUE constraint's dedup shape.
-export function channelActionKey(companyId, eventKey) {
-  return `${companyId}::${eventKey}`;
+// key = `${company_id}::${contact_id}::${event_key}` — matches migration 008's
+// widened UNIQUE constraint's dedup shape (was `${company_id}::${event_key}`
+// pre-008, which collided across contacts at the same company/event).
+export function channelActionKey(companyId, contactId, eventKey) {
+  return `${companyId}::${contactId}::${eventKey}`;
 }
 
 export function indexChannelActions(rows) {
-  return new Map(rows.map(r => [channelActionKey(r.company_id, r.event_key), r]));
+  return new Map(rows.map(r => [channelActionKey(r.company_id, r.contact_id, r.event_key), r]));
 }
 
 export async function recordChannelAction({ clientId, companyId, contactId = null, eventKey, channel, status, detail = {} }) {
