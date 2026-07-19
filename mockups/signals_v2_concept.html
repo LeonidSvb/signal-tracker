@@ -119,8 +119,8 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Lato',
 .chip-channel.warn { background: var(--warn-bg); color: var(--warn); }
 
 /* ── Detail pane ───────────────────────────────────────── */
-.detail { flex: 1; overflow-y: auto; padding: 20px 26px 60px; }
-.detail-inner { max-width: 780px; }
+.detail { flex: 1; overflow-y: auto; padding: 20px 32px 60px; }
+.detail-inner { max-width: 1040px; }
 .placeholder { max-width: 460px; margin: 80px auto; text-align: center; color: var(--muted); }
 .placeholder .icon { font-size: 30px; margin-bottom: 10px; }
 .placeholder h3 { color: var(--ink); font-size: 15px; margin: 0 0 6px; }
@@ -129,9 +129,13 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Lato',
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; margin-bottom: 16px; }
 .card-head { padding: 17px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .co-name { font-size: 19px; font-weight: 800; margin-bottom: 4px; }
-.co-meta { font-size: 12px; color: var(--muted); display: flex; align-items: center; flex-wrap: wrap; }
+.co-meta { font-size: 12px; color: var(--muted); display: flex; align-items: center; flex-wrap: wrap; gap: 6px 0; }
 .co-meta a { color: var(--accent-text); text-decoration: none; }
 .co-meta a:hover { text-decoration: underline; }
+/* was referenced in JS but the rule giving it a visible separator got lost in an
+   earlier rewrite — the whole meta line rendered glued together with no gaps */
+.dot-sep { display: inline-flex; }
+.dot-sep::before { content: "·"; margin: 0 7px; color: var(--muted-2); }
 .tier-block { text-align: right; flex-shrink: 0; }
 .tier-big { font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; cursor: help; position: relative; }
 .tier-big .tip-box { position: absolute; top: calc(100% + 6px); right: 0; background: var(--ink); color: #fff; font-size: 11px; font-weight: 400;
@@ -143,7 +147,15 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Lato',
 
 .section { padding: 15px 20px; border-bottom: 1px solid var(--border); }
 .section:last-child { border-bottom: none; }
-.section-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.section-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.info-icon { width: 12px; height: 12px; color: var(--muted-2); cursor: help; }
+/* shared tooltip base — .stat-item/.tier-big previously each defined their own
+   scoped copy of this; generalized here so any .tip wrapper can use it */
+.tip { position: relative; display: inline-flex; }
+.tip .tip-box { position: absolute; top: calc(100% + 6px); left: 0; background: var(--ink); color: #fff; font-size: 11px; font-weight: 400;
+  text-transform: none; letter-spacing: normal; padding: 8px 10px; border-radius: 6px; width: 220px; line-height: 1.5; display: none; z-index: 25;
+  box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+.tip:hover .tip-box { display: block; }
 
 /* events — AI summary + deduped sources */
 /* events — compact single-column list matching the contacts row rhythm.
@@ -193,15 +205,25 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Lato',
 .c-icon-btn:hover { border-color: var(--accent); color: var(--accent-text); }
 .c-icon-btn.li:hover { border-color: #1D6FBF; color: #1D6FBF; }
 .c-icon-btn.disabled { opacity: .3; pointer-events: none; }
+.c-chev { font-size: 8px; color: var(--muted-2); transition: transform .15s; flex-shrink: 0; margin-left: 2px; }
+.c-chev.open { transform: rotate(90deg); }
+.c-outreach-chip { font-size: 8.5px; font-weight: 800; padding: 2px 6px; border-radius: 999px; flex-shrink: 0; }
+.c-outreach-body { display: none; padding: 10px 12px 12px 46px; background: var(--surface-2); border-top: 1px solid #F0F1F5; }
+.c-outreach-body.open { display: block; }
 
-/* outreach — flat status row */
-.channel-block { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
-.channel-block:last-child { margin-bottom: 0; }
-.channel-head { padding: 10px 14px; background: var(--surface-2); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
-.channel-name { font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 7px; }
-.channel-name .li-dot { width: 7px; height: 7px; border-radius: 50%; background: #1D6FBF; }
-.channel-name .em-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted-2); }
-.channel-owner { font-size: 9.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 700; }
+/* notes — same shape as the old React NotesLog.tsx, no new DB work needed (notes
+   table already exists and is already company-scoped) */
+.notes-list { max-height: 180px; overflow-y: auto; margin-bottom: 8px; }
+.note { padding: 6px 0; border-bottom: 1px solid #F4F4F5; font-size: 12px; line-height: 1.5; }
+.note:last-child { border-bottom: none; }
+.note-meta { font-size: 9.5px; color: var(--muted-2); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; margin-bottom: 2px; }
+.note-empty { font-size: 11.5px; color: var(--muted); font-style: italic; padding: 6px 0; }
+.notes-input-row { display: flex; gap: 6px; }
+.notes-input { flex: 1; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; outline: none; resize: none; font-family: inherit; }
+.notes-input:focus { border-color: var(--accent); }
+.notes-send { align-self: flex-end; }
+
+/* outreach — flat status row, now rendered per-contact (see .c-outreach-body below) */
 
 .status-row { padding: 12px 14px 4px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .status-btn { padding: 5px 12px; border-radius: 999px; font-size: 11.5px; font-weight: 700; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; }
@@ -522,23 +544,29 @@ const DETAIL = {
       { name: 'Christian Balke', title: null, linkedin: 'https://www.linkedin.com/in/christian-balke-b5760b194', email: 'christian.balke@dmk.de', status: 'pending', primary: false },
       { name: 'Vivien Bellmann', title: 'Management Support Chief People & Service Officer bei DMK Group', linkedin: 'https://www.linkedin.com/in/vivien-bellmann-880b16199', email: 'vivien.bellmann@dmk.de', status: 'pending', primary: false },
     ],
+    // outreach is per-CONTACT, not per-company — Philippe realistically messages 2-3
+    // people at one company independently (see TODO.txt: channel_actions needs a real
+    // migration to widen its unique constraint before this is production-real, not a
+    // mockup concern). One template, {first_name} substituted per contact at render time.
     outreach: {
-      contactFirstName: 'Andreas',
       en: {
-        connect: "Saw DMK's build for the new lactoferrin plant, Andreas. I do exec search in food, Germany — would be glad to connect.",
-        sent: "Thanks for connecting, Andreas. Builds like this usually need the plant leadership locked in before opening day — is that hire already underway?",
-        replied: "Thanks for connecting, Andreas. Builds like this usually need the plant leadership locked in before opening day — is that hire already underway?",
+        connect: "Saw DMK's build for the new lactoferrin plant, {first_name}. I do exec search in food, Germany — would be glad to connect.",
+        sent: "Thanks for connecting, {first_name}. Builds like this usually need the plant leadership locked in before opening day — is that hire already underway?",
+        replied: "Thanks for connecting, {first_name}. Builds like this usually need the plant leadership locked in before opening day — is that hire already underway?",
         meeting: "Good, that's exactly what I help with — worth a quick call to figure out which of these roles matters most right now. Here's my calendar: [Calendly link].",
       },
       de: {
-        connect: "Herzlichen Glückwunsch — habe den Ausbau von DMK gesehen, Andreas. Ich mache Executive Search im Lebensmittelbereich, Deutschland — würde mich freuen, mich zu vernetzen.",
-        sent: "Danke fürs Vernetzen, Andreas. Solche Bauprojekte brauchen meist die Werksleitung vor der Eröffnung — läuft diese Suche schon?",
-        replied: "Danke fürs Vernetzen, Andreas. Solche Bauprojekte brauchen meist die Werksleitung vor der Eröffnung — läuft diese Suche schon?",
+        connect: "Herzlichen Glückwunsch — habe den Ausbau von DMK gesehen, {first_name}. Ich mache Executive Search im Lebensmittelbereich, Deutschland — würde mich freuen, mich zu vernetzen.",
+        sent: "Danke fürs Vernetzen, {first_name}. Solche Bauprojekte brauchen meist die Werksleitung vor der Eröffnung — läuft diese Suche schon?",
+        replied: "Danke fürs Vernetzen, {first_name}. Solche Bauprojekte brauchen meist die Werksleitung vor der Eröffnung — läuft diese Suche schon?",
         meeting: "Gut, genau damit helfe ich — lohnt sich ein kurzer Anruf, um zu klären, welche Rolle gerade am wichtigsten ist. Hier mein Kalender: [Calendly-Link].",
       },
       aside: "If the answer is a clear no — don't propose a call, simply move on. If they're clearly engaged, it's fine to ask a bit more (decision-maker? other roles open? rough timeline?) — but leave budget/comp for the actual call.",
     },
     emailState: 'no_campaign',
+    notes: [
+      { author: 'leo', body: 'Andreas looks like the right first contact — HR-adjacent title, verified email as backup if LinkedIn stalls.', date: '2026-07-16 09:12' },
+    ],
   },
   brata: {
     name: 'BRATA Produktion GmbH', industry: 'Retail Groceries · breadcrumbs & food coatings', employees: 300, country: 'DE',
@@ -556,22 +584,22 @@ const DETAIL = {
       { name: 'Andy Schmitz', title: 'produktion bei BRATA', linkedin: 'https://linkedin.com/in/andy-schmitz-603560168', email: null, status: 'none', primary: false },
     ],
     outreach: {
-      contactFirstName: 'Stefan',
       en: {
-        connect: "Saw BRATA's new blending facility go into production, Stefan. I do exec search in food, Germany — would be glad to connect.",
-        sent: "Thanks for connecting, Stefan. Builds like this usually need the plant leadership locked in before opening day — is that hire already underway?",
-        replied: "Thanks for connecting, Stefan. Builds like this usually need the plant leadership locked in before opening day — is that hire already underway?",
+        connect: "Saw BRATA's new blending facility go into production, {first_name}. I do exec search in food, Germany — would be glad to connect.",
+        sent: "Thanks for connecting, {first_name}. Builds like this usually need the plant leadership locked in before opening day — is that hire already underway?",
+        replied: "Thanks for connecting, {first_name}. Builds like this usually need the plant leadership locked in before opening day — is that hire already underway?",
         meeting: "Good, that's exactly what I help with — worth a quick call to figure out which of these roles matters most right now. Here's my calendar: [Calendly link].",
       },
       de: {
-        connect: "Habe die neue Anlage von BRATA gesehen, Stefan. Ich mache Executive Search im Lebensmittelbereich, Deutschland — würde mich freuen, mich zu vernetzen.",
-        sent: "Danke fürs Vernetzen, Stefan. Solche Bauprojekte brauchen meist die Werksleitung vor der Eröffnung — läuft diese Suche schon?",
-        replied: "Danke fürs Vernetzen, Stefan. Solche Bauprojekte brauchen meist die Werksleitung vor der Eröffnung — läuft diese Suche schon?",
+        connect: "Habe die neue Anlage von BRATA gesehen, {first_name}. Ich mache Executive Search im Lebensmittelbereich, Deutschland — würde mich freuen, mich zu vernetzen.",
+        sent: "Danke fürs Vernetzen, {first_name}. Solche Bauprojekte brauchen meist die Werksleitung vor der Eröffnung — läuft diese Suche schon?",
+        replied: "Danke fürs Vernetzen, {first_name}. Solche Bauprojekte brauchen meist die Werksleitung vor der Eröffnung — läuft diese Suche schon?",
         meeting: "Gut, genau damit helfe ich — lohnt sich ein kurzer Anruf, um zu klären, welche Rolle gerade am wichtigsten ist. Hier mein Kalender: [Calendly-Link].",
       },
       aside: "If the answer is a clear no — don't propose a call, simply move on. If they're clearly engaged, it's fine to ask a bit more (decision-maker? other roles open? rough timeline?) — but leave budget/comp for the actual call.",
     },
     emailState: 'no_email',
+    notes: [],
   },
 };
 
@@ -617,8 +645,12 @@ const ACTIVITY_STATUS_LABEL = {
 };
 
 let selected = 'dmk';
-let statusState = { dmk: 'sent', brata: 'sent' };
-let langState = { dmk: 'en', brata: 'en' };
+// per-CONTACT state now, not per-company (see TODO.txt — real build needs migration
+// 008 to widen channel_actions' unique constraint before this is production-real).
+// keyed by companyKey -> contactIndex -> value.
+let statusState = { dmk: { 0: 'sent' }, brata: { 0: 'sent' } };
+let langState = { dmk: { 0: 'en' }, brata: { 0: 'en' } };
+let openContact = { dmk: 0, brata: 0 }; // which contact row is expanded, primary open by default
 let activeStatusFilter = 'all';
 let activeTierFilters = new Set(['T1', 'T2', 'T3']);
 let activeChannelFilters = new Set(['both', 'linkedin_only']);
@@ -765,50 +797,66 @@ window.toggleEvent = function (rowId) {
 const EMAIL_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>';
 const LI_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>';
 
-function renderContacts(contacts) {
-  return '<div class="contacts-list">' + contacts.map(c => {
-    const emailHref = c.status === 'verified' ? 'mailto:' + c.email : null;
-    return '<div class="c-row ' + (c.primary ? 'primary' : '') + '">' +
-      '<div class="c-avatar" style="background:' + avatarColor(c.name) + '">' + initials(c.name) + '</div>' +
-      '<div class="c-info"><span class="c-name">' + esc(c.name) + '</span><span class="c-title">' + esc(c.title || '') + '</span></div>' +
-      statusInline(c.status) +
-      '<div class="c-actions">' +
-        (emailHref ? '<a class="c-icon-btn" href="' + emailHref + '" title="' + esc(c.email) + '">' + EMAIL_ICON + '</a>' : '<span class="c-icon-btn disabled">' + EMAIL_ICON + '</span>') +
-        '<a class="c-icon-btn li" href="' + c.linkedin + '" target="_blank" title="Open LinkedIn profile">' + LI_ICON + '</a>' +
-      '</div>' +
-    '</div>';
-  }).join('') + '</div>';
-}
-
 const STATUSES = [
   { key: 'new', label: 'New' }, { key: 'sent', label: 'Sent' }, { key: 'replied', label: 'Replied' },
   { key: 'meeting', label: 'Meeting' }, { key: 'pass', label: 'Pass' },
 ];
+const OUTREACH_CHIP_COLOR = { new: 'var(--muted-2)', sent: 'var(--accent)', replied: '#7C3AED', meeting: 'var(--pos)', pass: 'var(--neg)' };
 
-function renderOutreach(key) {
-  const o = DETAIL[key].outreach;
-  const status = statusState[key];
-  const lang = langState[key];
-  const statusBtns = STATUSES.map(s => '<button class="status-btn ' + (status === s.key ? 'on ' + s.key : '') + '" onclick="setStatus(\'' + key + '\',\'' + s.key + '\')">' + s.label + '</button>').join('');
+// contact row now owns its own outreach drill-down — LinkedIn is per-CONTACT, not
+// per-company (see TODO.txt migration note above). Primary contact starts expanded
+// (the common case — messaging the recommended person needs zero extra clicks),
+// everyone else starts collapsed.
+function renderContacts(companyKey, contacts) {
+  return '<div class="contacts-list">' + contacts.map((c, i) => {
+    const emailHref = c.status === 'verified' ? 'mailto:' + c.email : null;
+    const outreachStatus = (statusState[companyKey][i]) || 'new';
+    const isOpen = openContact[companyKey] === i;
+    return '<div class="c-row-wrap">' +
+      '<div class="c-row ' + (c.primary ? 'primary' : '') + '" onclick="toggleContact(\'' + companyKey + '\',' + i + ')">' +
+        '<div class="c-avatar" style="background:' + avatarColor(c.name) + '">' + initials(c.name) + '</div>' +
+        '<div class="c-info"><span class="c-name">' + esc(c.name) + '</span><span class="c-title">' + esc(c.title || '') + '</span></div>' +
+        statusInline(c.status) +
+        '<span class="c-outreach-chip" style="background:var(--surface);border:1px solid ' + OUTREACH_CHIP_COLOR[outreachStatus] + ';color:' + OUTREACH_CHIP_COLOR[outreachStatus] + '">' + STATUSES.find(s => s.key === outreachStatus).label + '</span>' +
+        '<div class="c-actions" onclick="event.stopPropagation()">' +
+          (emailHref ? '<a class="c-icon-btn" href="' + emailHref + '" title="' + esc(c.email) + '">' + EMAIL_ICON + '</a>' : '<span class="c-icon-btn disabled">' + EMAIL_ICON + '</span>') +
+          '<a class="c-icon-btn li" href="' + c.linkedin + '" target="_blank" title="Open LinkedIn profile">' + LI_ICON + '</a>' +
+        '</div>' +
+        '<span class="c-chev ' + (isOpen ? 'open' : '') + '" id="c-chev-' + companyKey + '-' + i + '">▸</span>' +
+      '</div>' +
+      '<div class="c-outreach-body ' + (isOpen ? 'open' : '') + '" id="c-body-' + companyKey + '-' + i + '">' + renderContactOutreach(companyKey, i, c) + '</div>' +
+    '</div>';
+  }).join('') + '</div>';
+}
+
+function renderContactOutreach(companyKey, i, contact) {
+  const o = DETAIL[companyKey].outreach;
+  const status = statusState[companyKey][i] || 'new';
+  const lang = langState[companyKey][i] || 'en';
+  const firstName = contact.name.split(' ')[0];
+  const fill = (s) => s.replace('{first_name}', firstName);
+  const statusBtns = STATUSES.map(s => '<button class="status-btn ' + (status === s.key ? 'on ' + s.key : '') + '" onclick="event.stopPropagation();setContactStatus(\'' + companyKey + '\',' + i + ',\'' + s.key + '\')">' + s.label + '</button>').join('');
 
   let copyBox = '';
+  const msgId = 'msg-' + companyKey + '-' + i;
   if (status === 'new') {
-    copyBox = '<div class="copy-box"><div class="cb-label">Ready to send — connection request</div><div class="cb-msg" id="msg-' + key + '">' + esc(o[lang].connect) + '</div>' + copyActions(key) + '</div>';
+    copyBox = '<div class="copy-box"><div class="cb-label">Ready to send — connection request</div><div class="cb-msg" id="' + msgId + '">' + esc(fill(o[lang].connect)) + '</div>' + copyActions(companyKey, i) + '</div>';
   } else if (status === 'sent' || status === 'replied') {
-    copyBox = '<div class="copy-box"><div class="cb-label">' + (status === 'sent' ? 'Waiting on a reply — once they answer, use this' : 'They replied — qualifying question') + '</div><div class="cb-msg" id="msg-' + key + '">' + esc(o[lang].sent) + '</div><div class="cb-aside">' + esc(o.aside) + '</div>' + copyActions(key) + '</div>';
+    copyBox = '<div class="copy-box"><div class="cb-label">' + (status === 'sent' ? 'Waiting on a reply — once they answer, use this' : 'They replied — qualifying question') + '</div><div class="cb-msg" id="' + msgId + '">' + esc(fill(o[lang].sent)) + '</div><div class="cb-aside">' + esc(o.aside) + '</div>' + copyActions(companyKey, i) + '</div>';
   } else if (status === 'meeting') {
-    copyBox = '<div class="copy-box"><div class="cb-label">Propose a call — same text for every signal type</div><div class="cb-msg" id="msg-' + key + '">' + esc(o[lang].meeting) + '</div>' + copyActions(key) + '</div>';
+    copyBox = '<div class="copy-box"><div class="cb-label">Propose a call — same text for every signal type</div><div class="cb-msg" id="' + msgId + '">' + esc(fill(o[lang].meeting)) + '</div>' + copyActions(companyKey, i) + '</div>';
   } else if (status === 'pass') {
     copyBox = '<div class="copy-box"><div class="cb-label" style="color:var(--muted)">Marked as pass — no further copy needed, no more nudges.</div></div>';
   }
-  return '<div class="status-row">' + statusBtns + '</div>' + copyBox;
+  return '<div class="status-row" onclick="event.stopPropagation()">' + statusBtns + '</div>' + copyBox;
 }
 
-function copyActions(key) {
-  const lang = langState[key];
-  return '<div class="cb-actions">' +
-    '<button class="btn btn-copy" onclick="copyMsg(this,\'' + key + '\')">⧉ Copy text</button>' +
-    '<button class="btn btn-translate ' + (lang === 'de' ? 'on' : '') + '" onclick="toggleLang(\'' + key + '\')">' + (lang === 'de' ? '✓ Showing DE' : '🌐 Translate to DE') + '</button>' +
+function copyActions(companyKey, i) {
+  const lang = langState[companyKey][i] || 'en';
+  const msgId = 'msg-' + companyKey + '-' + i;
+  return '<div class="cb-actions" onclick="event.stopPropagation()">' +
+    '<button class="btn btn-copy" onclick="copyMsg(this,\'' + msgId + '\')">⧉ Copy text</button>' +
+    '<button class="btn btn-translate ' + (lang === 'de' ? 'on' : '') + '" onclick="toggleContactLang(\'' + companyKey + '\',' + i + ')">' + (lang === 'de' ? '✓ Showing DE' : '🌐 Translate to DE') + '</button>' +
     '<a class="btn-guide" onclick="switchView(\'settings\', document.querySelectorAll(\'.rail-icon\')[2])">Full copy guide ↗</a>' +
   '</div>';
 }
@@ -819,6 +867,27 @@ function renderEmailStatus(state) {
   return '<div class="email-status"><span class="ico">✉</span> ' + esc(state) + '</div>';
 }
 
+// notes — company-level free text, same shape as the old React NotesLog.tsx
+// (notes table already exists, already company-scoped — zero new DB work).
+function renderNotes(companyKey, notes) {
+  const list = notes.length
+    ? notes.map(n => '<div class="note"><div class="note-meta">' + n.author + ' · ' + n.date + '</div>' + esc(n.body) + '</div>').join('')
+    : '<div class="note-empty">No notes yet — anything that doesn\'t fit a status (a phone call, "HR said role is filled", etc.) goes here.</div>';
+  return '<div class="notes-list" id="notes-list-' + companyKey + '">' + list + '</div>' +
+    '<div class="notes-input-row">' +
+      '<textarea class="notes-input" rows="2" id="notes-input-' + companyKey + '" placeholder="Add a note…"></textarea>' +
+      '<button class="btn btn-copy notes-send" onclick="addNote(\'' + companyKey + '\')">Add</button>' +
+    '</div>';
+}
+
+window.addNote = function (companyKey) {
+  const input = document.getElementById('notes-input-' + companyKey);
+  const text = input.value.trim();
+  if (!text) return;
+  DETAIL[companyKey].notes.push({ author: 'leo', body: text, date: new Date().toISOString().slice(0, 16).replace('T', ' ') });
+  renderDetail(selected); // full re-render — cheap at this scale, keeps notes/contacts/status trivially in sync
+};
+
 function renderDetail(key) {
   const d = DETAIL[key];
   const allNoEmail = d.contacts.every(c => c.status === 'none' || !c.email);
@@ -827,23 +896,14 @@ function renderDetail(key) {
       '<div class="card">' +
         '<div class="card-head">' +
           '<div><div class="co-name">' + esc(d.name) + '</div>' +
-          '<div class="co-meta">' + [d.industry, d.employees ? d.employees.toLocaleString() + ' employees' : null, d.country, '<a href="https://' + d.domain + '" target="_blank">' + d.domain + ' ↗</a>', '<a href="' + d.linkedin + '" target="_blank">LinkedIn ↗</a>'].filter(Boolean).join(' <span class="dot-sep"></span> ') + '</div></div>' +
+          '<div class="co-meta">' + [d.industry, d.employees ? d.employees.toLocaleString() + ' employees' : null, d.country, '<a href="https://' + d.domain + '" target="_blank">' + d.domain + ' ↗</a>', '<a href="' + d.linkedin + '" target="_blank">LinkedIn ↗</a>'].filter(Boolean).join('<span class="dot-sep"></span>') + '</div></div>' +
           '<div class="tier-block"><span class="tier-big">' + d.tier + '<span class="tip-box">' + TIER_EXPLAIN[d.tier] + ' Rank is an internal sort order within the tier, not shown as a raw number.</span></span><div class="tier-reason">' + esc(d.tier_reason) + '</div></div>' +
         '</div>' +
         (allNoEmail ? '<div class="channel-only-banner">⚠ No verified email at this company — LinkedIn is the only channel for all ' + d.contacts.length + ' contacts.</div>' : '') +
-        '<div class="section"><div class="section-label">Signals — deduped by source, AI-summarized</div>' + renderEvents(d.events) + '</div>' +
-        '<div class="section"><div class="section-label">Contacts (' + d.contacts.length + ')</div>' + renderContacts(d.contacts) + '</div>' +
-        '<div class="section">' +
-          '<div class="section-label">Outreach</div>' +
-          '<div class="channel-block">' +
-            '<div class="channel-head"><div class="channel-name"><span class="li-dot"></span>LinkedIn</div><div class="channel-owner">Philippe runs this</div></div>' +
-            '<div id="outreach-' + key + '">' + renderOutreach(key) + '</div>' +
-          '</div>' +
-          '<div class="channel-block">' +
-            '<div class="channel-head"><div class="channel-name"><span class="em-dot"></span>Email</div><div class="channel-owner">Leo runs this</div></div>' +
-            renderEmailStatus(d.emailState) +
-          '</div>' +
-        '</div>' +
+        '<div class="section"><div class="section-label">Signals<span class="tip"><svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box">Deduped by source URL, then AI-summarized into one line per real-world event — a story caught by 3 Exa monitor categories still counts as 1 signal, not 3.</span></span></div>' + renderEvents(d.events) + '</div>' +
+        '<div class="section"><div class="section-label">Contacts (' + d.contacts.length + ')<span class="tip"><svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="tip-box">Each contact has their own LinkedIn outreach status — click a row to see their status buttons and copy-ready text. Primary starts expanded.</span></span></div>' + renderContacts(key, d.contacts) + '</div>' +
+        '<div class="section"><div class="section-label">Email</div>' + renderEmailStatus(d.emailState) + '</div>' +
+        '<div class="section"><div class="section-label">Notes</div>' + renderNotes(key, d.notes) + '</div>' +
       '</div>' +
     '</div>';
 }
@@ -899,10 +959,21 @@ document.addEventListener('click', (e) => {
 });
 
 window.selectCompany = function (key) { selected = key; renderList(); renderDetail(key); };
-window.setStatus = function (key, status) { statusState[key] = status; document.getElementById('outreach-' + key).innerHTML = renderOutreach(key); };
-window.toggleLang = function (key) { langState[key] = langState[key] === 'de' ? 'en' : 'de'; document.getElementById('outreach-' + key).innerHTML = renderOutreach(key); };
-window.copyMsg = function (btn, key) {
-  const el = document.getElementById('msg-' + key);
+
+window.toggleContact = function (companyKey, i) {
+  openContact[companyKey] = (openContact[companyKey] === i) ? -1 : i;
+  renderDetail(selected); // re-render is cheap at this scale (<=8 contacts) and keeps every row's state trivially in sync
+};
+window.setContactStatus = function (companyKey, i, status) {
+  statusState[companyKey][i] = status;
+  renderDetail(selected);
+};
+window.toggleContactLang = function (companyKey, i) {
+  langState[companyKey][i] = (langState[companyKey][i] === 'de') ? 'en' : 'de';
+  renderDetail(selected);
+};
+window.copyMsg = function (btn, msgId) {
+  const el = document.getElementById(msgId);
   navigator.clipboard.writeText(el.textContent).catch(() => {});
   btn.textContent = '✓ Copied'; btn.classList.add('copied');
   setTimeout(() => { btn.textContent = '⧉ Copy text'; btn.classList.remove('copied'); }, 1400);

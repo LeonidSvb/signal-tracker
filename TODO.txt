@@ -59,6 +59,18 @@ flagged, not fixed this session (pre-existing, separate from pipeline work).
 NEXT: first unsupervised Monday run — check logs Monday evening; then Phase 4
 (stopgap report v2, minimal effort per Leo's "temporary crutch" framing).
 
+=== FOUND 2026-07-19 during v2.0 frontend mockup work — real migration needed for per-contact outreach status ===
+Per-contact status (not just per-company) is the right model — Philippe realistically
+messages 2-3 people at one company independently. channel_actions ALREADY has
+contact_id as a column (migration 005) but it's NOT part of the UNIQUE constraint
+(unique is client_id, company_id, channel, event_key only) — two different contacts
+at the same company/event currently collide. Needed for the real build (not the
+mockup, which uses fake JS state): migration 008 widening the unique constraint to
+(client_id, company_id, contact_id, channel, event_key), + channelActionKey() in
+pipeline/lib/channelActions.mjs needs contactId folded into its key. contacts and
+notes tables need ZERO schema changes — both already independent per-company
+entities, notes already used by the old React NotesLog.tsx.
+
 === SONNET TASK (queued 2026-07-18, does NOT block Phase 2/3) — TAM 004 bulk pre-classification + contact pre-scrape ===
 Goal (Leo's 2-month-horizon economics): squeeze the paid Blitz subscription NOW so it
 becomes cancellable — pre-load verdicts + contacts into our own DB, pipeline then runs
