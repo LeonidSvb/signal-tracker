@@ -8,6 +8,58 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-07-19
+
+Frontend v2.0 concept — designed and finalized through several review rounds
+with Leo (real screenshots, real feedback each pass), backfilled as ADRs.
+No production code changed this entry — deliverable is
+`mockups/signals_v2_concept.html`, the reference for the real Next.js rebuild.
+
+### Added
+- `mockups/signals_v2_concept.html` — single-file concept covering the whole
+  frontend: Leads (icon-rail + filter sidebar + compact row-list + company
+  detail), Activity (module tab, built on real `channel_actions` rows),
+  Settings (grouped sidebar, Templates rendered inline, everything else links
+  to the real existing page instead of a third duplicate copy).
+- `docs/adr/001` through `009` — new lightweight ADR system (Context/Decision/
+  Consequences), backfilling every real architectural fork since 2026-07-15
+  (two-channel split, event-key dedup, Jaccard-filter removal, copy model
+  swap, LinkedIn 3-step redesign, dedicated validation stage, cron-triggered
+  actors, VPS deployment) plus today's full frontend design record (ADR-009).
+- `CLAUDE.md` rule: no Artifact publishing for mockup iteration unless asked
+  directly — local HTML file instead, faster to edit.
+
+### Fixed (found live while building the mockup, documented for the real build)
+- DMK's "5 signals" was actually 3 real sources + 2 literal Exa-monitor
+  duplicates of one URL — events now dedupe by `source_url` before display.
+- `LeadCard.tsx`'s contact cap at 2 (same bug reproduced and fixed in the
+  mockup) — contacts list is uncapped, compact rows instead of cards so it
+  doesn't cost vertical space.
+- `channel_actions.contact_id` exists as a column (migration 005) but isn't
+  part of the unique constraint — two contacts at one company/event collide
+  today. Outreach status needed to move to per-contact (Philippe realistically
+  messages 2-3 people per company independently) — this is the real schema
+  gap that surfaced, needs migration 008 before it's production-real.
+- `.dot-sep`'s CSS rule (the separator dots in the company meta line) was lost
+  in an earlier mockup rewrite — line rendered glued together, fixed.
+
+### Design decisions (full reasoning: docs/adr/009-frontend-v2-concept.md)
+- Flat status row (new/sent/replied/meeting/pass), not a forced LinkedIn
+  step-tracker — reverted after Leo's own catch that real conversations
+  aren't linear.
+- Sidebar status filter collapses to an accordion (defaults to "All leads"),
+  matching reply-agent/inbox.html's mix of one always-visible primary item
+  plus collapsed secondary lists.
+- Company-level status in the sidebar aggregates its contacts' statuses live:
+  most-advanced wins, except "pass" only shows when EVERY contact has passed
+  (one declined contact can't hide that another conversation is still active).
+- Signal-origin filter (Exa / Job boards) added — verified live the two
+  populations barely overlap (4 of 409 companies have both), so it's a real,
+  non-redundant axis.
+- Activity is a module tab next to Leads, not a separate rail destination —
+  same relationship as reply-agent's Inbox/Overview split (Activity is what
+  actually happened as a result of using Leads).
+
 ## [0.17.0] - 2026-07-18
 
 Backend-hardening Phase 1 complete (docs/PLAN_2026-07-18_backend_hardening.md,

@@ -7,7 +7,60 @@ Client-facing outreach flow (final): clients/philippe-bosquillon/docs/linkedin_e
 Architecture decisions (backfilled 2026-07-19): docs/adr/README.md — read this before
 re-litigating a past design choice, it's probably already got a documented reason.
 
-=== STATUS 2026-07-19 — FRONTEND v2.0 CONCEPT: design agreed, mockup in progress ===
+=== STATUS 2026-07-19 (night) — FRONTEND v2.0 MOCKUP FINALIZED, ready to build for real ===
+mockups/signals_v2_concept.html is done — one file, all sections, all clicks work
+(Leads list+detail, Activity as a module tab, Settings with a grouped sidebar
+matching mockups/settings.html's own established pattern). This is the reference
+for the real Next.js build. Backend is fully live/automated (Phases 1-3, see
+below) — frontend is the one remaining piece, per Leo's stated goal.
+
+What the mockup settled through several review rounds (full reasoning in
+docs/adr/009-frontend-v2-concept.md D1-D6, updates below D6):
+- Real DB data throughout — 32 real companies, DMK+BRATA fully wired with real
+  contacts/events/signals pulled live 2026-07-19.
+- Sidebar: icon-rail (Leads module, Settings) + filter panel (search, collapsible
+  status accordion defaulting to "All leads", Tier/Channel-readiness/Signal-origin
+  accordions with live counts) + compact row-list (avatar+chips, not cards).
+- Company detail: Signals as a compact deduped+AI-summarized drill-down list
+  (not a raw signal-count — real bug found: DMK's "5 signals" was 3 real sources
+  + 2 literal Exa-monitor duplicates of one URL); Contacts as a compact row-list,
+  NOT capped at 2 (existing LeadCard.tsx bug fixed in the mockup); Outreach is
+  PER-CONTACT (not per-company — real people get messaged independently), each
+  contact's LinkedIn status/copy lives inside its own expandable row, primary
+  contact starts expanded; Notes section restored (same shape as old
+  NotesLog.tsx); company-level status chip in the sidebar aggregates contacts'
+  statuses live (most-advanced wins, "pass" only shown if EVERY contact passed).
+- Activity is a module tab next to Leads (not a separate rail icon) — built on
+  REAL channel_actions rows (123 queried live), lightweight date-range preset
+  picker, matches reply-agent/inbox.html's Inbox/Overview split.
+- Settings: grouped sidebar (Outreach/Pipeline/Exa/System) — Templates rendered
+  inline (new), everything else (ICP Filter, Staleness, Analytics, Health) LINKS
+  OUT to what already exists rather than duplicating a third copy. Health links
+  to the real live https://philippe.pamelacoreypc.com/health, not a mock.
+
+REAL BUILD — still open, not started (all called out inline in the mockup's
+comments too):
+- Migration 007: signals.event_summary column (for the AI-summary feature —
+  new summarizeEvent() fn, same OpenRouter infra as sameEvent(), only spends
+  when >=2 unique source_urls exist per event; single-source = free).
+- Migration 008: channel_actions' unique constraint needs contact_id folded in
+  (client_id, company_id, contact_id, channel, event_key) — found live 2026-07-19,
+  the column already exists but isn't part of the constraint, so two different
+  contacts at one company/event collide today. channelActionKey() in
+  pipeline/lib/channelActions.mjs needs the same fix.
+- copy_templates.json migration: add li_step1_connection/li_step2_qualify PER
+  signal-type key (9 keys, unchanged), li_step3_call/li_followup as TOP-LEVEL
+  fields (universal by design, don't duplicate 9x). route_email.mjs untouched.
+- localizeMessage() (sibling to localizeHookLine(), full multi-line messages,
+  don't stretch the hook-line-shaped prompt) + /api/translate Next.js route
+  (copyEngine.mjs is a pipeline Node module, unreachable directly from the VPS
+  frontend).
+- Real React/Next.js rebuild of nextjs/src/app/page.tsx + components against
+  this mockup — the actual "внедряем фронтенд" work.
+NEXT: hand this off — Fable/Sonnet split for the real build, same pattern as
+the backend hardening handoff.
+
+=== STATUS 2026-07-19 — FRONTEND v2.0 CONCEPT: design agreed, mockup in progress (historical — superseded by the finalized block above) ===
 Full decision record: docs/adr/009-frontend-v2-concept.md (D1-D6). Summary:
 - Real DB data throughout the mockup (many companies list-only, DMK+BRATA full
   detail) — local HTML file in mockups/, NOT an Artifact (CLAUDE.md rule added).

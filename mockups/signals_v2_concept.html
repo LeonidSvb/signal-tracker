@@ -262,12 +262,24 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Lato',
 .email-status .ico { font-size: 14px; }
 
 /* ── Settings / Templates view ─────────────────────────── */
-.settings-wrap { flex: 1; overflow-y: auto; padding: 22px 26px 60px; }
-.settings-inner { max-width: 980px; }
-.settings-subnav { display: flex; gap: 4px; margin-bottom: 18px; border-bottom: 1px solid var(--border); }
-.settings-subnav a { font-size: 12px; font-weight: 700; color: var(--muted); padding: 8px 4px; margin-right: 18px; border-bottom: 2px solid transparent; cursor: pointer; }
-.settings-subnav a.active { color: var(--accent-text); border-bottom-color: var(--accent); }
-.tpl-intro { font-size: 12.5px; color: var(--muted); margin-bottom: 16px; max-width: 70ch; line-height: 1.6; }
+/* Settings — grouped sidebar, 1:1 with reply-agent/settings.html + this project's own
+   mockups/settings.html (same pattern already established, reused not reinvented). */
+.settings-shell { flex: 1; display: flex; overflow: hidden; }
+.settings-nav { width: 224px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+.settings-nav-head { padding: 16px 16px 12px; border-bottom: 1px solid var(--border); font-weight: 800; font-size: 15px; }
+.settings-nav-scroll { flex: 1; overflow-y: auto; padding: 10px 10px 16px; }
+.settings-group-label { font-size: 10.5px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; padding: 0 10px; margin: 14px 0 4px; }
+.settings-group-label:first-child { margin-top: 0; }
+.settings-nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 7px; font-size: 12.5px; font-weight: 500; color: var(--ink); cursor: pointer; text-decoration: none; }
+.settings-nav-item:hover { background: var(--surface-2); }
+.settings-nav-item.active { background: var(--accent-light); color: var(--accent-text); font-weight: 700; }
+.settings-nav-badge { margin-left: auto; font-size: 8px; font-weight: 800; text-transform: uppercase; background: var(--pos-bg); color: var(--pos); padding: 1.5px 6px; border-radius: 999px; }
+.settings-content { flex: 1; overflow-y: auto; padding: 22px 26px 60px; }
+.settings-panel { display: none; }
+.settings-panel.active { display: block; }
+.settings-panel-head { margin-bottom: 16px; }
+.settings-panel-title { font-weight: 800; font-size: 16px; }
+.settings-panel-sub { font-size: 12.5px; color: var(--muted); margin-top: 4px; max-width: 70ch; line-height: 1.6; }
 .tpl-universal { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
 .tpl-universal-label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--accent-text); margin-bottom: 8px; }
 .tpl-universal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -459,17 +471,50 @@ table.act tr:hover td { background: var(--surface-2); }
       </div>
     </div>
 
-    <!-- ═══════════ SETTINGS VIEW (Templates sub-tab, D4) ═══════════ -->
+    <!-- ═══════════ SETTINGS VIEW — grouped sidebar, 1:1 with reply-agent/settings.html's
+         pattern (icon-rail + settings-nav-item groups + panel switch), reusing the SAME
+         layout mockups/settings.html already established for this project. Most items link
+         out to the real thing instead of duplicating it a third time (ICP Filter/Staleness/
+         Analytics already have their own dedicated, more complete pages; Health is now a
+         REAL live Next.js page reading pipeline_runs, not the old hand-maintained mock). ═══════════ -->
     <div class="view" id="view-settings">
-      <div class="settings-wrap">
-        <div class="settings-inner">
-          <div class="settings-subnav">
-            <a class="active" id="ssnav-templates" onclick="switchSettingsTab('templates', this)">Templates</a>
-            <a id="ssnav-analytics" onclick="switchSettingsTab('analytics', this)">Analytics</a>
+      <div class="settings-shell">
+        <div class="settings-nav">
+          <div class="settings-nav-head">Settings</div>
+          <div class="settings-nav-scroll">
+            <div class="settings-group-label">Outreach</div>
+            <div class="settings-nav-item active" id="snav-templates" onclick="switchSettingsSection('templates', this)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4M8 16h.01M16 16h.01"/></svg>
+              Templates
+            </div>
+            <div class="settings-group-label">Pipeline</div>
+            <a href="settings.html" class="settings-nav-item" target="_blank">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+              ICP Filter ↗
+            </a>
+            <a href="settings.html" class="settings-nav-item" target="_blank">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              Staleness Rules ↗
+            </a>
+            <div class="settings-group-label">Exa</div>
+            <a href="exa-analytics.html" class="settings-nav-item" target="_blank">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+              Analytics ↗
+            </a>
+            <div class="settings-group-label">System</div>
+            <a href="https://philippe.pamelacoreypc.com/health" class="settings-nav-item" target="_blank">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              Health ↗ <span class="settings-nav-badge">live</span>
+            </a>
           </div>
+        </div>
 
+        <div class="settings-content">
           <div class="settings-panel active" id="settings-templates">
-            <div class="tpl-intro">One row per signal type — reads directly from <code>pipeline/config/copy_templates.json</code> (the same file <code>build_linkedin_queue.mjs</code> and <code>route_email.mjs</code> use in production, per ADR-009 D4). Step 3 and the follow-up are universal across every signal type by design (ADR-005) — shown once above, not repeated per row. Also linked from each lead's outreach panel as "Full copy guide".</div>
+            <div class="settings-panel-head">
+              <div class="settings-panel-title">Templates</div>
+              <div class="settings-panel-sub">One row per signal type — reads directly from <code>pipeline/config/copy_templates.json</code> (the same file <code>build_linkedin_queue.mjs</code> and <code>route_email.mjs</code> use in production, per ADR-009 D4). Step 3 and the follow-up are universal across every signal type by design (ADR-005) — shown once above, not repeated per row. Also linked from each lead's outreach panel as "Full copy guide".</div>
+            </div>
 
             <div class="tpl-universal">
               <div class="tpl-universal-label">Universal — same for every signal type</div>
@@ -492,11 +537,6 @@ table.act tr:hover td { background: var(--surface-2); }
                 <tbody id="tpl-rows"></tbody>
               </table>
             </div>
-          </div>
-
-          <div class="settings-panel" id="settings-analytics" style="display:none">
-            <div class="tpl-intro">Exa monitor performance (33 monitors, weekly activity, pass/filter breakdown) already has its own dedicated mockup — <code>mockups/exa-analytics.html</code>, ~1,350 lines with real charts. Too large to fold inline here without duplicating it; linking out keeps one source of truth instead of two copies drifting apart.</div>
-            <a class="btn btn-copy" href="exa-analytics.html" target="_blank" style="text-decoration:none">↗ Open Exa Analytics</a>
           </div>
         </div>
       </div>
@@ -1056,10 +1096,10 @@ window.switchView = function (view, el) {
   document.querySelectorAll('.rail-icon').forEach(a => a.classList.remove('active'));
   if (el) el.classList.add('active');
 };
-window.switchSettingsTab = function (tab, el) {
-  document.querySelectorAll('.settings-panel').forEach(p => p.style.display = 'none');
-  document.getElementById('settings-' + tab).style.display = 'block';
-  document.querySelectorAll('.settings-subnav a').forEach(a => a.classList.remove('active'));
+window.switchSettingsSection = function (section, el) {
+  document.querySelectorAll('#view-settings .settings-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('settings-' + section).classList.add('active');
+  document.querySelectorAll('.settings-nav-item').forEach(a => a.classList.remove('active'));
   el.classList.add('active');
 };
 window.switchModuleTab = function (panelId, el) {
