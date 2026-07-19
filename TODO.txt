@@ -38,6 +38,33 @@ docs/adr/009-frontend-v2-concept.md D1-D6, updates below D6):
   OUT to what already exists rather than duplicating a third copy. Health links
   to the real live https://philippe.pamelacoreypc.com/health, not a mock.
 
+Second review round (2026-07-19, later same night) — 5 more decisions:
+- Analytics moved OUT of Settings entirely, onto its own rail icon next to
+  Leads — it's a data view, not config, doesn't belong under Settings.
+- Staleness Rules is NOT a separate nav item/page — turned out to be real and
+  already enforced (pipeline/config/icp_filter.json's staleness_days block via
+  lib/staleness.mjs, used in filter_icp.mjs/rank_leads.mjs/eventGrouping.mjs;
+  the old "07_recalc_scores.mjs not implemented" warning was stale info, that
+  logic got folded into existing stages instead of a standalone script). Merged
+  into the ICP Filter panel since it's the same file, not deleted.
+- mockups/settings.html's ICP Filter panel was rebuilt with the REAL live
+  icp_filter.json content (it used to say "not created yet" — the file exists
+  and is in production use). Now read-only, no fake editable inputs since
+  nothing writes back yet.
+- mockups/settings.html's old Runs + Health panels (hand-maintained, dated
+  2026-06-26/07-13, predate cron + the real /health page) DELETED — Health is
+  one real live page now, not duplicated in a mockup. The real /health page
+  (nextjs/src/app/health/page.tsx + api/health/route.ts) gained the drill-down
+  Runs used to provide: expandable "Runs ▾" per stage showing a 7-day success
+  rollup + last 5 runs with inline error text, same pattern as reply-agent's
+  Health page (CONCEPTS.md §6.7) — explicitly did NOT add a second drill-down
+  level ("view all N runs"), reply-agent already tried and rejected that as
+  audit-not-debug scope creep.
+- mockups/database.html retired — generic raw-table browser, duplicates
+  Supabase Table Editor, different visual style (Tailwind CDN) than the rest
+  of the product. Unlinked from settings.html's rail and mockups/index.html
+  (marked "retired" there, file kept for reference only, not deleted).
+
 REAL BUILD — still open, not started (all called out inline in the mockup's
 comments too):
 - Migration 007: signals.event_summary column (for the AI-summary feature —

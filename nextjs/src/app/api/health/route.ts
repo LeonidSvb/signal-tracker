@@ -41,17 +41,29 @@ export async function GET() {
 
     // Latest row per script — order by finished_at desc, then dedupe client-side
     // (PostgREST has no native "latest per group" without a view/RPC we don't have yet).
+    // Also carries the last 5 runs + a 7-day rollup per stage (replaces the old separate
+    // "Runs" settings panel — same pipeline_runs table, Health is now the one place that
+    // reads it, matching the reply-agent Health/Runs merge pattern).
     const runs = await sbGet(
       `pipeline_runs?client_id=eq.${clientId}&order=started_at.desc&limit=200&select=script,source,status,started_at,finished_at,rows_scraped,rows_passed_icp,rows_pushed,stats,errors`
     );
-    const latestByScript = new Map<string, any>();
+    const byScript = new Map<string, any[]>();
     for (const r of runs) {
-      if (!latestByScript.has(r.script)) latestByScript.set(r.script, r);
+      if (!byScript.has(r.script)) byScript.set(r.script, []);
+      byScript.get(r.script)!.push(r);
     }
-    const stages = KNOWN_STAGES.map((script) => ({
-      script,
-      run: latestByScript.get(script) || null,
-    }));
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const stages = KNOWN_STAGES.map((script) => {
+      const scriptRuns = byScript.get(script) || [];
+      const last7d = scriptRuns.filter((r) => new Date(r.started_at).getTime() > sevenDaysAgo);
+      const successCount = last7d.filter((r) => r.status === 'success').length;
+      return {
+        script,
+        run: scriptRuns[0] || null,
+        rollup7d: last7d.length ? { total: last7d.length, success: successCount } : null,
+        last5: scriptRuns.slice(0, 5),
+      };
+    });
 
     // Email validation coverage — live counts, not a stale snapshot.
     const contacts = await sbGet(

@@ -12,20 +12,23 @@
   <div class="mb-8">
     <h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Signals App</h2>
     <div class="space-y-1">
-      <a href="database.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
-        <span class="text-xs font-mono bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">NEW</span>
-        <span class="text-gray-800">database</span>
-        <span class="text-gray-400 text-sm">— весь TAM (Blitz + Apollo), 12 реальных компаний из dump'ов; фильтры-дропдауны (source/ICP/country), headcount, чекбоксы has-email/verified/has-linkedin; клик по строке → карточка со всеми полями + контакты</span>
+      <a href="signals_v2_concept.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
+        <span class="text-xs font-mono bg-green-100 text-green-700 px-2 py-0.5 rounded">v2</span>
+        <span class="text-gray-800">signals_v2_concept</span>
+        <span class="text-gray-400 text-sm">— finalized frontend v2.0 concept (icon-rail + module tabs, Leads/Activity, grouped Settings), real DB data throughout, source of truth for the real React rebuild</span>
       </a>
       <a href="settings.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
-        <span class="text-xs font-mono bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">NEW</span>
         <span class="text-gray-800">settings</span>
-        <span class="text-gray-400 text-sm">— гиря в рейле → отдельная страница (как в reply-agent/settings.html), саб-нав с 3 группами: Pipeline (ICP Filter, Staleness Rules), Exa (Analytics), System (Runs, Health)</span>
+        <span class="text-gray-400 text-sm">— reply-agent grouped-sidebar pattern, ICP Filter panel only (real live pipeline/config/icp_filter.json, includes staleness windows). Analytics moved to its own rail icon; Health links out to the real live /health page</span>
       </a>
       <a href="exa-analytics.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
-        <span class="text-xs font-mono bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">NEW</span>
         <span class="text-gray-800">exa-analytics</span>
-        <span class="text-gray-400 text-sm">— по концепту reply-agent/detailed-analytics.html: 7 stat-карточек, Weekly Activity (stacked bar, passed/filtered/pending по неделям), By Signal Type, By Country, Monitor Performance (33 монитора, sortable) — всё на реальных данных из raw_signals + живого Exa API, снято 13.07</span>
+        <span class="text-gray-400 text-sm">— 7 stat-карточек, Weekly Activity (stacked bar), By Signal Type, By Country, Monitor Performance (33 монитора, sortable) — на реальных данных из raw_signals + живого Exa API</span>
+      </a>
+      <a href="database.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors opacity-60">
+        <span class="text-xs font-mono bg-gray-200 text-gray-600 px-2 py-0.5 rounded">retired</span>
+        <span class="text-gray-800">database</span>
+        <span class="text-gray-400 text-sm">— generic raw-table browser, dropped from the concept (2026-07-19): duplicates Supabase Table Editor, different visual style than the rest of the product. Kept only for reference, not linked from any nav anymore.</span>
       </a>
     </div>
   </div>

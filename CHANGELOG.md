@@ -8,6 +8,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Changed
+- Settings IA review: Analytics moved off Settings onto its own rail icon (data view, not config, both in `mockups/signals_v2_concept.html` and `mockups/settings.html`).
+- Staleness Rules folded into the ICP Filter panel instead of being a separate page — same source file (`pipeline/config/icp_filter.json`'s `staleness_days`), so a second nav entry duplicated one config.
+- `mockups/settings.html`'s ICP Filter panel rebuilt against the real live `icp_filter.json` (previously said "not created yet"; the file has been real and in production use since filter_icp.mjs shipped) — now a read-only preview, no fake editable inputs.
+- Real `/health` page (`nextjs/src/app/health/`) gained a drill-down: each stage row can expand to a 7-day success rollup + last 5 runs with inline error text, replacing the standalone Runs page/panel — same table (`pipeline_runs`), one place to read it.
+
+### Removed
+- `mockups/settings.html`'s hand-maintained Runs + Health panels (dated 2026-06-26/07-13, predated cron and the real health page) — deleted, not superseded by a mockup duplicate.
+- `mockups/database.html` retired from navigation — generic raw-table browser duplicating Supabase Table Editor, visually inconsistent with the rest of the product (Tailwind CDN vs the hand-styled token system elsewhere). File kept on disk for reference, unlinked everywhere.
+
+### Fixed
+- Corrected a wrong claim from the previous session: staleness windows are NOT unimplemented — `lib/staleness.mjs` reads `icp_filter.json`'s `staleness_days` live and is used in `filter_icp.mjs`, `rank_leads.mjs`, and `eventGrouping.mjs`. The "07_recalc_scores.mjs not implemented" warning in the old mockup was stale; that logic was folded into existing stages instead of a standalone script.
+
 ## [0.18.0] - 2026-07-19
 
 Frontend v2.0 concept — designed and finalized through several review rounds

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 // Minimal Health page — real data behind mockups/settings.html's Health tab markup
 // (PLAN_2026-07-18_backend_hardening.md, C-D6 / Phase 1 item 7). Scoped inline CSS
@@ -19,9 +19,16 @@ type StageRun = {
   errors: unknown[];
 } | null;
 
+type StageInfo = {
+  script: string;
+  run: StageRun;
+  rollup7d: { total: number; success: number } | null;
+  last5: NonNullable<StageRun>[];
+};
+
 type HealthData = {
   generatedAt: string;
-  stages: { script: string; run: StageRun }[];
+  stages: StageInfo[];
   validation: { totalWithEmail: number; validated: number; neverValidated: number; invalid: number };
 };
 
@@ -45,6 +52,15 @@ function fmt(dt: string | null) {
 export default function HealthPage() {
   const [data, setData] = useState<HealthData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  function toggle(script: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.has(script) ? next.delete(script) : next.add(script);
+      return next;
+    });
+  }
 
   useEffect(() => {
     fetch("/api/health")
@@ -72,6 +88,12 @@ export default function HealthPage() {
         .pill-warn { background:#FDF3D8; color:#A8720A; }
         .pill-missing { background:#F1EBFB; color:#7A5FC7; }
         .health-page .err { color:#C0392B; font-size:10.5px; }
+        .health-page .runs-btn { background:none; border:1px solid #E4E7EF; border-radius:6px; padding:2px 7px; font-size:10px; font-weight:700; color:#5C6478; cursor:pointer; }
+        .health-page .runs-btn:hover { background:#F5F6FA; }
+        .health-page .rollup { font-size:10.5px; color:#8A8FA3; margin:8px 14px 4px; }
+        .health-page .run-row { display:grid; grid-template-columns:110px 70px 90px 1fr; gap:8px; padding:5px 14px; font-size:10.5px; border-bottom:1px solid #F4F4F5; }
+        .health-page .run-row:last-child { border-bottom:none; }
+        .health-page .run-detail { background:#FAFBFD; }
       `}</style>
 
       <h1>Health</h1>
@@ -115,18 +137,50 @@ export default function HealthPage() {
                   <th>Status</th>
                   <th>Scraped / Passed / Pushed</th>
                   <th>Errors</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
-                {data.stages.map(({ script, run }) => (
-                  <tr key={script}>
-                    <td className="mono">{script}</td>
-                    <td className="muted">{run ? fmt(run.started_at) : "—"}</td>
-                    <td><span className={`pill ${pillClass(run)}`}>{pillLabel(run)}</span></td>
-                    <td className="muted">{run ? `${run.rows_scraped} / ${run.rows_passed_icp} / ${run.rows_pushed}` : "—"}</td>
-                    <td className="err">{run?.errors?.length ? `${run.errors.length} errors` : ""}</td>
-                  </tr>
-                ))}
+                {data.stages.map(({ script, run, rollup7d, last5 }) => {
+                  const isOpen = expanded.has(script);
+                  return (
+                    <Fragment key={script}>
+                      <tr>
+                        <td className="mono">{script}</td>
+                        <td className="muted">{run ? fmt(run.started_at) : "—"}</td>
+                        <td><span className={`pill ${pillClass(run)}`}>{pillLabel(run)}</span></td>
+                        <td className="muted">{run ? `${run.rows_scraped} / ${run.rows_passed_icp} / ${run.rows_pushed}` : "—"}</td>
+                        <td className="err">{run?.errors?.length ? `${run.errors.length} errors` : ""}</td>
+                        <td>
+                          {last5.length > 0 && (
+                            <button className="runs-btn" onClick={() => toggle(script)}>
+                              Runs {isOpen ? "▴" : "▾"}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                      {isOpen && (
+                        <tr className="run-detail">
+                          <td colSpan={6} style={{ padding: 0 }}>
+                            {rollup7d && (
+                              <div className="rollup">
+                                Last 7 days: {rollup7d.success}/{rollup7d.total} succeeded
+                              </div>
+                            )}
+                            {last5.map((r, i) => (
+                              <div className="run-row" key={i}>
+                                <span className="muted">{fmt(r.started_at)}</span>
+                                <span className={`pill ${pillClass(r)}`}>{pillLabel(r)}</span>
+                                <span className="muted">{r.rows_pushed ?? "—"} pushed</span>
+                                <span className="err">{r.errors?.length ? String((r.errors[0] as any)?.message ?? r.errors[0]) : ""}</span>
+                              </div>
+                            ))}
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>

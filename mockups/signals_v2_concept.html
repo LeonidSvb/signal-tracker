@@ -33,7 +33,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Lato',
 /* icon rail — matches mockups/database.html + settings.html pattern */
 .rail { width: 56px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding: 12px 0; gap: 3px; }
 .rail-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px; margin-bottom: 10px; }
-.rail-icon { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted-2); cursor: pointer; position: relative; }
+.rail-icon { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted-2); cursor: pointer; position: relative; text-decoration: none; }
 .rail-icon:hover { background: var(--surface-2); color: var(--muted); }
 .rail-icon.active { background: var(--accent-light); color: var(--accent); }
 .rail-spacer { flex: 1; }
@@ -347,6 +347,10 @@ table.act tr:hover td { background: var(--surface-2); }
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 3 7l9 5 9-5-9-5z"/><path d="M3 12l9 5 9-5M3 17l9 5 9-5"/></svg>
       <span class="rail-tip">Leads</span>
     </div>
+    <a class="rail-icon" href="exa-analytics.html" target="_blank">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+      <span class="rail-tip">Analytics</span>
+    </a>
     <div class="rail-spacer"></div>
     <div class="rail-icon" id="rail-settings" onclick="switchView('settings', this)">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/></svg>
@@ -473,10 +477,15 @@ table.act tr:hover td { background: var(--surface-2); }
 
     <!-- ═══════════ SETTINGS VIEW — grouped sidebar, 1:1 with reply-agent/settings.html's
          pattern (icon-rail + settings-nav-item groups + panel switch), reusing the SAME
-         layout mockups/settings.html already established for this project. Most items link
-         out to the real thing instead of duplicating it a third time (ICP Filter/Staleness/
-         Analytics already have their own dedicated, more complete pages; Health is now a
-         REAL live Next.js page reading pipeline_runs, not the old hand-maintained mock). ═══════════ -->
+         layout mockups/settings.html already established for this project. Analytics moved
+         out to its own rail icon (2026-07-19 review) — it's a data view, not config, so it
+         doesn't belong under Settings at all. Staleness Rules folded into ICP Filter, not a
+         separate nav item — both read the SAME file now (pipeline/config/icp_filter.json's
+         staleness_days block, live in filter_icp.mjs/rank_leads.mjs/eventGrouping.mjs via
+         lib/staleness.mjs), so a second nav entry for it would just be a second view of one
+         config. mockups/settings.html itself is still the 2026-07-13 mock (says ICP Filter
+         "not created yet" — it's real now) and needs a follow-up fix, tracked in TODO.
+         Health is a REAL live Next.js page reading pipeline_runs, not a hand-maintained mock. ═══════════ -->
     <div class="view" id="view-settings">
       <div class="settings-shell">
         <div class="settings-nav">
@@ -491,15 +500,6 @@ table.act tr:hover td { background: var(--surface-2); }
             <a href="settings.html" class="settings-nav-item" target="_blank">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
               ICP Filter ↗
-            </a>
-            <a href="settings.html" class="settings-nav-item" target="_blank">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-              Staleness Rules ↗
-            </a>
-            <div class="settings-group-label">Exa</div>
-            <a href="exa-analytics.html" class="settings-nav-item" target="_blank">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-              Analytics ↗
             </a>
             <div class="settings-group-label">System</div>
             <a href="https://philippe.pamelacoreypc.com/health" class="settings-nav-item" target="_blank">
