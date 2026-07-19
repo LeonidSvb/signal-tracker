@@ -110,9 +110,28 @@ REAL BUILD — Sonnet execution session, 2026-07-19 (docs/HANDOFF_2026-07-19_fro
   (pipeline/test/copyEngine.test.mjs) — validates the REAL current shape,
   plus an explicit assertion that the stale field names never landed.
   ADR-009 D4 updated to reflect this finding.
-- Stage 4+ (localizeMessage()/api/translate, frontend foundation, Leads
-  module, Activity/Settings, Analytics, full Chrome debugging pass) — next,
-  per the handoff doc's stage order.
+- Stage 4 DONE: localizeMessage() added to copyEngine.mjs, sibling of
+  localizeHookLine() — full multi-line message localization (not just the
+  hook line), preserves {placeholders} and literal [bracket tokens] like
+  [Calendly link] untouched, cache key = hashCacheKey(text+lang) (sha256,
+  new pure export) per ADR-009 D5. /api/translate Next.js route added
+  (nextjs/src/app/api/translate/route.ts) — deliberately self-contained,
+  NOT importing copyEngine.mjs (ADR-009's own build note: copyEngine.mjs's
+  file-path resolution breaks once Next.js bundles it elsewhere), same
+  prompt/REGISTER_BY_LANG duplicated as small stable constants instead.
+  In-memory Map cache at module level (persists across requests on this
+  persistent VPS `next start` process, not serverless) — a DB-backed cache
+  is still deferred, per ADR-009, as a real decision nobody has made yet,
+  not built here. Verified against REAL data: a real POST call translated a
+  message to DE correctly (formal Sie register, {first_name} and
+  [Calendly link] preserved exactly, line breaks intact), a repeat call
+  hit the cache (cached:true, no second OpenRouter spend), and validation
+  errors (missing text, unsupported lang) return clean 400s. `npm run build`
+  clean, `/api/translate` shows in the route table as a dynamic route.
+- Stage 5+ (frontend foundation — real routes, IconRail/DateRangePicker
+  pulled in from outreach-cockpit, Leads module, Activity/Settings,
+  Analytics, full Chrome debugging pass) — next, per the handoff doc's
+  stage order.
 
 === PREP DONE 2026-07-19 — React migration prep doc ===
 Full doc: docs/PLAN_2026-07-19_react_migration_prep.md — read this FIRST in

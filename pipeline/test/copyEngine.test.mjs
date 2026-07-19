@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { fill, variantForRank, langForCountry, marketFocusForCountry, getTemplate } from '../lib/copyEngine.mjs';
+import { fill, variantForRank, langForCountry, marketFocusForCountry, getTemplate, localizeMessage, hashCacheKey } from '../lib/copyEngine.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const TEMPLATES_PATH = join(__dir, '../config/copy_templates.json');
@@ -69,6 +69,43 @@ test('fill() resolves CLEVEL li_variant_2 (HR/CEO nearby) distinctly from defaul
 
 test('getTemplate throws on unknown key', () => {
   assert.throws(() => getTemplate('NOT_A_TEMPLATE'));
+});
+
+// ── localizeMessage() (Stage 4, D5 in docs/adr/009-frontend-v2-concept.md) ──────
+
+test('hashCacheKey: deterministic for the same text+lang, differs across lang', () => {
+  const a = hashCacheKey('hello {first_name}', 'de');
+  const b = hashCacheKey('hello {first_name}', 'de');
+  const c = hashCacheKey('hello {first_name}', 'fr');
+  assert.equal(a, b);
+  assert.notEqual(a, c);
+});
+
+test('hashCacheKey: different text produces a different key even with the same lang', () => {
+  assert.notEqual(hashCacheKey('text one', 'de'), hashCacheKey('text two', 'de'));
+});
+
+test('localizeMessage: lang="en" returns the text unchanged, no cache write, no network call', async () => {
+  const cache = {};
+  const text = 'hey {first_name}, worth a quick intro?';
+  const out = await localizeMessage(text, 'en', cache);
+  assert.equal(out, text);
+  assert.equal(Object.keys(cache).length, 0);
+});
+
+test('localizeMessage: cache hit short-circuits before any network call', async () => {
+  const text = 'hey {first_name},\n\nfollowing up — [Calendly link] if useful.';
+  const key = hashCacheKey(text, 'de');
+  const cache = { [key]: 'PRE-CACHED TRANSLATION' };
+  const out = await localizeMessage(text, 'de', cache);
+  assert.equal(out, 'PRE-CACHED TRANSLATION');
+});
+
+test('localizeMessage: unsupported language (no translations.jsonl frame) falls back to EN text unchanged', async () => {
+  const cache = {};
+  const text = 'hey {first_name}, worth an intro?';
+  const out = await localizeMessage(text, 'es', cache); // 'es' has no frame in translations.jsonl
+  assert.equal(out, text);
 });
 
 // ── copy_templates.json shape validation (Stage 3, docs/HANDOFF_2026-07-19_frontend_build.md) ──

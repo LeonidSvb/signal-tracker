@@ -13,6 +13,7 @@
 import { readFileSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { createHash } from 'crypto';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dir, '../../../../..');
@@ -136,6 +137,60 @@ Respond with ONLY the localized line, no quotes, no explanation.`;
     if (translated) { cache[cacheKey] = translated; return translated; }
   } catch { /* fall through to EN */ }
   return hookLineEn;
+}
+
+// hashCacheKey — sibling of the literal `${lang}::${hook}` key used above, but for
+// localizeMessage()'s FULL-message cache (D5, docs/adr/009-frontend-v2-concept.md):
+// "cache key = hash(text+lang) so identical step text across different
+// events/companies dedupes automatically rather than keying on (event+step+lang)".
+// A literal `${lang}::${text}` key would work identically for lookups (no collision
+// risk either way) but a full LinkedIn message can run to several hundred characters
+// — hashing keeps the cache file/object's keys short and stable-length regardless of
+// message length, and matches the exact mechanism the ADR specifies.
+export function hashCacheKey(text, lang) {
+  return createHash('sha256').update(`${lang}::${text}`).digest('hex').slice(0, 24);
+}
+
+// localizeMessage — sibling of localizeHookLine() (D5). localizeHookLine() is
+// prompt-shaped specifically for ONE short opening line (lowercase, terse); this
+// handles a FULL multi-line message (LinkedIn first-message body, email follow-up
+// body, etc.) — preserves line breaks, {placeholder} tokens, and literal bracketed
+// tokens like [Calendly link] untouched (translated verbatim would break the
+// frontend's later placeholder-fill step, which matches on the literal bracket
+// text). Same REGISTER_BY_LANG map as localizeHookLine, same safe-fallback rule
+// (no key/frame/lang==='en' -> return the EN text unchanged, never invent copy).
+export async function localizeMessage(textEn, lang, cache = {}) {
+  if (lang === 'en') return textEn;
+  const cacheKey = hashCacheKey(textEn, lang);
+  if (cache[cacheKey]) return cache[cacheKey];
+  const frame = TRANSLATIONS_BY_LANG[lang];
+  if (!OPENROUTER_KEY || !frame) return textEn;
+
+  const prompt = `Localize (do NOT translate word-for-word) this full cold-outreach message from English into natural, native-sounding ${lang.toUpperCase()} for a food-industry executive search message. A native speaker in this industry should read it and not suspect it was translated — rephrase freely to hit the same meaning and tone rather than mapping each word. Register: ${REGISTER_BY_LANG[lang] || 'natural business register'}. Match this project's established phrasing style — for reference here is how this project renders the equivalent connector phrase "saw that": "${frame.saw_equivalent}".
+
+Preserve EXACTLY, character-for-character, unchanged:
+- Every {variable} placeholder (e.g. {first_name}, {company}) — do not translate or reword the text inside the braces.
+- Every literal bracketed token like [Calendly link] — leave the brackets and the exact text inside them untouched.
+- The line-break structure — same number of lines, blank lines in the same places.
+
+Message:
+"""
+${textEn}
+"""
+
+Respond with ONLY the localized message, no quotes, no explanation, no extra commentary before or after.`;
+
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENROUTER_KEY}` },
+      body: JSON.stringify({ model: MODEL, messages: [{ role: 'user', content: prompt }] }),
+    });
+    const data = await res.json();
+    const translated = data.choices?.[0]?.message?.content?.trim();
+    if (translated) { cache[cacheKey] = translated; return translated; }
+  } catch { /* fall through to EN */ }
+  return textEn;
 }
 
 // Splits a body into [hookLine, ...rest] — the hook line is always the first
