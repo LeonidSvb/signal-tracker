@@ -46,6 +46,12 @@ const args = process.argv.slice(2);
 const LIVE = args.includes('--live');
 const limitArg = args.find(a => a.startsWith('--limit='));
 const LIMIT = limitArg ? parseInt(limitArg.split('=')[1], 10) : Infinity;
+// Orders complete in HOURS, not the 7 days between weekly runs — a delivered order used to
+// sit unpatched until next Monday. --check-only skips Phase 2 (submit) entirely so this can
+// run in the free daily cron too (2026-08-02), catching a delivered order same-day/next-day
+// instead of up to a week late. Submission stays weekly-only — no reason to hit LeadsFriday's
+// submit endpoint more than once a week.
+const CHECK_ONLY = args.includes('--check-only');
 
 const PYTHON_BIN = process.platform === 'win32' ? 'python' : 'python3';
 // Minimum batch size worth retrying at — below this, one row's worth of credit shortfall
@@ -129,6 +135,12 @@ export async function run() {
     stats.delivered++;
     for (const r of rows) inFlightLinkedinUrls.delete(r.linkedin_url); // delivered, no longer in-flight
     console.log(`[find_emails_leadsfriday] ${dir}: delivered, ${rows.filter(r => r.status === 'found').length} emails patched`);
+  }
+
+  if (CHECK_ONLY) {
+    await finishRun(runId, { status: 'success', stats: { scraped: 0, pushed: stats.emailsFound }, errors: stats.errors });
+    console.log('=== DONE (--check-only, submit phase skipped) ===');
+    return stats;
   }
 
   // ── Phase 2: submit new candidates ──────────────────────────────────────────

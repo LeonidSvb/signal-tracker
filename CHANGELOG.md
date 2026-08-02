@@ -8,6 +8,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added — self-healing weekly cron + daily LeadsFriday check (2026-08-02)
+The weekly cron fires ONCE, Monday 08:00 UTC, no retry anywhere — a hard failure meant a full
+7-day stall with nobody aware until someone checked manually (exactly what happened
+2026-07-20..31). `pipeline/run.mjs`: the daily cron (already running for free every day) now
+checks the last `run_weekly` row before doing its own work — if it's `status=error`, or stuck
+at `status=running` for 6h+ (an orphaned row from a killed/crashed process, confirmed live
+2026-07-31 when a manually-killed run never reached `finishRun()`), it retries the full weekly
+chain first. Caps a real stall at ~1 day instead of ~7. Refactored the stage-running loop into
+a reusable `runChain()` to support this without duplicating the orchestrator logic.
+Same problem, smaller scope: LeadsFriday orders complete in hours, but were only ever checked
+during the weekly chain — a delivered order could sit unpatched for up to a week. New
+`--check-only` flag on `find_emails_leadsfriday.mjs` (Phase 1 only, no new submission) added to
+`DAILY_CHAIN`, so a delivered order gets picked up same-day/next-day instead.
+
+
 ### Fixed — 9-day pipeline outage, root cause + backlog recovery (2026-07-31)
 The weekly cron had silently failed to produce a single new `signals` row since 2026-07-20 despite `raw_signals`/`companies` still growing normally — three separate bugs, each capable of killing the whole `run.mjs --weekly` chain on its own:
 - `pipeline/lib/validateEmail.mjs`: hardcoded `spawn('python', ...)` — the VPS only has `python3` on PATH, `validate_contacts` crashed instantly every run (`spawn python ENOENT`). Now `process.platform === 'win32' ? 'python' : 'python3'`.

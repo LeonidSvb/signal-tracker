@@ -78,6 +78,10 @@ const WEEKLY_CHAIN = [
 const DAILY_CHAIN = [
   { name: 'rank_leads',           mode: 'flagged' },
   { name: 'build_linkedin_queue', mode: 'flagged' },
+  // Check-only: orders complete in hours, not the 7 days between weekly runs — this catches
+  // a delivered LeadsFriday order same-day/next-day instead of up to a week late. Submission
+  // stays weekly-only (extraArgs skips Phase 2 entirely, see the stage's own header).
+  { name: 'find_emails_leadsfriday', mode: 'flagged', extraArgs: ['--check-only'] },
 ];
 
 function runStageProcess(name, extraArgs) {
@@ -104,23 +108,12 @@ function runStageProcess(name, extraArgs) {
   });
 }
 
-async function main() {
-  if (WEEKLY === DAILY) { // neither or both
-    console.error('Usage: node pipeline/run.mjs (--weekly | --daily) [--live]');
-    process.exit(2);
-  }
-  const chain = WEEKLY ? WEEKLY_CHAIN : DAILY_CHAIN;
-  const label = WEEKLY ? 'run_weekly' : 'run_daily';
-
-  console.log(`=== PIPELINE ORCHESTRATOR === ${label} mode=${LIVE ? 'LIVE' : 'REHEARSAL (no spend: flagged stages dry, always-live stages skipped)'}`);
+async function runChain(chain, label, log) {
+  console.log(`\n=== PIPELINE ORCHESTRATOR === ${label} mode=${LIVE ? 'LIVE' : 'REHEARSAL (no spend: flagged stages dry, always-live stages skipped)'}`);
   console.log(new Date().toISOString());
 
-  // Orchestrator's own pipeline_runs row — LIVE only, same dry-run-doesn't-log rule
-  // as every stage (a2923a2). Imported lazily so a bad env fails loudly here, once.
-  let runId = null, finishRun = null;
-  if (LIVE) {
-    const log = await import('./lib/log.mjs');
-    finishRun = log.finishRun;
+  let runId = null;
+  if (LIVE && log) {
     const clientId = await log.getClientId(process.env.NEXT_PUBLIC_CLIENT_SLUG || 'philippe-bosquillon');
     runId = await log.startRun({ clientId, script: label, source: 'orchestrator' });
   }
@@ -144,7 +137,7 @@ async function main() {
     }
 
     console.log(`\n${'─'.repeat(60)}\n[${stage.name}] starting...`);
-    const stageArgs = stage.mode === 'flagged' && LIVE ? ['--live'] : [];
+    const stageArgs = [...(stage.mode === 'flagged' && LIVE ? ['--live'] : []), ...(stage.extraArgs || [])];
     const res = await runStageProcess(stage.name, stageArgs);
     results.push(res);
     console.log(`[${stage.name}] ${res.ok ? 'OK' : `FAILED (exit ${res.code}${res.signal ? `, ${res.signal}` : ''})`} in ${res.seconds}s`);
@@ -164,9 +157,61 @@ async function main() {
     console.log(`  ${r.name.padEnd(24)} ${r.skipped ? `skipped (${r.skipped})` : r.ok ? `OK ${r.seconds}s` : `FAILED ${r.seconds}s`}`);
   }
 
-  if (LIVE && finishRun) {
-    await finishRun(runId, { status, stats: { total_seconds: totalSec, stages: results } });
+  if (LIVE && log) {
+    await log.finishRun(runId, { status, stats: { total_seconds: totalSec, stages: results } });
   }
+  return { status, aborted };
+}
+
+// Self-healing (2026-08-02, Leo's ask): the weekly cron fires ONCE, Monday 08:00 UTC —
+// no retry anywhere, cron-level or in-process. A hard failure used to mean a full 7-day
+// stall with nobody aware until someone checked manually (exactly what happened
+// 2026-07-20..31, see CHANGELOG). The daily cron already runs every day for free
+// (rank_leads/build_linkedin_queue) — piggyback on it: if the LAST run_weekly logged
+// status=error, retry the full WEEKLY_CHAIN before doing the day's normal daily work.
+// Caps the real-world stall to ~1 day instead of ~7 without any new cron entry or
+// retry infrastructure. Runs at most once per daily invocation — if the retry also
+// fails, tomorrow's daily tries again, same as any other day.
+async function maybeRetryFailedWeekly(log) {
+  const clientId = await log.getClientId(process.env.NEXT_PUBLIC_CLIENT_SLUG || 'philippe-bosquillon');
+  const { selectAll } = await import('./lib/supabase.mjs');
+  const recent = await selectAll(
+    'pipeline_runs',
+    { client_id: clientId, script: 'run_weekly' },
+    { select: 'status,started_at', timeoutMs: 30_000 }
+  );
+  if (!recent.length) return;
+  recent.sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
+  const last = recent[0];
+
+  // 'running' with no finish is either a genuinely-still-going run (e.g. the same Monday's
+  // weekly, only ~2h into a run that can legitimately take longer) or an orphaned row from a
+  // killed/crashed process (confirmed live 2026-07-31 — Leo killed a run mid-flight, its row
+  // sat at 'running' forever since finishRun() never got to execute). 6h is well past every
+  // observed real weekly duration, so treat only OLD 'running' rows as stuck, never a same-day one.
+  const STUCK_RUNNING_MS = 6 * 60 * 60 * 1000;
+  const ageMs = Date.now() - new Date(last.started_at).getTime();
+  const isStuckRunning = last.status === 'running' && ageMs > STUCK_RUNNING_MS;
+  if (last.status !== 'error' && !isStuckRunning) return;
+
+  console.log(`\n*** last run_weekly (${last.started_at}, status=${last.status}) needs a retry — running the full weekly chain before today's daily work ***`);
+  await runChain(WEEKLY_CHAIN, 'run_weekly', log);
+}
+
+async function main() {
+  if (WEEKLY === DAILY) { // neither or both
+    console.error('Usage: node pipeline/run.mjs (--weekly | --daily) [--live]');
+    process.exit(2);
+  }
+
+  // Imported lazily so a bad env fails loudly here, once — same as the old inline import.
+  const log = LIVE ? await import('./lib/log.mjs') : null;
+
+  if (DAILY && LIVE) await maybeRetryFailedWeekly(log);
+
+  const chain = WEEKLY ? WEEKLY_CHAIN : DAILY_CHAIN;
+  const label = WEEKLY ? 'run_weekly' : 'run_daily';
+  const { aborted } = await runChain(chain, label, log);
   process.exit(aborted ? 1 : 0);
 }
 
