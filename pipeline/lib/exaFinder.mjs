@@ -123,6 +123,59 @@ export async function fetchAbout(domain, name, cache) {
   return result;
 }
 
+// Resolve a company's LinkedIn COMPANY page (not a person profile) from name + domain.
+// Built 2026-07-31 after a live test found the real gap: Blitz's own domain->LinkedIn match
+// misses real, findable companies (7/7 spot-checked — Findus Switzerland, SARIA France,
+// Maïsadour, Nexira, Upside Foods, Vitamin Well Group, Agristo — all had a real LinkedIn page
+// Exa found on the first query, none had linkedin_url set from Blitz). Companies with no
+// linkedin_url never become find_contacts_exa gap-mode candidates (that stage requires it) —
+// a closed loop that never self-heals without this. No `contents` param — title/url alone are
+// enough to verify a match, keeps this the cheap $7/1k search-only tier.
+const LINKEDIN_COMPANY_URL_RE = /^https?:\/\/([a-z]{2,3}\.)?linkedin\.com\/company\/[^/]+\/?$/i;
+
+const ACCENT_MAP = { é:'e',è:'e',ê:'e',ë:'e',à:'a',â:'a',ü:'u',ö:'o',ä:'a',ß:'ss',ç:'c',û:'u',î:'i',ï:'i',ô:'o',œ:'oe',æ:'ae',ø:'o',å:'a' };
+function normName(s) { return String(s || '').toLowerCase().replace(/[éèêëàâüöäßçûîïôœæøå]/g, c => ACCENT_MAP[c] || c).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim(); }
+const STRIP_SUFFIX = /\b(gmbh|co|kg|ag|sa|nv|bv|srl|ltd|inc|corp|llc|sas|snc|ohg|se|plc|cie|group|gruppe|holding|international|deutschland|france|switzerland)\b/g;
+// First significant word of the company's core name — matches classify_company.mjs's own
+// coreName() heuristic (norm + strip legal suffixes), the cheapest reliable false-positive
+// guard without spending on contents.text just to read a headline.
+function coreWord(name) {
+  const core = normName(name).replace(STRIP_SUFFIX, ' ').replace(/\s+/g, ' ').trim();
+  return (core.split(' ')[0] || '').replace(/[^a-z0-9]/g, '');
+}
+
+// candidates: raw Exa search results (url, title) — exported alongside the picked match so a
+// caller can log/inspect why a company was skipped (no match) instead of just seeing null.
+export async function resolveCompanyLinkedin(name, domain, cache) {
+  if (!EXA_KEY) throw new Error('EXA_API_KEY not set');
+  const key = cacheKey(name, domain);
+  if (cache[key]) return cache[key];
+
+  // No `category` param deliberately — 'linkedin profile' (used by find_contacts_exa.mjs for
+  // PEOPLE search) biases results toward /in/ person profiles, the opposite of what this needs.
+  // Confirmed live 2026-07-31: adding it turned a 7/7 hit rate into 0/7 (all /in/ results).
+  const query = `${name} company site:linkedin.com/company`;
+  const body = await exaSearch({ query, numResults: 3 });
+  const candidates = (body.results || []).map(x => ({ url: x.url, title: x.title }));
+
+  const needle = coreWord(name);
+  // Word-boundary, not substring — found live 2026-07-31: "Back-Factory" -> needle "back"
+  // substring-matched "Backyard Fun Factory"'s slug and wrongly linked a different real company.
+  const needleRe = needle.length >= 3 ? new RegExp(`\\b${needle}\\b`) : null;
+  let linkedinUrl = null;
+  for (const c of candidates) {
+    if (!LINKEDIN_COMPANY_URL_RE.test(c.url)) continue; // exclude /jobs, /posts, /in/ profiles etc.
+    const haystack = normName(c.url) + ' ' + normName(c.title);
+    if (needleRe && !needleRe.test(haystack)) continue; // guards short/generic names too weakly to filter — same tradeoff as find_contacts_exa's mentionsCompany
+    linkedinUrl = c.url;
+    break;
+  }
+
+  const result = { linkedinUrl, candidates, resolvedAt: new Date().toISOString() };
+  cache[key] = result;
+  return result;
+}
+
 // Fallback for headlines that don't name a company at all (e.g. a press-release teaser like
 // "Munich startup launches..." with the real name only in the body). Fetches the source
 // article's own text directly — validated 2026-07-14 manually recovering "Münchner Startup"

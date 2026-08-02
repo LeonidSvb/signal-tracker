@@ -50,7 +50,7 @@ export async function run() {
   }, null, 2));
 
   const clientId = await getClientId(CLIENT_SLUG);
-  const runId = LIVE ? await startRun({ clientId, script: 'validate_contacts', source: 'mv_bounceban' }) : null;
+  const runId = LIVE ? await startRun({ clientId, script: 'validate_contacts', source: 'bounceban' }) : null;
 
   const contacts = await selectAll('contacts', { client_id: clientId },
     { select: 'id,email,email_status,email_validated_at' });
@@ -67,13 +67,13 @@ export async function run() {
   }
 
   if (!LIVE) {
-    console.log(`\nWould validate ${candidates.length} emails via MV+BounceBan. Rerun with --live after Leo says "запускай".`);
+    console.log(`\nWould validate ${candidates.length} emails via BounceBan. Rerun with --live after Leo says "запускай".`);
     writeFileSync(join(RUN_DIR, 'manifest.json'), JSON.stringify({ mode: 'dry_run', candidates: candidates.length }, null, 2));
     return { candidates: candidates.length, validated: 0 };
   }
 
   const emails = candidates.map(c => c.email.toLowerCase().trim());
-  console.log(`\n[validation] running MV+BounceBan cascade on ${emails.length} emails...`);
+  console.log(`\n[validation] running BounceBan on ${emails.length} emails...`);
   const { verdicts, summary } = await validateBatch(emails, join(RUN_DIR, 'validation'));
   writeCheckpoint({ phase: 'validated', candidates: candidates.length });
 
@@ -90,7 +90,7 @@ export async function run() {
       await patch('contacts', 'id', [contact.id], {
         email_status: emailStatus,
         email_validated_at: nowIso,
-        email_validation_detail: { verdict, cascade: 'mv+bounceban', run_id: runId },
+        email_validation_detail: { verdict, cascade: 'bounceban', run_id: runId },
       });
     } catch (e) {
       results.errors.push(`${contact.id}: ${e.message}`);

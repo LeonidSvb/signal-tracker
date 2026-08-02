@@ -1,5 +1,5 @@
 SIGNAL SYSTEM — Philippe Bosquillon
-Updated: 2026-07-19
+Updated: 2026-08-02
 Full plan: signals/PRD.md | Architecture: docs/OVERVIEW.md | DB: docs/SCHEMA.md
 Exa architecture + incident history: docs/EXA_INTEGRATION.md
 Scoring/routing spec: clients/philippe-bosquillon/docs/HANDOFF_2026-07-15_scoring_two_channel.md
@@ -7,7 +7,38 @@ Client-facing outreach flow (final): clients/philippe-bosquillon/docs/linkedin_e
 Architecture decisions (backfilled 2026-07-19): docs/adr/README.md — read this before
 re-litigating a past design choice, it's probably already got a documented reason.
 
-=== STATUS 2026-07-19 (night) — FRONTEND v2.0 MOCKUP FINALIZED, ready to build for real ===
+=== STATUS 2026-08-02 — pipeline back on autopilot, Blitz dead, LeadsFriday now primary email path ===
+Full detail: CHANGELOG.md [Unreleased], several entries dated 2026-07-31/08-01/08-02.
+- 9-day pipeline outage (no new `signals` since 2026-07-20) root-caused to 3 bugs, all fixed
+  and deployed: python->python3 on the VPS, an unprotected LLM call in classify_company.mjs
+  that could kill the whole weekly chain, and a too-short LLM timeout. Backlog recovered live
+  (491 Exa signals -> 202 new signals rows, 650 companies tiered, 192 now on the frontend).
+- BLITZ_API_KEY IS DEAD (401 on every endpoint, confirmed 2026-08-01) — budget not available
+  to renew right now. find_contacts.mjs (person-finding) and find_contacts_exa.mjs's email step
+  both silently no-op. classify_company.mjs/resolve_companies.mjs's existing Exa+LLM fallback
+  already covers company classification with no code changes (degrades gracefully, was already
+  built for this). Person-finding now effectively relies on find_contacts_exa.mjs (Exa) alone.
+- NEW: resolve_linkedin.mjs (Exa) backfills companies.linkedin_url where Blitz's domain-match
+  missed it — real gap, 89% hit rate live. NEW: find_emails_leadsfriday.mjs — LeadsFriday's
+  waterfall_email_finder is now the PRIMARY email-finding path (not a fallback), two-phase
+  (check pending orders / submit new), wired into WEEKLY_CHAIN. 57% hit rate on a live test.
+  Handles LeadsFriday's per-request credit reservation (not per-found) by halving batches and
+  reporting insufficient balance explicitly, not silently.
+- validate_contacts.mjs switched fully to BounceBan (scripts/validation/validate-catchall-
+  bounceban.py) — the old MV-via-Apify step was silently producing 0 verdicts (Apify budget
+  exhausted for that actor).
+- sourcing.companies TAM base checked: 32,359 total, 12,199 ever classified (pass 4,585/reject
+  7,561), 20,160 never scored. Decision: NOT bulk-prescoring — system is signal-reactive by
+  design, most of the 20k will likely never fire a signal; would spend real money on unused data.
+- NEXT PRIORITY (Leo, 2026-08-02): wire signals-with-email into a real PlusVibe campaign —
+  generate initial + follow-up email copy, auto-push to the campaign the moment a contact's
+  email gets validated. Not started — campaign_map is still empty ({}), no PlusVibe API
+  integration exists yet for pushing into a running campaign (only one-time CSV upload was ever
+  built, per pv-campaign-manager skill). Needs: campaign creation decision (accounts, schedule,
+  daily_limit — same open D5 question from 2026-07-17, never resolved), the actual push
+  integration, and copy generation wired to the validated-email trigger.
+
+=== STATUS 2026-07-19 (night, historical — superseded by the 2026-08-02 block above) — FRONTEND v2.0 MOCKUP FINALIZED, ready to build for real ===
 mockups/signals_v2_concept.html is done — one file, all sections, all clicks work
 (Leads list+detail, Activity as a module tab, Settings with a grouped sidebar
 matching mockups/settings.html's own established pattern). This is the reference

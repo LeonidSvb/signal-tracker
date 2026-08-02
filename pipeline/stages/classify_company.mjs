@@ -413,7 +413,18 @@ export async function run() {
 
     let mergedGroups = 0, mergedSignals = 0;
     for (const cluster of clusters) {
-      const verdict = await sameEvent(cluster.map(s => s.raw_data?.title || ''));
+      // Q6 dedup is an accuracy nice-to-have, not essential (see comment above) — a hung/failed
+      // OpenRouter call here must not abort the whole run and skip real classification work
+      // downstream. 2026-07-27 + 2026-07-29 incident: this exact call hung 3x in a row and killed
+      // two entire weekly runs, blocking score_signals/validate_contacts/rank_leads/route_email.
+      let verdict;
+      try {
+        verdict = await sameEvent(cluster.map(s => s.raw_data?.title || ''));
+      } catch (e) {
+        console.error(`  [sameEvent] cluster of ${cluster.length} failed, skipping merge: ${e.message}`);
+        stats.errors.push(`sameEvent cluster: ${e.message}`);
+        continue;
+      }
       if (!verdict?.groups) continue;
       for (const idxGroup of verdict.groups) {
         if (idxGroup.length < 2) continue;

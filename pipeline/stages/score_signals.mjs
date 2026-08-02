@@ -9,6 +9,13 @@ import { fileURLToPath, pathToFileURL } from 'url';
 import { selectAll, insert, patch } from '../lib/supabase.mjs';
 import { getClientId, startRun, finishRun } from '../lib/log.mjs';
 import { expiresAt } from '../lib/staleness.mjs';
+import { fetchRetry } from '../lib/httpRetry.mjs';
+
+// Plain fetch() has no default timeout — a stalled OpenRouter connection would hang this
+// process forever with no way to recover (httpRetry.mjs's own header explains why). Both LLM
+// calls below used to bypass fetchRetry; gpt-oss-120b's variable per-provider latency means
+// 20s (fetchRetry's REST-tuned default) isn't enough either — see companyClassifier.mjs.
+const LLM_TIMEOUT_MS = 60_000;
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const CLIENT_SLUG = process.env.NEXT_PUBLIC_CLIENT_SLUG || 'philippe-bosquillon';
@@ -115,11 +122,11 @@ Published: ${signal.pub_date || 'recently'}
 Write ONE sentence outreach angle for Philippe reaching out to this company. Be specific about the role and timing. No fluff.`;
 
   try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const res = await fetchRetry('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENROUTER_KEY}` },
       body:    JSON.stringify({ model: MODEL, messages: [{ role: 'user', content: prompt }] }),
-    });
+    }, { timeoutMs: LLM_TIMEOUT_MS });
     const data = await res.json();
     return data.choices?.[0]?.message?.content?.trim() || null;
   } catch { return null; }
@@ -150,11 +157,11 @@ Signal category: ${(signal.raw_data?.signal_type || 'NICHE')}
 Respond with ONLY a JSON object, no other text: {"company": "<the single food/beverage company this news is primarily about, exact name as it would appear in a business database>", "angle": "<one sentence outreach angle for Philippe reaching out to this company, specific about the event and timing, no fluff>"}`;
 
   try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const res = await fetchRetry('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENROUTER_KEY}` },
       body:    JSON.stringify({ model: MODEL, messages: [{ role: 'user', content: prompt }] }),
-    });
+    }, { timeoutMs: LLM_TIMEOUT_MS });
     const data = await res.json();
     const parsed = parseJsonLoose(data.choices?.[0]?.message?.content?.trim());
     return { companyName: parsed?.company || '', angle: parsed?.angle || null };

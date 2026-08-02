@@ -55,7 +55,18 @@ const WEEKLY_CHAIN = [
   { name: 'filter_icp',         mode: 'always_live' },
   { name: 'resolve_companies',  mode: 'flagged' },
   { name: 'find_contacts',      mode: 'always_live' },
+  // Backfills companies.linkedin_url via Exa where Blitz's own domain match missed it (found
+  // live 2026-07-31: 7/7 spot-checked real companies had a findable page, none had linkedin_url
+  // set) — placed right before find_contacts_exa so this run's freshly-resolved companies
+  // immediately become that stage's gap-mode candidates, not next week's.
+  { name: 'resolve_linkedin',   mode: 'flagged' },
   { name: 'find_contacts_exa',  mode: 'flagged' },
+  // Blitz's /v2/enrichment/email is dead (BLITZ_API_KEY invalid, confirmed 2026-08-01, 401 on
+  // every endpoint) — LeadsFriday's waterfall_email_finder is now the primary email-finding
+  // path, not a fallback. Async (hours), so this call is really "check last week's pending
+  // orders, submit this week's new candidates" — see the stage's own header for the full
+  // credit-reservation-vs-actual-cost story (2026-08-02).
+  { name: 'find_emails_leadsfriday', mode: 'flagged' },
   { name: 'classify_company',   mode: 'flagged' },
   { name: 'score_signals',      mode: 'always_live' },
   { name: 'validate_contacts',  mode: 'flagged' },

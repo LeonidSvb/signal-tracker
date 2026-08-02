@@ -57,12 +57,17 @@ function parseJsonLoose(text) {
   try { return JSON.parse(cleaned); } catch { return null; }
 }
 
+// 60s not httpRetry's default 20s — that default is tuned for fast REST calls (Supabase,
+// Apify polling); gpt-oss-120b is a reasoning model with variable per-provider latency on
+// OpenRouter and 20s x 3 retries genuinely wasn't enough headroom (2026-07-27/29 incidents).
+const LLM_TIMEOUT_MS = 60_000;
+
 async function callLLM(prompt) {
   const res = await fetchRetry('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENROUTER_KEY}` },
     body: JSON.stringify({ model: MODEL, messages: [{ role: 'user', content: prompt }] }),
-  });
+  }, { timeoutMs: LLM_TIMEOUT_MS });
   const data = await res.json();
   return data.choices?.[0]?.message?.content?.trim() || null;
 }
