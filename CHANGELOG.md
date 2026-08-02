@@ -8,6 +8,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added — AI hook+bridge generation, wired into copyEngine.mjs/route_email.mjs (2026-08-02)
+Implemented the design from the same-day A/B test: `generateHookBridge()` in `pipeline/lib/copyEngine.mjs` — one OpenRouter call (gpt-oss-120b, temperature 0.45, matching Reply Agent's proven FOLLOW_UP_TEMPERATURE split for constrained-creative generation) producing a fact-specific hook line + a general-mechanism bridge line, replacing the old static `{variable}` fill for every signal type's opening (body_1 only — followups untouched this pass). Every guardrail from testing is a real fix for a real failure mode, not speculative: banned corporate clichés (`signals.angle` already showed this failure live), banned invented motives beyond the general mechanism ("to align with the CEO's vision" etc.), capped role/item enumeration to one named example + a count (HIRING_SURGE naming every open role read as invasive), explicit ban on the model echoing the greeting or the offer/CTA sentence itself.
+
+Standardized the offer/CTA closing (`offerCtaLine()`) across every signal type — previously `HIRING_*` folded "someone who does exec search" into its hardcoded bridge while `MA`/`CLEVEL`/`EXPAND`/`INVEST`/`CONTRACT` had it as a separate paragraph; now every type gets the same structure. Keeps the connector-framing principle (Leo = connector, Philippe never named in email 1, `copy_broad.txt`'s own rule) completely untouched — the AI step only ever writes the hook+bridge, never the offer.
+
+Added `NICHE`/`SECTOR` as AI-only template entries (no hand-authored variants — real gap found 2026-08-02: 99 real signals, ~10% of volume, had zero copy coverage before this).
+
+Added `casualCompanyName()` — real company names come from Blitz/Exa as ALL CAPS ("ACP ATLANTIQUE") or with a legal suffix ("Dmk Deutsches Milchkontor Gmbh"); word-length heuristic (<=4-char all-caps words left alone, assumed a real acronym like "DMK"/"ACP") title-cases the rest and strips legal suffixes.
+
+`route_email.mjs` now also detects real `HIRING_SURGE` (2+ simultaneous active HIRING signals at one company, reusing the `signalsByCompany` map already built for contact-picking) and `HIRING_STALE`'s real days-open count, feeding both into the hook generator's `hookContext` — previously `HIRING_SURGE` was structurally unreachable from this stage (a company-level aggregate `eventGrouping.mjs` computed elsewhere and never reused here).
+
+`localizeHookLine`/`localizeMessage` (pre-existing translation calls) got `temperature: 0.2` (same Reply Agent-derived split) and switched from a raw, timeout-less `fetch()` to `fetchRetry` with a 60s timeout — the same no-timeout bug class fixed earlier the same day in `score_signals.mjs` was still live here.
+
+Verified: `copyEngine.test.mjs` 15/15 (2 tests updated to exempt the new AI-only `NICHE`/`SECTOR` entries from the "has hand-authored variants" assertions, rather than weakening it for the other 10 real types); live end-to-end test against a real `HIRING_SURGE` case (ACP Atlantique, 9 real active postings, correctly detected and abstracted to "a handful of other senior openings" rather than listing duplicates); live DE translation test confirmed hook+bridge line-break structure survives `localizeMessage()`.
+
+Known gap, not fixed this pass: `MA`/`EXPAND` followups (day 10/18) still reference unfilled `{target}`/`{location}`/`{project}` and name "Philippe" directly (breaking the connector-only-in-email-1 principle) — same bug class as body_1 had, scoped out of this pass since Leo's review focus was the opening line; flagged for a follow-up pass.
+
 ### Added — "Philippe Live Signals" PlusVibe campaign + real route_email.mjs safety gate (2026-08-02)
 Created the real PlusVibe campaign (`6a6ee95c662589d0bad8389c`, DRAFT, 0 leads) that `route_email.mjs` pushes into — ONE shared campaign for all 3 signal classes (A/B/C) instead of three separate ones (Leo's call), `event_class`/`signal_type` added to each pushed lead's `custom_variables` for in-PlusVibe filtering instead. 4-step sequence (not the older 3-step "Philippe - Signals Prefilled"/"Philippe - Broad" pattern) since `copy_templates.json` writes 3 real followups per signal type, not 2. Reused "Philippe - Signals Prefilled"'s exact 99-account pool + schedule shape (real precedent: 278 leads, 1 positive reply, $300 opportunity).
 

@@ -28,7 +28,7 @@ import { loadChannelActions, indexChannelActions, channelActionKey, upsertChanne
 import { eventClass } from '../lib/eventClass.mjs';
 import { validateBatch } from '../lib/validateEmail.mjs';
 import { needsValidation } from '../lib/emailValidationPolicy.mjs';
-import { fill as fillCopy, langForCountry, marketFocusForCountry } from '../lib/copyEngine.mjs';
+import { fill as fillCopy, langForCountry, marketFocusForCountry, casualCompanyName } from '../lib/copyEngine.mjs';
 import { addLeadsToCampaign } from '../lib/plusvibe.mjs';
 import { classifyEvent } from '../lib/eventGrouping.mjs';
 
@@ -238,18 +238,46 @@ export async function run() {
     // postings at one company) is a company-level aggregate computed elsewhere in
     // eventGrouping.mjs and NOT reproduced here — a surge still correctly lands on
     // HIRING_EXEC/HIRING_MID, just without the surge-specific copy variant.
-    const templateKey = signal.signal_type === 'HIRING'
-      ? classifyEvent({ baseType: 'HIRING', pubDate: signal.pub_date, members: [{ title: signal.title }] }).type
-      : signal.signal_type;
+    // HIRING_SURGE detection (2026-08-02): classifyEvent() alone never returns SURGE —
+    // that's a company-level aggregate (2+ simultaneous open roles), not a single-signal
+    // property, computed separately in eventGrouping.mjs's own rank_leads-only pass and
+    // never reused here before now. Reusing signalsByCompany (already built above for
+    // pickPrimarySignal) to detect it here too, now that the AI hook can actually make
+    // use of a real role count via hookContext instead of needing hardcoded {role_1}/
+    // {role_2} slots.
+    const companyActiveHiring = (signalsByCompany.get(company.id) || []).filter(s => s.signal_type === 'HIRING' && s.status === 'active');
+    let templateKey, hookContext = '';
+    if (signal.signal_type === 'HIRING') {
+      if (companyActiveHiring.length >= 2) {
+        templateKey = 'HIRING_SURGE';
+        hookContext = `there are ${companyActiveHiring.length} distinct senior roles open at this company right now`;
+      } else {
+        templateKey = classifyEvent({ baseType: 'HIRING', pubDate: signal.pub_date, members: [{ title: signal.title }] }).type;
+        if (templateKey === 'HIRING_STALE' && signal.pub_date) {
+          const daysOpen = Math.floor((Date.now() - new Date(signal.pub_date).getTime()) / 86_400_000);
+          hookContext = `this exact posting has been open for about ${daysOpen} days`;
+        }
+      }
+    } else {
+      templateKey = signal.signal_type;
+    }
+
+    const casualName = casualCompanyName(company.name);
+    // event_summary (multi-source-confirmed events, rank_leads.mjs's summarizeEvent())
+    // is richer/more reliable than a single raw headline when it exists — falls back to
+    // the raw title otherwise. Same real fact either way, just better-condensed when available.
+    const fact = signal.event_summary || signal.title || '';
+
     let copy;
     try {
       copy = await fillCopy({
         templateKey, rank: company.rank, lang,
         vars: {
           first_name: contact.first_name || contact.full_name || '',
-          company: company.name, market_focus: marketFocus,
+          company: casualName, market_focus: marketFocus,
           exact_job_title: signal.title || '', job_title: signal.title || '',
         },
+        fact, hookContext,
       });
     } catch (e) {
       manifestRows.push({ ...row, action: 'copy_failed', error: e.message });

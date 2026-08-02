@@ -127,8 +127,16 @@ test('localizeMessage: unsupported language (no translations.jsonl frame) falls 
 // the file and its consumers gets caught.
 const TEMPLATES = JSON.parse(readFileSync(TEMPLATES_PATH, 'utf8'));
 
-test('copy_templates.json: every template key has a usable LinkedIn shape', () => {
+// NICHE/SECTOR added 2026-08-02 with NO hand-authored copy at all (found live: 99 real
+// signals, ~10% of volume, had zero coverage before this) — body_1 is entirely
+// AI-generated via copyEngine.mjs's generateHookBridge(), no static variants/LinkedIn
+// copy to fall back to. Real, deliberate gap, not an oversight — excluded from the two
+// tests below on purpose rather than weakening the assertion for the other 10 types.
+const AI_ONLY_TEMPLATES = new Set(['NICHE', 'SECTOR']);
+
+test('copy_templates.json: every hand-authored template key has a usable LinkedIn shape', () => {
   for (const [key, t] of Object.entries(TEMPLATES.templates)) {
+    if (AI_ONLY_TEMPLATES.has(key)) continue;
     const flat = t.li_connection_note !== undefined;
     const variant1 = t.li_variant_1_appointee;
     assert.ok(flat || variant1, `${key} has neither a flat li_connection_note nor li_variant_1_appointee`);
@@ -142,8 +150,9 @@ test('copy_templates.json: every template key has a usable LinkedIn shape', () =
   }
 });
 
-test('copy_templates.json: every template key has at least one lettered email variant', () => {
+test('copy_templates.json: every hand-authored template key has at least one lettered email variant', () => {
   for (const [key, t] of Object.entries(TEMPLATES.templates)) {
+    if (AI_ONLY_TEMPLATES.has(key)) continue;
     const letters = Object.keys(t.variants || {});
     assert.ok(letters.length >= 1, `${key} has no email variants`);
   }

@@ -14,6 +14,7 @@ import { readFileSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { createHash } from 'crypto';
+import { fetchRetry } from './httpRetry.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dir, '../../../../..');
@@ -46,6 +47,19 @@ const OPENROUTER_KEY = process.env.OPENROUTER_KEY;
 // negligible ($3/$15 per 1M tokens vs gpt-oss's $0.15/$0.60 — a few cents/week
 // either way), so Leo's call: optimize for quality, not cost, here.
 const MODEL = 'anthropic/claude-sonnet-4.5';
+// Hook/bridge generation is on gpt-oss-120b (same model as the rest of this pipeline's
+// classification/scoring LLM calls, already proven adequate for this in a live 27-case
+// A/B test 2026-08-02) — the sonnet-4.5 swap above was specifically about translation
+// quality, not English generation quality.
+const HOOK_MODEL = 'openai/gpt-oss-120b';
+// Temperatures per Reply Agent's proven split (server/modules/reply-agent/followup/
+// generation.ts, 2026-08-02 context) — LOCALIZE_TEMPERATURE=0.2 for faithful translation
+// (low variance, don't improvise), FOLLOW_UP_TEMPERATURE=0.45 for constrained creative
+// generation (some room to phrase naturally, but not wandering). Neither localize
+// function here had an explicit temperature before — defaulted to whatever OpenRouter's
+// per-model default is, unset.
+const LOCALIZE_TEMPERATURE = 0.2;
+const HOOK_TEMPERATURE = 0.45;
 
 // Country -> market_focus EN string. Matches translations.jsonl's market_names keys
 // (France/Germany/the Netherlands/Belgium/Europe) — no separate "market_focus per
@@ -59,6 +73,31 @@ const COUNTRY_TO_MARKET_EN = {
 
 export function marketFocusForCountry(countryCode) {
   return COUNTRY_TO_MARKET_EN[countryCode] || 'Europe';
+}
+
+// Casual display name for a company in email body text — real names come straight from
+// Blitz/Exa as either ALL CAPS ("ACP ATLANTIQUE") or with a legal suffix ("Dmk Deutsches
+// Milchkontor Gmbh"), found live 2026-08-02 while reviewing real mockups. Word-length
+// heuristic on the caps-fix: words <=4 chars are left as-is (likely a real acronym like
+// "DMK"/"ACP"), longer all-caps words get title-cased (likely just shouty formatting,
+// not an intentional acronym) — imperfect but safer than guessing which specific letters
+// are an acronym. Legal-suffix stripping is a fixed word list, not heuristic.
+const LEGAL_SUFFIX_RE = /[,]?\s*\b(gmbh(?:\s*&?\s*co\.?\s*kg)?|ag|s\.?a\.?(?:r\.?l\.?)?|nv|bv|srl|ltd\.?|inc\.?(?:orporated)?|corp\.?(?:oration)?|llc|sas|snc|ohg|se|plc|cie|holding)\.?\s*$/i;
+
+function smartCaseWord(w) {
+  const letters = w.replace(/[^A-Za-z]/g, '');
+  if (letters.length > 0 && letters.length <= 4 && w === w.toUpperCase()) return w;
+  return w.replace(/\p{L}+/gu, seg => seg.charAt(0).toUpperCase() + seg.slice(1).toLowerCase());
+}
+
+export function casualCompanyName(name) {
+  if (!name) return name;
+  let out = name.trim();
+  if (out === out.toUpperCase() && /[A-Za-z]/.test(out)) {
+    out = out.split(' ').map(smartCaseWord).join(' ');
+  }
+  out = out.replace(LEGAL_SUFFIX_RE, '').trim();
+  return out || name; // never return an empty string
 }
 
 // A6: DE/AT/CH -> de, FR/LU -> fr, NL/BE -> nl, else en.
@@ -127,15 +166,16 @@ Line: "${hookLineEn}"
 Respond with ONLY the localized line, no quotes, no explanation.`;
 
   try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const res = await fetchRetry('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENROUTER_KEY}` },
-      body: JSON.stringify({ model: MODEL, messages: [{ role: 'user', content: prompt }] }),
-    });
+      body: JSON.stringify({ model: MODEL, temperature: LOCALIZE_TEMPERATURE, messages: [{ role: 'user', content: prompt }] }),
+    }, { timeoutMs: 60_000 });
     const data = await res.json();
     const translated = data.choices?.[0]?.message?.content?.trim();
     if (translated) { cache[cacheKey] = translated; return translated; }
-  } catch { /* fall through to EN */ }
+  } catch { /* fall through to EN — a raw fetch() with no timeout here used to be able
+    to hang the caller forever (same bug class fixed 2026-08-02 in score_signals.mjs) */ }
   return hookLineEn;
 }
 
@@ -181,16 +221,97 @@ ${textEn}
 Respond with ONLY the localized message, no quotes, no explanation, no extra commentary before or after.`;
 
   try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const res = await fetchRetry('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENROUTER_KEY}` },
-      body: JSON.stringify({ model: MODEL, messages: [{ role: 'user', content: prompt }] }),
-    });
+      body: JSON.stringify({ model: MODEL, temperature: LOCALIZE_TEMPERATURE, messages: [{ role: 'user', content: prompt }] }),
+    }, { timeoutMs: 60_000 });
     const data = await res.json();
     const translated = data.choices?.[0]?.message?.content?.trim();
     if (translated) { cache[cacheKey] = translated; return translated; }
   } catch { /* fall through to EN */ }
   return textEn;
+}
+
+// ── AI hook+bridge generation (2026-08-02) ──────────────────────────────────────
+// Replaces the old static {variable}-filled opening line. Built after a real 27-case
+// A/B test (Leo, 2026-08-02) found the static approach was flat-out BROKEN for
+// MA/EXPAND/INVEST/CONTRACT — those templates reference {acquirer}/{target}/{location}/
+// {project} vars route_email.mjs never filled, so real sends would have contained
+// literal unfilled "{...}" text. Also covers NICHE/SECTOR (no template existed at all)
+// and HIRING_* uniformly (Leo's call: one code path for every signal type, not a
+// hardcode/AI split by type).
+//
+// Every rule below is a direct fix for a real failure mode hit during testing, not
+// speculative hardening:
+//   - banned corporate clichés — signals.angle (this project's older LLM-generated
+//     field) reads exactly like this ("clearly prioritizing", "ideal time to connect
+//     top talent") and Leo already flagged that same failure mode on the July LinkedIn
+//     copy rewrite (ADR-005).
+//   - no invented motive/reason beyond the general mechanism — model kept inventing
+//     unstated specifics ("to align with the incoming CEO's vision", "to meet growing
+//     production demands") that read as presumptuous guesses, not facts, if wrong.
+//   - hook must not enumerate every item for HIRING_SURGE-shaped facts (multiple roles/
+//     events) — naming all of them read like the company's careers page had been
+//     catalogued, which felt invasive; caps at one named example + a general count.
+//   - explicit ban on echoing "hey {first_name}" or "I know someone/exec search" inside
+//     the generated text — that's the FIXED skeleton wrapped around this by the caller,
+//     the model kept trying to write it itself.
+const HOOK_BANNED_PHRASES = [
+  'clearly prioritizing', 'ideal time', 'perfect time', "let's discuss", 'leverage',
+  'seasoned', 'boasts', 'exciting', "here's how", 'game-chang', 'unlock', 'synerg', 'thrilled',
+];
+
+// context: free-text hint the CALLER builds from real per-type data it already has —
+// e.g. "this exact role has been open 65 days" (HIRING_STALE), "4 other senior roles are
+// also open right now" (HIRING_SURGE). Optional; omit for the common single-fact case.
+export async function generateHookBridge({ company, fact, context = '', cacheKey, cache = {} }) {
+  const key = cacheKey || `hookbridge::${company}::${fact}::${context}`;
+  if (cache[key]) return cache[key];
+  if (!OPENROUTER_KEY || !fact) return null; // caller falls back to a safe generic line
+
+  const prompt = `You write TWO connected lines for a cold outreach email opener, in a casual "hey {first_name}, saw/noticed ..." voice. NOT corporate, NOT congratulatory, NOT a compliment — just a plain factual observation a person would actually notice and mention.
+
+Company: ${company}
+Real fact: "${fact}"${context ? `\nAdditional real context: ${context}` : ''}
+
+Line 1 (hook): starts lowercase "saw..." or "noticed...", states the SPECIFIC real fact (numbers, names, locations, role titles). If the fact involves MULTIPLE items (several job openings, several outlets, etc.), name AT MOST ONE as a concrete anchor plus a general count ("...alongside a handful of others") — do NOT list every single one, that reads as if you catalogued their page. 12-22 words.
+Line 2 (bridge): ONE sentence connecting that fact to a GENERAL, near-universally-true reason this TYPE of situation creates hiring need. Use ONLY the general mechanism (growth/investment -> needs more leaders to run it; M&A/ownership change -> integration needs leadership; new CEO/leadership appointment -> reshuffle below, NEVER "to align with their vision/agenda" — you don't know what they want; long-open search -> current approach may not be working). Do NOT invent a specific role, department, motive, or reason beyond that general mechanism. 10-18 words.
+
+Rules:
+- BANNED words/phrases: ${HOOK_BANNED_PHRASES.join(', ')}, "congrat*", any compliment/celebration framing.
+- Line 2 must NEVER mention "exec search", "someone I know", "I know someone", recruiting, placing, hiring services, or Philippe — that sentence is added separately AFTER yours by a different part of the system.
+- No exclamation marks, no emoji, no em-dashes (—) — use a plain hyphen (-) or a period if you need a break.
+- Do NOT include "hey {first_name}" or any greeting — start directly with the hook.
+- Output ONLY: line 1, then line 2, separated by a newline. Nothing else.`;
+
+  try {
+    const res = await fetchRetry('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENROUTER_KEY}` },
+      body: JSON.stringify({ model: HOOK_MODEL, temperature: HOOK_TEMPERATURE, messages: [{ role: 'user', content: prompt }] }),
+    }, { timeoutMs: 60_000 });
+    const data = await res.json();
+    const raw = data.choices?.[0]?.message?.content?.trim();
+    if (!raw) return null;
+    const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length < 2) return null; // malformed — caller falls back rather than send a 1-line fragment
+    const result = { hook: lines[0], bridge: lines[1] };
+    cache[key] = result;
+    return result;
+  } catch {
+    return null; // caller falls back to a safe generic line rather than fail the whole email
+  }
+}
+
+// Fixed offer+CTA closing, standardized across every signal type 2026-08-02 (Leo's
+// call) — previously HIRING_* templates folded the "someone I know does exec search"
+// offer INTO their hardcoded bridge sentence, while MA/CLEVEL/EXPAND/INVEST/CONTRACT
+// had it as a separate paragraph. Now every type gets the same structure: AI hook+bridge,
+// then this fixed connector-framing close. Keeps the "Leo = connector, Philippe not named
+// in email 1" principle (copy_broad.txt's own framing rule) — untouched by the AI step.
+export function offerCtaLine(marketFocus) {
+  return `I know someone who specifically does exec search for food companies in ${marketFocus} - places senior roles in 2-3 weeks.\n\nworth an intro?`;
 }
 
 // Splits a body into [hookLine, ...rest] — the hook line is always the first
@@ -238,12 +359,40 @@ function resolveLinkedinCopy(t, liVariant) {
   return { li_connection_note: block.li_connection_note, li_first_message: block.li_first_message };
 }
 
-export async function fill({ templateKey, variant = null, rank = null, lang = 'en', vars = {}, hookCache = {}, liVariant = null }) {
+// fact/hookContext (2026-08-02): when fact is provided, body_1's opening gets the AI
+// hook+bridge treatment (generateHookBridge) instead of the old hardcoded/{variable}
+// opening — see that function's header for the full "why" (fixes the unfilled-{variable}
+// bug in MA/EXPAND/INVEST/CONTRACT, covers NICHE/SECTOR which had no template at all,
+// applied uniformly to every type per Leo's call). Falls back to the legacy static
+// template body if fact is omitted, generation fails, or there's no OPENROUTER_KEY —
+// never blocks on this, a slightly-generic email beats none at all.
+async function buildDay0Body({ t, chosenVariant, lang, filledVars, hookCache, company, fact, hookContext }) {
+  if (fact) {
+    const cacheKey = `hookbridge::${filledVars.market_focus}::${company}::${fact}::${hookContext}`;
+    const generated = await generateHookBridge({ company, fact, context: hookContext, cacheKey, cache: hookCache });
+    if (generated) {
+      // Hook and bridge stay on separate lines (matches every hand-written template's
+      // own line-break style, and the real mockups Leo reviewed/approved 2026-08-02) —
+      // NOT joined into one run-on line.
+      const englishLine = `${generated.hook} -\n${generated.bridge}`;
+      // localizeMessage(), not localizeHookLine() — the latter is prompt-shaped for
+      // exactly ONE line, this is two (hook + bridge) and needs the line-break structure
+      // preserved, which is localizeMessage()'s own explicit guarantee.
+      const localizedLine = lang === 'en' ? englishLine : await localizeMessage(englishLine, lang, hookCache);
+      const offer = fillPlaceholders(offerCtaLine('{market_focus}'), filledVars);
+      return fillPlaceholders(`hey {first_name},\n\n${localizedLine}\n\n${offer}`, filledVars);
+    }
+    // generation failed (no key, malformed output, network) — fall through to legacy static body
+  }
+  return localizeBody(variantBody(chosenVariant), lang, filledVars, hookCache);
+}
+
+export async function fill({ templateKey, variant = null, rank = null, lang = 'en', vars = {}, hookCache = {}, liVariant = null, fact = null, hookContext = '' }) {
   const t = getTemplate(templateKey);
   const availableLetters = Object.keys(t.variants || {});
   const chosenLetter = variant || variantForRank(rank ?? 5, availableLetters);
   const chosenVariant = t.variants[chosenLetter];
-  if (!chosenVariant) throw new Error(`[copyEngine] template ${templateKey} has no variant ${chosenLetter}`);
+  if (!chosenVariant && !fact) throw new Error(`[copyEngine] template ${templateKey} has no variant ${chosenLetter}`);
 
   // {relevant_case} (2026-07-17, Leo) — a credibility line ideally picked by
   // Philippe/Leo per prospect (a real comparable placement, a story specific to
@@ -261,7 +410,7 @@ export async function fill({ templateKey, variant = null, rank = null, lang = 'e
     ...vars,
   };
 
-  const day0Body = await localizeBody(variantBody(chosenVariant), lang, filledVars, hookCache);
+  const day0Body = await buildDay0Body({ t, chosenVariant, lang, filledVars, hookCache, company: vars.company, fact, hookContext });
 
   const followupBodies = [];
   const missingFollowups = [];

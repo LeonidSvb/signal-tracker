@@ -370,6 +370,30 @@
       "linkedin_message_legacy": null,
       "li_connection_note": "{first_name}, saw {company}'s new contract win. I place food ops\nleadership, {market_focus} — glad to connect.",
       "li_first_message": "Thanks for connecting, {first_name}.\n\nDid the {company} win change the hiring picture on the ops side, or\nbusiness as usual for now?\n\n{relevant_case}\n\nIf it did, happy to be useful — even just a quick sanity-check call."
+    },
+    "NICHE": {
+      "source_section": null,
+      "window_days": null,
+      "required_variables": [
+        "first_name",
+        "company",
+        "market_focus"
+      ],
+      "variants": {},
+      "followups": [],
+      "note": "Added 2026-08-02 - no hand-authored template existed for this type (found live: 99 real signals, ~10% of volume, had zero copy coverage). body_1 is entirely AI hook+bridge generated (copyEngine.mjs generateHookBridge) - no static variants to fall back to, so route_email.mjs must always pass a real fact for this type."
+    },
+    "SECTOR": {
+      "source_section": null,
+      "window_days": null,
+      "required_variables": [
+        "first_name",
+        "company",
+        "market_focus"
+      ],
+      "variants": {},
+      "followups": [],
+      "note": "Added 2026-08-02 - no hand-authored template existed for this type (found live: 99 real signals, ~10% of volume, had zero copy coverage). body_1 is entirely AI hook+bridge generated (copyEngine.mjs generateHookBridge) - no static variants to fall back to, so route_email.mjs must always pass a real fact for this type."
     }
   }
 }
