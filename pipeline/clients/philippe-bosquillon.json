@@ -80,8 +80,13 @@
 
   "sequencer": {
     "provider": "plusvibe",
-    "workspace_id": null,
+    "workspace_id": "694edf36d6154e27d16346c4",
     "auto_push": false,
-    "campaign_map": {}
+    "campaign_map": {
+      "A": "6a6ee95c662589d0bad8389c",
+      "B": "6a6ee95c662589d0bad8389c",
+      "C": "6a6ee95c662589d0bad8389c"
+    },
+    "_campaign_note": "One shared campaign 'Philippe Live Signals' for all 3 classes (Leo's call 2026-08-02) — event_class/signal_type go into the pushed lead's own custom_variables (route_email.mjs) for in-PlusVibe filtering instead of 3 separate campaigns. Campaign is DRAFT/paused, 0 leads — auto_push stays false until Leo reviews pipeline/config/copy_templates.json."
   }
 }

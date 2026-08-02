@@ -30,6 +30,7 @@ import { validateBatch } from '../lib/validateEmail.mjs';
 import { needsValidation } from '../lib/emailValidationPolicy.mjs';
 import { fill as fillCopy, langForCountry, marketFocusForCountry } from '../lib/copyEngine.mjs';
 import { addLeadsToCampaign } from '../lib/plusvibe.mjs';
+import { classifyEvent } from '../lib/eventGrouping.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const CLIENT_SLUG = process.env.NEXT_PUBLIC_CLIENT_SLUG || 'philippe-bosquillon';
@@ -88,6 +89,16 @@ export async function run() {
   const clientId = await getClientId(CLIENT_SLUG);
   const clientConfig = loadClientConfig();
   const campaignMap = clientConfig.sequencer?.campaign_map || {};
+
+  // sequencer.auto_push used to be pure config-as-documentation — never actually checked
+  // anywhere. Found live 2026-08-02: campaign_map got populated (real campaign created,
+  // still DRAFT/0 leads) WHILE copy_templates.json was still pending Leo's review — without
+  // this gate, the very next --live run (weekly cron, or its daily retry) would have
+  // started pushing real un-reviewed copy the moment campaign_map stopped being empty.
+  if (LIVE && clientConfig.sequencer?.auto_push !== true) {
+    console.log(`\n*** sequencer.auto_push is not true in pipeline/clients/${CLIENT_SLUG}.json — refusing to push live. Set it to true once the copy/campaign are approved. ***`);
+    return { candidates: 0, pushed: 0, blockedByAutoPush: true };
+  }
 
   const runId = LIVE ? await startRun({ clientId, script: 'route_email', source: 'plusvibe_autopilot' }) : null;
 
@@ -215,7 +226,21 @@ export async function run() {
       continue;
     }
 
-    const templateKey = signal.signal_type; // rank_leads.mjs's signal_type values map 1:1 to copy_templates.json keys
+    // BUG FOUND LIVE 2026-08-02: signals.signal_type is only ever the coarse DB value
+    // ('HIRING', never 'HIRING_EXEC'/'HIRING_MID'/'HIRING_STALE') — the granular split
+    // is computed by rank_leads.mjs's eventGrouping.mjs purely in-memory for tier/rank
+    // scoring and never written back. Using signal.signal_type directly as templateKey
+    // meant every HIRING signal (536/1000 = 54% of all real signal volume) failed
+    // copyEngine.mjs's getTemplate() with "unknown template key: HIRING", silently
+    // logged as copy_failed. Reuses classifyEvent() — the exact same logic rank_leads.mjs
+    // already uses — on a synthetic single-member event instead of duplicating the
+    // EXEC/MID/STALE title-band + age logic here. HIRING_SURGE (2+ simultaneous open
+    // postings at one company) is a company-level aggregate computed elsewhere in
+    // eventGrouping.mjs and NOT reproduced here — a surge still correctly lands on
+    // HIRING_EXEC/HIRING_MID, just without the surge-specific copy variant.
+    const templateKey = signal.signal_type === 'HIRING'
+      ? classifyEvent({ baseType: 'HIRING', pubDate: signal.pub_date, members: [{ title: signal.title }] }).type
+      : signal.signal_type;
     let copy;
     try {
       copy = await fillCopy({
@@ -231,7 +256,10 @@ export async function run() {
       continue;
     }
 
-    const pvVars = { subject_line: copy.subject_line, body_1: copy.body_1 };
+    // event_class/signal_type as plain PlusVibe custom fields (2026-08-02, Leo's call) —
+    // one shared campaign for all three classes instead of three separate campaigns,
+    // these make the class/type filterable/reportable inside PlusVibe's own UI.
+    const pvVars = { subject_line: copy.subject_line, body_1: copy.body_1, event_class: cls, signal_type: signal.signal_type };
     copy.followups.forEach((f, i) => { pvVars[`body_${i + 2}`] = f.body; });
 
     const pushResult = await addLeadsToCampaign(campaignId, [{

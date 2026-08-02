@@ -48,9 +48,10 @@ const limitArg = args.find(a => a.startsWith('--limit='));
 const LIMIT = limitArg ? parseInt(limitArg.split('=')[1], 10) : Infinity;
 // Orders complete in HOURS, not the 7 days between weekly runs — a delivered order used to
 // sit unpatched until next Monday. --check-only skips Phase 2 (submit) entirely so this can
-// run in the free daily cron too (2026-08-02), catching a delivered order same-day/next-day
-// instead of up to a week late. Submission stays weekly-only — no reason to hit LeadsFriday's
-// submit endpoint more than once a week.
+// run on its own tight cadence (2026-08-02: a dedicated crontab entry every 3h, plus it's
+// also folded into DAILY_CHAIN as a belt-and-suspenders daily catch) without ever hitting
+// LeadsFriday's submit endpoint more than once a week. Checking costs nothing (a GET, no
+// credits) — safe to poll often; submitting is the part rationed to weekly.
 const CHECK_ONLY = args.includes('--check-only');
 
 const PYTHON_BIN = process.platform === 'win32' ? 'python' : 'python3';

@@ -8,6 +8,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added — "Philippe Live Signals" PlusVibe campaign + real route_email.mjs safety gate (2026-08-02)
+Created the real PlusVibe campaign (`6a6ee95c662589d0bad8389c`, DRAFT, 0 leads) that `route_email.mjs` pushes into — ONE shared campaign for all 3 signal classes (A/B/C) instead of three separate ones (Leo's call), `event_class`/`signal_type` added to each pushed lead's `custom_variables` for in-PlusVibe filtering instead. 4-step sequence (not the older 3-step "Philippe - Signals Prefilled"/"Philippe - Broad" pattern) since `copy_templates.json` writes 3 real followups per signal type, not 2. Reused "Philippe - Signals Prefilled"'s exact 99-account pool + schedule shape (real precedent: 278 leads, 1 positive reply, $300 opportunity).
+
+Found live: `sequencer.auto_push` in `pipeline/clients/philippe-bosquillon.json` was pure config-as-documentation — never actually checked anywhere in code. The moment `campaign_map` stopped being empty, the very next `route_email.mjs --live` (weekly cron, or its daily retry) would have started pushing real un-reviewed copy. Added a real gate: `route_email.mjs` now refuses to push live unless `auto_push === true`, verified live (prints a clear refusal message, does nothing).
+
+Stripped the literal "Leo"/"Philippe" signature line from all 34 email variants + 6 followups in `copy_templates.json` (40/40, tests still pass) — PlusVibe already has its own sender-identity variable, Leo sets it manually for control instead of it being baked into the copy text.
+
+### Fixed — route_email.mjs used the wrong template key for every HIRING signal (2026-08-02)
+`copy_templates.json` only has granular `HIRING_EXEC`/`HIRING_MID`/`HIRING_STALE`/`HIRING_SURGE` keys — `signals.signal_type` in the DB is only ever the coarse `'HIRING'` (the granular split is computed by `rank_leads.mjs`'s `eventGrouping.mjs` purely in-memory for tier/rank scoring, never written back). `route_email.mjs` used `signal.signal_type` directly as the template key, so `copyEngine.mjs`'s `getTemplate()` threw `unknown template key: HIRING` for every single HIRING signal — 536/1000 (54%) of all real signal volume, silently logged as `copy_failed`. Fixed by reusing `eventGrouping.mjs`'s own `classifyEvent()` (not duplicating its title-band/age logic) on a synthetic single-member event. Verified live against all 558 real HIRING signals in the DB: 0 classify errors (HIRING_EXEC 206 / HIRING_MID 213 / HIRING_STALE 139).
+
+Also found (not yet fixed, next up): `MA`/`EXPAND`/`INVEST`/`CONTRACT` templates reference variables (`{acquirer}`, `{target}`, `{location}`, `{€Xm}`, `{project}`) that `route_email.mjs` never fills — a live test showed these would currently send literal unfilled `{...}` placeholder text. Real motivation for the AI-hook work below.
+
+### Discussed/tested (not yet wired in) — AI-generated hook+bridge line, replacing static `{variable}` fill
+Real A/B test (27+ live OpenRouter calls across all 9 real signal types, gpt-oss-120b) comparing the current hardcoded `{variable}` substitution against a single LLM call generating the fact-specific "hook" line + a "bridge" sentence connecting it to a hiring-need rationale. Findings:
+- Confirms the `MA`/`EXPAND`/`INVEST`/`CONTRACT` unfilled-placeholder bug above — those templates simply produced broken output in the "current" column of the test.
+- `NICHE`/`SECTOR` (99 real signals, ~10% of volume) have no template at all today — AI hook covers them with a new generic skeleton instead of writing 2 more hand-authored template sets.
+- Iterated the prompt through several real failure modes: (1) model echoed "hey {first_name}" inside the generated text — banned explicitly; (2) model invented unstated specific motives ("to align with the incoming CEO's vision", "to meet growing production demands") — banned, bridge restricted to the general near-universal mechanism only, never a guessed specific reason; (3) `HIRING_SURGE` naming every open role verbatim read as if someone had catalogued the company's careers page — capped to naming at most one role + "a handful of other senior openings".
+- Translation stays where it already was: hook/bridge generated in English first, then the existing `localizeHookLine()` translates just that line (cached), not the whole body.
+- Leo's calls: apply this uniformly to ALL signal types (including `HIRING_EXEC`/`HIRING_MID`, not just the news-sourced ones) rather than branching hardcode-vs-AI per type: one code path, "stupid simple". Keep the connector-framing skeleton (`"I know someone who specifically does exec search..."`, Philippe never named in email 1) completely fixed — only the hook+bridge line is AI-generated. Also queued: a casual-display company-name normalizer (real names are ALL CAPS / carry legal suffixes like "Gmbh"/"Incorporated" straight from the DB).
+- Not yet implemented in `copyEngine.mjs`/`route_email.mjs` — next session's work.
+
 ### Added — self-healing weekly cron + daily LeadsFriday check (2026-08-02)
 The weekly cron fires ONCE, Monday 08:00 UTC, no retry anywhere — a hard failure meant a full
 7-day stall with nobody aware until someone checked manually (exactly what happened
