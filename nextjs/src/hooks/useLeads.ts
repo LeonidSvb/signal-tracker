@@ -29,19 +29,31 @@ export function useCompanyList(clientSlug: string) {
       if (!client || cancelled) return;
       setClientId(client.id);
 
+      // companies FIRST, then filter the other 4 tables to just those company_ids (2026-08-03,
+      // found live: this page took 20-30s to load — measured each of the 5 parallel queries
+      // directly against the self-hosted Supabase, contacts alone was 189KB in 12.4s, ~15KB/s,
+      // because the server sends REST responses uncompressed (no gzip/br despite the browser
+      // requesting it — a Traefik/PostgREST config gap, separate infra fix, not done here).
+      // Every row below only ever gets used for a company that HAS a tier (the .filter() a few
+      // lines down already drops everything else) — companies without a tier are the vast
+      // majority (762/954 live) and were being fetched into signals/contacts/etc. for nothing.
+      // Filtering by company_id up front cuts those payloads ~5x without touching server config.
+      const { data: companyRows } = await sm.from("companies")
+        .select("id,name,tier,employees,hq_country").eq("client_id", client.id).not("tier", "is", null);
+      if (cancelled) return;
+      const tieredIds = (companyRows ?? []).map((c: any) => c.id);
+
       const [
-        { data: companyRows },
         { data: signalRows },
         { data: contactRows },
         { data: contactStateRows },
         { data: appStateRows },
-      ] = await Promise.all([
-        sm.from("companies").select("id,name,tier,employees,hq_country").eq("client_id", client.id).not("tier", "is", null),
-        sm.from("signals").select("company_id,source,status").eq("client_id", client.id),
-        sm.from("contacts").select("id,company_id,email,linkedin_url").eq("client_id", client.id),
-        sm.from("contact_state").select("company_id,contact_id,status").eq("client_id", client.id),
-        sm.from("app_state").select("company_id,status").eq("client_id", client.id),
-      ]);
+      ] = tieredIds.length ? await Promise.all([
+        sm.from("signals").select("company_id,source,status").eq("client_id", client.id).in("company_id", tieredIds),
+        sm.from("contacts").select("id,company_id,email,linkedin_url").eq("client_id", client.id).in("company_id", tieredIds),
+        sm.from("contact_state").select("company_id,contact_id,status").eq("client_id", client.id).in("company_id", tieredIds),
+        sm.from("app_state").select("company_id,status").eq("client_id", client.id).in("company_id", tieredIds),
+      ]) : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
       if (cancelled) return;
 
       const signalsByCompany = groupBy(signalRows ?? [], (s) => s.company_id);

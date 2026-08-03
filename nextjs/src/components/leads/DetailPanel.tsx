@@ -37,7 +37,18 @@ export default function DetailPanel({ detail, clientId, notes, addNote, setConta
 
   const allNoEmail = contacts.every((c) => !c.email);
   const hasContactStates = contacts.some((c) => contactStatuses[c.id]);
-  const bestSignalType = events[0]?.baseType || "HIRING_MID";
+  const bestEvent = events[0] ?? null;
+  const bestSignalType = bestEvent?.baseType || "HIRING_MID";
+  // signals.signal_type in the DB is only ever the coarse 'HIRING' — copy_templates.json
+  // keys on the granular EXEC/MID/STALE/SURGE split instead. Found live 2026-08-03: this
+  // panel was passing the coarse type straight to /api/copy, which 404'd on every single
+  // HIRING lead (>half of all real signal volume) and rendered an empty "READY TO SEND"
+  // box with no error shown — same routing bug already fixed in route_email.mjs and
+  // build_linkedin_queue.mjs, just never ported to this third, independent copy of the
+  // logic. pubDate/activeHiringCount let /api/copy do its own EXEC/MID/STALE/SURGE split
+  // (mirrors classifyEvent() in pipeline/lib/eventGrouping.mjs — can't import the .mjs
+  // pipeline module here, see that route's own build-bundling note).
+  const activeHiringCount = events.filter((e) => e.baseType === "HIRING" && e.status === "active").length;
   const tierReasonAgeNote =
     "The day count is age of the EVENT (its publish date), not how long ago we found it — a freshly-discovered but old story still counts as stale.";
 
@@ -116,6 +127,9 @@ export default function DetailPanel({ detail, clientId, notes, addNote, setConta
                 clientId={clientId}
                 contact={c}
                 signalType={bestSignalType}
+                pubDate={bestEvent?.pubDate ?? null}
+                jobTitle={bestEvent?.title ?? null}
+                activeHiringCount={activeHiringCount}
                 rank={company.rank}
                 hqCountry={company.hq_country}
                 status={contactStatuses[c.id] ?? (hasContactStates ? "new" : appStateFallback ?? "new")}

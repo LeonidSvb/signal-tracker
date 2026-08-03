@@ -266,6 +266,17 @@ table.tpl tr:last-child td { border-bottom: none; }
 table.tpl td.key { font-family: ui-monospace, monospace; font-weight: 700; font-size: 10.5px; white-space: nowrap; }
 table.tpl td.copy { font-family: ui-monospace, monospace; font-size: 10.5px; color: var(--ink); line-height: 1.5; max-width: 280px; }
 table.tpl td.copy.li { background: #FAFCFF; }
+.tpl-nofallback { font-family: -apple-system, Segoe UI, Arial, sans-serif; font-weight: 500; font-size: 9.5px;
+  color: var(--warn); margin-top: 4px; white-space: normal; max-width: 140px; }
+table.tpl td.tpl-trigger { font-family: -apple-system, Segoe UI, Arial, sans-serif; font-size: 10.5px; color: var(--muted); max-width: 220px; white-space: normal; }
+table.tpl tr.tpl-row-clickable { cursor: pointer; }
+table.tpl tr.tpl-row-clickable:hover td { background: var(--surface-2); }
+table.tpl td.tpl-expand { text-align: center; color: var(--muted); font-size: 11px; width: 20px; }
+table.tpl tr.tpl-row-detail td { background: var(--surface-2); padding: 14px 16px; cursor: default; }
+.tpl-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.tpl-detail-label { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; color: var(--accent-text); margin: 10px 0 4px; }
+.tpl-detail-label:first-child { margin-top: 0; }
+.tpl-detail-text { font-family: ui-monospace, monospace; font-size: 10.5px; color: var(--ink); line-height: 1.5; white-space: pre-wrap; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 8px 10px; margin-bottom: 6px; }
 
 /* ── ICP Filter panel ──────────────────────────────────── */
 .tag-chip { font-size: 10.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); color: var(--ink); display: inline-flex; align-items: center; gap: 5px; }

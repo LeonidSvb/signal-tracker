@@ -54,6 +54,9 @@ interface Props {
   clientId: string;
   contact: Contact;
   signalType: string; // best/primary signal type — drives which copy_templates.json key to fill
+  pubDate: string | null; // needed for the HIRING_EXEC/MID/STALE split, see /api/copy
+  jobTitle: string | null; // needed for the HIRING_EXEC vs MID exec-title-band check
+  activeHiringCount: number; // 2+ active HIRING events at this company -> HIRING_SURGE
   rank: number | null;
   hqCountry: string | null;
   status: ContactStatus;
@@ -64,7 +67,7 @@ interface Props {
 }
 
 export default function ContactRow({
-  companyId, companyName, clientId, contact, signalType, rank, hqCountry, status, isOpen, onToggleOpen, onSetStatus, onOpenTemplatesGuide,
+  companyId, companyName, clientId, contact, signalType, pubDate, jobTitle, activeHiringCount, rank, hqCountry, status, isOpen, onToggleOpen, onSetStatus, onOpenTemplatesGuide,
 }: Props) {
   const [lang, setLang] = useState<"en" | "de" | "fr" | "nl">("en");
   const [copy, setCopy] = useState<{ connect: string | null; qualify: string | null } | null>(null);
@@ -84,7 +87,7 @@ export default function ContactRow({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        signalType, rank,
+        signalType, pubDate, jobTitle, activeHiringCount, rank,
         vars: { first_name: firstName, company: companyName, market_focus: marketFocus },
       }),
     })
