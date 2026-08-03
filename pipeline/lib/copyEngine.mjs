@@ -314,6 +314,72 @@ export function offerCtaLine(marketFocus) {
   return `I know someone who specifically does exec search for food companies in ${marketFocus} - places senior roles in 2-3 weeks.\n\nworth an intro?`;
 }
 
+// ── LinkedIn AI hook+bridge (2026-08-03) ────────────────────────────────────────
+// Reuses generateHookBridge() as-is (same prompt, same fact, same cache key as the
+// email day0Body) — only the WRAPPING skeleton differs, for two real reasons:
+//   1. li_connection_note has LinkedIn's own ~300-char platform cap — a full hook+bridge
+//      pair (email gets both lines) doesn't reliably fit once name/positioning/CTA are
+//      added, so the connection note gets HOOK ONLY. li_first_message (sent after accept,
+//      no cap) gets the full pair, same as email.
+//   2. Voice: email's offerCtaLine() is Leo-as-connector framing ("I know someone who...",
+//      copy_broad.txt's rule that Philippe is never named in email 1). LinkedIn messages
+//      go out from Philippe's OWN account — every hand-written li_* template already
+//      speaks in his first person ("I place food execs..."), so the AI version keeps that
+//      voice rather than reusing the email wrapper verbatim.
+// Found live 2026-08-03: without this, MA/EXPAND/INVEST/CONTRACT li_connection_note/
+// li_first_message sent literal unfilled "{acquirer}"/"{target}"/"{location}" text (188
+// occurrences in that day's real queue) — the exact same unfilled-{variable} bug class the
+// email side already fixed 2026-08-02, just never ported to the LinkedIn path until now.
+function liPositioningLine(marketFocus) {
+  return `I place food operations leadership, ${marketFocus}.`;
+}
+
+// noteMode ('with_note' default | 'no_note') — copy_templates.json's own _meta already
+// flagged this as a planned A/B ("if accept rate with a note drops, send without one")
+// but it was never wired into generation until 2026-08-03, found live: the connection
+// note's hook line and the first message's opening line were IDENTICAL verbatim text —
+// fine if no note was sent (first message is the recipient's first exposure to the fact),
+// but reads as an obvious copy-paste when they've just read that exact sentence seconds
+// earlier in the connect request. 'with_note': first message opens with the BRIDGE only
+// (assumes the note already delivered the fact) and li_connection_note is populated.
+// 'no_note': li_connection_note is null (nothing sent at connect time) and first message
+// keeps the full hook+bridge — their only exposure to the fact.
+async function buildLinkedInCopy({ t, filledVars, hookCache, company, fact, hookContext, lang, liVariant, noteMode = 'with_note' }) {
+  if (fact) {
+    const cacheKey = `hookbridge::${filledVars.market_focus}::${company}::${fact}::${hookContext}`;
+    const generated = await generateHookBridge({ company, fact, context: hookContext, cacheKey, cache: hookCache });
+    if (generated) {
+      // Translate BEFORE filling {first_name}/{market_focus}/{relevant_case} — NOT after,
+      // same order buildDay0Body() already uses for email. Found live 2026-08-03 building
+      // this: filling first, then localizing, occasionally made the model hallucinate
+      // "{first_name}" back into the DE/FR/NL output — localizeMessage()'s own prompt tells
+      // it to preserve "{first_name}" placeholders verbatim (with that literal name as the
+      // example), and it sometimes over-applied that to the ALREADY-substituted real name,
+      // reverting "Anna" back to the placeholder token. Translating while the tokens are
+      // still real {placeholders} (never a bare name) and filling only after removes the
+      // ambiguity entirely.
+      const connectionTemplate = `{first_name}, ${generated.hook} - ${liPositioningLine('{market_focus}')} Connect?`;
+      const firstMsgTemplate = noteMode === 'no_note'
+        ? `{first_name} — appreciate the connect.\n\n${generated.hook} -\n${generated.bridge}\n\n{relevant_case}\n\nWorth a quick chat if useful?`
+        : `{first_name} — appreciate the connect.\n\n${generated.bridge}\n\n{relevant_case}\n\nWorth a quick chat if useful?`;
+      const connectionLocalized = lang === 'en' ? connectionTemplate : await localizeMessage(connectionTemplate, lang, hookCache);
+      const firstMsgLocalized = lang === 'en' ? firstMsgTemplate : await localizeMessage(firstMsgTemplate, lang, hookCache);
+      const connectionOut = fillPlaceholders(connectionLocalized, filledVars);
+      const firstMsgOut = fillPlaceholders(firstMsgLocalized, filledVars);
+      if (connectionOut.length > 300) {
+        console.log(`[copyEngine] WARN li_connection_note over LinkedIn's 300-char cap (${connectionOut.length} chars) for ${company} — review before sending`);
+      }
+      return { li_connection_note: noteMode === 'no_note' ? null : connectionOut, li_first_message: firstMsgOut };
+    }
+    // generation failed (no key, malformed output, network) — fall through to legacy static
+  }
+  const li = resolveLinkedinCopy(t, liVariant);
+  return {
+    li_connection_note: li.li_connection_note ? fillPlaceholders(li.li_connection_note, filledVars) : null,
+    li_first_message: li.li_first_message ? fillPlaceholders(li.li_first_message, filledVars) : null,
+  };
+}
+
 // Splits a body into [hookLine, ...rest] — the hook line is always the first
 // non-empty line per the playbook's own principle ("Первая строка = конкретный
 // факт из сигнала"). Only that first line gets localized; the rest of the body's
@@ -387,12 +453,18 @@ async function buildDay0Body({ t, chosenVariant, lang, filledVars, hookCache, co
   return localizeBody(variantBody(chosenVariant), lang, filledVars, hookCache);
 }
 
-export async function fill({ templateKey, variant = null, rank = null, lang = 'en', vars = {}, hookCache = {}, liVariant = null, fact = null, hookContext = '' }) {
+// skipEmailBody (2026-08-03): build_linkedin_queue.mjs only ever reads the li_* fields —
+// computing body_1/followups for it was pure waste (an extra static fillPlaceholders call
+// plus, once fact-driven generation is live for it too, would've been a second unwanted
+// LLM path). true skips day0Body + followups entirely; li_* generation is unaffected
+// either way (buildLinkedInCopy runs independently, sharing generateHookBridge's cache key
+// with any email-side call for the same company+fact+context in the SAME fill() call).
+export async function fill({ templateKey, variant = null, rank = null, lang = 'en', vars = {}, hookCache = {}, liVariant = null, fact = null, hookContext = '', skipEmailBody = false, noteMode = 'with_note' }) {
   const t = getTemplate(templateKey);
   const availableLetters = Object.keys(t.variants || {});
   const chosenLetter = variant || variantForRank(rank ?? 5, availableLetters);
-  const chosenVariant = t.variants[chosenLetter];
-  if (!chosenVariant && !fact) throw new Error(`[copyEngine] template ${templateKey} has no variant ${chosenLetter}`);
+  const chosenVariant = t.variants?.[chosenLetter];
+  if (!chosenVariant && !fact && !skipEmailBody) throw new Error(`[copyEngine] template ${templateKey} has no variant ${chosenLetter}`);
 
   // {relevant_case} (2026-07-17, Leo) — a credibility line ideally picked by
   // Philippe/Leo per prospect (a real comparable placement, a story specific to
@@ -410,17 +482,19 @@ export async function fill({ templateKey, variant = null, rank = null, lang = 'e
     ...vars,
   };
 
-  const day0Body = await buildDay0Body({ t, chosenVariant, lang, filledVars, hookCache, company: vars.company, fact, hookContext });
+  const day0Body = skipEmailBody ? null : await buildDay0Body({ t, chosenVariant, lang, filledVars, hookCache, company: vars.company, fact, hookContext });
 
   const followupBodies = [];
   const missingFollowups = [];
-  for (const step of t.followups || []) {
-    if (!step.body) { missingFollowups.push({ day: step.day, note: step.note || 'no body in playbook' }); continue; }
-    followupBodies.push({ day: step.day, breakup: !!step.breakup, body: await localizeBody(step.body, lang, filledVars, hookCache) });
+  if (!skipEmailBody) {
+    for (const step of t.followups || []) {
+      if (!step.body) { missingFollowups.push({ day: step.day, note: step.note || 'no body in playbook' }); continue; }
+      followupBodies.push({ day: step.day, breakup: !!step.breakup, body: await localizeBody(step.body, lang, filledVars, hookCache) });
+    }
   }
 
   const subjectLine = TEMPLATES._meta.subject_by_lang[lang] || TEMPLATES._meta.subject_by_lang.en;
-  const li = resolveLinkedinCopy(t, liVariant);
+  const li = await buildLinkedInCopy({ t, filledVars, hookCache, company: vars.company, fact, hookContext, lang, liVariant, noteMode });
 
   return {
     templateKey,
@@ -430,8 +504,8 @@ export async function fill({ templateKey, variant = null, rank = null, lang = 'e
     body_1: day0Body,
     followups: followupBodies,
     missingFollowups,
-    li_connection_note: li.li_connection_note ? fillPlaceholders(li.li_connection_note, filledVars) : null,
-    li_first_message: li.li_first_message ? fillPlaceholders(li.li_first_message, filledVars) : null,
+    li_connection_note: li.li_connection_note,
+    li_first_message: li.li_first_message,
     requiredVariables: t.required_variables || [],
     usedFallbackCase,
   };

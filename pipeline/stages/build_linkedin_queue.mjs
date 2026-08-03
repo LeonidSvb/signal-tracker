@@ -19,7 +19,7 @@
 //           Without --live: read-only preview, reuses whatever's already snapshotted,
 //           shows [NEEDS COPY] for anything that would need a fresh LLM call.
 
-import { writeFileSync, mkdirSync } from 'fs';
+import { writeFileSync, mkdirSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 
@@ -28,9 +28,17 @@ import { getClientId } from '../lib/log.mjs';
 import { loadChannelActions, indexChannelActions, channelActionKey, recordChannelAction } from '../lib/channelActions.mjs';
 import { fill as fillCopy, langForCountry, marketFocusForCountry } from '../lib/copyEngine.mjs';
 import { isStale } from '../lib/staleness.mjs';
+import { classifyEvent } from '../lib/eventGrouping.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const CLIENT_SLUG = process.env.NEXT_PUBLIC_CLIENT_SLUG || 'philippe-bosquillon';
+// linkedin.connection_note_mode (2026-08-03) — see pipeline/clients/philippe-bosquillon.json's
+// own note: with_note/no_note A/B, same pattern as route_email.mjs's campaign_map load.
+const CLIENT_CONFIG_PATH = join(__dir, '../clients/philippe-bosquillon.json');
+const NOTE_MODE = (() => {
+  try { return JSON.parse(readFileSync(CLIENT_CONFIG_PATH, 'utf8')).linkedin?.connection_note_mode || 'with_note'; }
+  catch { return 'with_note'; }
+})();
 const args = process.argv.slice(2);
 const LIVE = args.includes('--live');
 const outArg = args.find(a => a.startsWith('--out='));
@@ -114,9 +122,36 @@ export async function run() {
 
     const lang = langForCountry(row.company.hq_country);
     const marketFocus = marketFocusForCountry(row.company.hq_country);
+    // Same bug route_email.mjs had (fixed 2026-08-02, see its comment): signals.signal_type
+    // is only ever the coarse 'HIRING', never the granular EXEC/MID/STALE/SURGE key
+    // copy_templates.json actually keys on — every HIRING row here was silently landing
+    // on getTemplate()'s "unknown template key: HIRING" error (19/133 rows in the
+    // 2026-08-03 queue). Reuses the exact same classifyEvent() + surge-detection logic,
+    // including the hookContext strings (surge role count / stale days-open) that feed
+    // the AI hook below — same as route_email.mjs's own copy of this logic.
+    const companyActiveHiring = (signalsByCompany.get(row.company.id) || []).filter(s => s.signal_type === 'HIRING' && s.status === 'active');
+    let templateKey = row.signal.signal_type;
+    let hookContext = '';
+    if (row.signal.signal_type === 'HIRING') {
+      if (companyActiveHiring.length >= 2) {
+        templateKey = 'HIRING_SURGE';
+        hookContext = `there are ${companyActiveHiring.length} distinct senior roles open at this company right now`;
+      } else {
+        templateKey = classifyEvent({ baseType: 'HIRING', pubDate: row.signal.pub_date, members: [{ title: row.signal.title }] }).type;
+        if (templateKey === 'HIRING_STALE' && row.signal.pub_date) {
+          const daysOpen = Math.floor((Date.now() - new Date(row.signal.pub_date).getTime()) / 86_400_000);
+          hookContext = `this exact posting has been open for about ${daysOpen} days`;
+        }
+      }
+    }
+    // fact (2026-08-03): drives the AI hook+bridge for li_connection_note/li_first_message
+    // (copyEngine.mjs's buildLinkedInCopy) — same real-fact source as route_email.mjs's
+    // email side. event_summary (multi-source-confirmed events) preferred over the raw
+    // title when rank_leads.mjs has already synthesized one.
+    const fact = row.signal.event_summary || row.signal.title || '';
     try {
       const filled = await fillCopy({
-        templateKey: row.signal.signal_type, rank: row.company.rank, lang,
+        templateKey, rank: row.company.rank, lang, fact, hookContext, skipEmailBody: true, noteMode: NOTE_MODE,
         vars: {
           first_name: row.contact.first_name || row.contact.full_name || '',
           company: row.company.name, market_focus: marketFocus,
@@ -179,7 +214,9 @@ export async function run() {
         ${copy ? `
         <div class="copy-block">
           <div class="copy-label">Connection note</div>
-          <pre class="copy-text">${esc(copy.li_connection_note)}</pre>
+          ${copy.li_connection_note
+            ? `<pre class="copy-text">${esc(copy.li_connection_note)}</pre>`
+            : `<div class="copy-missing">send without a note — client config's linkedin.connection_note_mode is "no_note"</div>`}
           <div class="copy-label">First message (after accept)</div>
           <pre class="copy-text">${esc(copy.li_first_message)}</pre>
         </div>` : `<div class="copy-missing">[${esc(copySource)}] — rerun with --live to generate</div>`}

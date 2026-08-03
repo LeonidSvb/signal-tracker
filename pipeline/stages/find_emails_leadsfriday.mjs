@@ -35,6 +35,7 @@ import { dirname, join } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { selectAll, patch } from '../lib/supabase.mjs';
 import { getClientId, startRun, finishRun } from '../lib/log.mjs';
+import { validateBatch } from '../lib/validateEmail.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dir, '../../../../..');
@@ -58,6 +59,12 @@ const PYTHON_BIN = process.platform === 'win32' ? 'python' : 'python3';
 // Minimum batch size worth retrying at — below this, one row's worth of credit shortfall
 // isn't worth the extra API round-trips, just report and stop.
 const MIN_BATCH = 10;
+// Leo's call, 2026-08-02: a single 500-row order sat "in_progress" for hours with no
+// visibility into partial failure — split submissions into MAX_BATCH-sized chunks instead
+// of one big order. Each chunk gets its own runs/ dir (checked independently on the
+// existing 3h cron), so a problem with one chunk doesn't block/hide the rest, and the
+// per-chunk credit reservation is smaller (less at risk if a batch needs the halving retry).
+const MAX_BATCH = 50;
 
 function runPython(pyArgs) {
   return new Promise((resolve) => {
@@ -88,7 +95,7 @@ export async function run() {
   const clientId = await getClientId(CLIENT_SLUG);
   const runId = LIVE ? await startRun({ clientId, script: 'find_emails_leadsfriday', source: 'leadsfriday' }) : null;
 
-  const stats = { checked: 0, delivered: 0, emailsFound: 0, submitted: 0, batchSizeUsed: 0, insufficientBalance: false, errors: [] };
+  const stats = { checked: 0, delivered: 0, emailsFound: 0, submitted: 0, batchSizeUsed: 0, insufficientBalance: false, freed: 0, errors: [] };
 
   // Fetched once, up front — Phase 1's patch-by-id and Phase 2's candidate selection both
   // need it. No other stage in this codebase patches contacts by linkedin_url (always id) —
@@ -116,17 +123,66 @@ export async function run() {
     stats.checked++;
     const { code, stdout } = await runPython(['--check', '--output-dir', dir]);
     if (code !== 0) { stats.errors.push(`check ${dir} failed`); continue; }
+
+    // Terminal-without-results (found live 2026-08-03: order #83, a 500-row batch, sat
+    // "cancelled" — LeadsFriday's own server hiccup, NOT charged: "We didn't charge any
+    // credits for this. Please submit it again" — 165 already-found emails genuinely lost,
+    // no delivery_file ever gets created for a cancelled order, nothing to download). Without
+    // this, listPendingRunDirs() would keep returning this dir forever (no manifest.json ever
+    // gets written) and every one of its rows stays wrongly marked in-flight — permanently
+    // blocking them from ever being resubmitted. Write a manifest so the triad convention's
+    // own "no manifest = still pending" check retires it, and free its rows for next run.
+    const statusMatch = stdout.match(/status=(\w+)/);
+    if (statusMatch && statusMatch[1] !== 'delivered' && !stdout.includes('Delivered:')) {
+      const status = statusMatch[1];
+      if (status !== 'in_progress' && status !== 'processing' && status !== 'pending') {
+        writeFileSync(join(dir, 'manifest.json'), JSON.stringify({
+          date: new Date().toISOString().slice(0, 19), status, note: 'terminal without delivery — see stdout captured below', stdout: stdout.trim(),
+        }, null, 2));
+        const freed = readJsonl(join(dir, 'input.jsonl')).map(r => r.linkedin_url).filter(Boolean);
+        for (const url of freed) inFlightLinkedinUrls.delete(url);
+        stats.freed += freed.length; // informational, NOT pushed to stats.errors — this is
+        // expected self-healing, not a failure; CHECK_ONLY's status line treats any
+        // stats.errors entry as status=error, which would false-alarm every time an order
+        // legitimately ends without delivery (LeadsFriday-side cancellation, no fault here).
+        console.log(`[find_emails_leadsfriday] ${dir}: ${status}, not delivered — ${freed.length} contacts freed for resubmission`);
+      }
+      continue;
+    }
     if (!stdout.includes('Delivered:')) continue; // still in_progress, nothing to patch yet
 
     const rows = readJsonl(join(dir, 'result.jsonl'));
-    for (const r of rows) {
-      if (r.status !== 'found' || !r.email || !r.linkedin_url) continue;
+
+    // Event-driven validation (2026-08-03, Leo's call): used to write email_status='pending'
+    // and rely on validate_contacts.mjs's WEEKLY sweep to eventually verify it — found live
+    // 2026-08-03 that this left 442 freshly-found emails sitting unvalidated for up to 7 days
+    // after a single 759-contact submission burst. Leo's explicit preference: validate at the
+    // moment a new email actually appears, not on a cron. BounceBan runs ONCE per delivered
+    // order here (not per-email — same batching convention validate_contacts.mjs itself uses)
+    // right before the DB write, so every contact gets its REAL verdict on the first patch,
+    // never a placeholder 'pending' that depends on a separate stage ever running.
+    const foundRows = rows.filter(r => r.status === 'found' && r.email && r.linkedin_url);
+    const emailsToValidate = foundRows.map(r => r.email.toLowerCase().trim());
+    let verdicts = new Map();
+    if (emailsToValidate.length) {
+      try {
+        ({ verdicts } = await validateBatch(emailsToValidate, join(dir, 'validation')));
+      } catch (e) {
+        stats.errors.push(`BounceBan validation failed for ${dir}: ${e.message} — emails patched as 'pending', will need a manual/weekly validate_contacts pass`);
+      }
+    }
+
+    for (const r of foundRows) {
       const contactId = contactIdByLinkedin.get(r.linkedin_url);
       if (!contactId) { stats.errors.push(`no contact match for ${r.linkedin_url}`); continue; }
+      const email = r.email.toLowerCase().trim();
+      const verdict = verdicts.get(email); // undefined if BounceBan call itself failed above
+      const emailStatus = verdict === 'sendable' ? 'verified' : verdict === 'dead' ? 'invalid' : 'pending';
       try {
         await patch('contacts', 'id', [contactId], {
-          email: r.email.toLowerCase().trim(),
-          email_status: 'pending', // needs validate_contacts.mjs's own BounceBan pass before it's 'verified'
+          email,
+          email_status: emailStatus,
+          ...(verdict ? { email_validated_at: new Date().toISOString(), email_validation_detail: { verdict, cascade: 'bounceban', run_id: runId } } : {}),
         });
         stats.emailsFound++;
       } catch (e) {
@@ -139,7 +195,12 @@ export async function run() {
   }
 
   if (CHECK_ONLY) {
-    await finishRun(runId, { status: 'success', stats: { scraped: 0, pushed: stats.emailsFound }, errors: stats.errors });
+    // Was hardcoded 'success' regardless of stats.errors — found live 2026-08-02: the
+    // LeadsFriday token expired and every --check call 401'd, but the cron log still read
+    // "status=success scraped=0 pushed=0" for hours, masking a real outage.
+    const status = stats.errors.length ? 'error' : 'success';
+    await finishRun(runId, { status, stats: { scraped: 0, pushed: stats.emailsFound }, errors: stats.errors });
+    if (stats.errors.length) console.log(`\n*** ${stats.errors.length} check error(s): ${stats.errors.join(' | ')} ***`);
     console.log('=== DONE (--check-only, submit phase skipped) ===');
     return stats;
   }
@@ -164,56 +225,81 @@ export async function run() {
     return { ...stats, dryRun: true, candidates: candidates.length };
   }
 
-  const RUN_DIR = join(RUNS_DIR, `find_emails_leadsfriday_${new Date().toISOString().slice(0, 10)}`);
-  mkdirSync(RUN_DIR, { recursive: true });
+  const dateStr = new Date().toISOString().slice(0, 10);
 
-  let batch = candidates;
-  let submitted = false;
-  while (batch.length >= MIN_BATCH) {
-    const rows = batch.map(c => {
-      const parts = (c.full_name || '').split(' ');
-      return {
-        first_name: parts[0] || '',
-        last_name: parts.slice(1).join(' '),
-        full_name: c.full_name || '',
-        domain: domainByCompany.get(c.company_id) || '',
-        linkedin_url: c.linkedin_url,
-      };
-    });
-    writeFileSync(join(RUN_DIR, 'input.jsonl'), rows.map(r => JSON.stringify(r)).join('\n'));
+  // Chunk into MAX_BATCH-sized orders instead of one big submit — each chunk gets its own
+  // runs/ dir + own LeadsFriday order_id, checked independently by the existing 3h cron.
+  let remaining = candidates;
+  let chunkIndex = 0;
+  const submittedChunks = [];
+  while (remaining.length > 0) {
+    let batch = remaining.slice(0, MAX_BATCH);
+    let submitted = false;
+    let hardFailure = null; // set when the failure is NOT a credit-shortfall (e.g. auth) — don't mislabel it as balance below
 
-    const { code, stderr } = await runPython(['--submit', '--input', join(RUN_DIR, 'input.jsonl'), '--output-dir', RUN_DIR, '--tool', 'waterfall_email_finder']);
-    if (code === 0) {
-      stats.submitted = batch.length;
-      stats.batchSizeUsed = batch.length;
-      submitted = true;
-      break;
+    while (batch.length >= MIN_BATCH) {
+      chunkIndex++;
+      const RUN_DIR = join(RUNS_DIR, `find_emails_leadsfriday_${dateStr}_${chunkIndex}`);
+      mkdirSync(RUN_DIR, { recursive: true });
+
+      const rows = batch.map(c => {
+        const parts = (c.full_name || '').split(' ');
+        return {
+          first_name: parts[0] || '',
+          last_name: parts.slice(1).join(' '),
+          full_name: c.full_name || '',
+          domain: domainByCompany.get(c.company_id) || '',
+          linkedin_url: c.linkedin_url,
+        };
+      });
+      writeFileSync(join(RUN_DIR, 'input.jsonl'), rows.map(r => JSON.stringify(r)).join('\n'));
+
+      const { code, stderr } = await runPython(['--submit', '--input', join(RUN_DIR, 'input.jsonl'), '--output-dir', RUN_DIR, '--tool', 'waterfall_email_finder']);
+      if (code === 0) {
+        stats.submitted += batch.length;
+        stats.batchSizeUsed = batch.length;
+        submittedChunks.push({ dir: RUN_DIR, size: batch.length });
+        submitted = true;
+        break;
+      }
+      if (!stderr.includes('Not enough credits')) {
+        // Found live 2026-08-02: an expired-token 401 fell through to the generic
+        // "balance too low" message below, which is just wrong — token expiry has nothing
+        // to do with balance and sends Leo looking in the wrong place. Report the real cause.
+        hardFailure = stderr.slice(0, 300);
+        stats.errors.push(`submit failed (chunk ${chunkIndex}): ${hardFailure}`);
+        break;
+      }
+      // Insufficient balance for this size — halve and retry. The error only tells us the
+      // reservation requirement for the size we tried, not the actual available balance, so
+      // halving (not solving for an exact number) is the only thing we can do without a
+      // balance endpoint (checked live 2026-08-02 — LeadsFriday doesn't expose one).
+      console.log(`[find_emails_leadsfriday] chunk ${chunkIndex}: ${batch.length} rows needs more credit than available — retrying at ${Math.floor(batch.length / 2)}`);
+      batch = batch.slice(0, Math.floor(batch.length / 2));
     }
-    if (!stderr.includes('Not enough credits')) {
-      stats.errors.push(`submit failed: ${stderr.slice(0, 300)}`);
-      break;
+
+    if (!submitted) {
+      const leftover = remaining.length;
+      const msg = hardFailure
+        ? `LeadsFriday submit failed (not a balance issue): ${hardFailure} — ${leftover} contacts still waiting (${submittedChunks.length} chunk(s) already submitted this run).`
+        : `LeadsFriday balance too low to submit even ${MIN_BATCH} rows — top up at app.leadsfriday.com before this stage can find more emails. ${leftover} contacts still waiting (${submittedChunks.length} chunk(s) already submitted this run).`;
+      if (!hardFailure) stats.insufficientBalance = true;
+      console.log(`\n*** ${msg} ***\n`);
+      stats.errors.push(msg);
+      break; // whatever the cause, no point trying further chunks this run
     }
-    // Insufficient balance for this size — halve and retry. The error only tells us the
-    // reservation requirement for the size we tried, not the actual available balance, so
-    // halving (not solving for an exact number) is the only thing we can do without a
-    // balance endpoint (checked live 2026-08-02 — LeadsFriday doesn't expose one).
-    console.log(`[find_emails_leadsfriday] ${batch.length} rows needs more credit than available — retrying at ${Math.floor(batch.length / 2)}`);
-    batch = batch.slice(0, Math.floor(batch.length / 2));
+
+    remaining = remaining.slice(batch.length);
   }
 
-  if (!submitted) {
-    stats.insufficientBalance = true;
-    const msg = `LeadsFriday balance too low to submit even ${MIN_BATCH} rows — top up at app.leadsfriday.com before this stage can find more emails. ${candidates.length} contacts still waiting.`;
-    console.log(`\n*** ${msg} ***\n`);
-    stats.errors.push(msg);
-  } else if (batch.length < candidates.length) {
-    console.log(`[find_emails_leadsfriday] submitted ${batch.length}/${candidates.length} — remaining ${candidates.length - batch.length} will be picked up next run once balance allows.`);
+  if (submittedChunks.length) {
+    console.log(`[find_emails_leadsfriday] submitted ${submittedChunks.length} chunk(s), ${stats.submitted}/${candidates.length} candidates total.`);
   }
 
   console.log('\n=== STATS ===');
   console.log(JSON.stringify(stats, null, 2));
   await finishRun(runId, {
-    status: stats.errors.length && !submitted ? 'partial' : 'success',
+    status: stats.errors.length && !submittedChunks.length ? 'partial' : 'success',
     stats: { scraped: candidates.length, pushed: stats.emailsFound },
     errors: stats.errors,
   });

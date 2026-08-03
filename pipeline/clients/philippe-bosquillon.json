@@ -78,6 +78,11 @@
     "system_prompt_override": null
   },
 
+  "linkedin": {
+    "connection_note_mode": "with_note",
+    "_connection_note_mode_note": "with_note (default) | no_note — controls build_linkedin_queue.mjs's AI generation. copy_templates.json's own _meta already flagged this as a planned A/B ('if accept rate with a note drops, send without one, decided by Leo from real data') — wired in 2026-08-03. with_note: li_connection_note carries the hook, li_first_message opens with the bridge only (no verbatim repeat of what they just read in the note). no_note: li_connection_note is blank (nothing sent at connect time), li_first_message carries the full hook+bridge since it's the recipient's only exposure to the fact. Flip this to A/B test without a code change — affects the NEXT daily queue build, not already-queued items (those keep their channel_actions.detail.copy snapshot)."
+  },
+
   "sequencer": {
     "provider": "plusvibe",
     "workspace_id": "694edf36d6154e27d16346c4",
