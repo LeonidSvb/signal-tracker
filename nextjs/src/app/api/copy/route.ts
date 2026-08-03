@@ -23,6 +23,63 @@ import { join } from 'path';
 
 const TEMPLATES_PATH = join(process.cwd(), '../pipeline/config/copy_templates.json');
 const EXAMPLES_PATH = join(process.cwd(), '../pipeline/config/copy_examples.json');
+const CLIENT_CONFIG_PATH = join(process.cwd(), '../pipeline/clients/philippe-bosquillon.json');
+
+// AI hook+bridge (2026-08-03) — this route used to be pure static template fill ("no LLM
+// call here" was the original design). Found live: HIRING_SURGE's static li_connection_note
+// still has unfilled {role_1}/{role_2} (same class of bug MA/EXPAND/INVEST/CONTRACT had
+// with {acquirer}/{target}/{location}, fixed everywhere else 2026-08-02/03) — this was the
+// ONE place left generating that broken text, because it never got the AI treatment. Ported
+// from pipeline/lib/copyEngine.mjs's generateHookBridge()/buildLinkedInCopy() — can't import
+// the .mjs pipeline module directly here (see this file's own top note on why). Falls back
+// to the static template below if fact is missing, OPENROUTER_KEY isn't set, or generation
+// fails — never blocks the panel from showing SOMETHING.
+const OPENROUTER_KEY = process.env.OPENROUTER_KEY;
+const HOOK_MODEL = 'openai/gpt-oss-120b';
+const HOOK_TEMPERATURE = 0.45;
+const HOOK_BANNED_PHRASES = [
+  'clearly prioritizing', 'ideal time', 'perfect time', "let's discuss", 'leverage',
+  'seasoned', 'boasts', 'exciting', "here's how", 'game-chang', 'unlock', 'synerg', 'thrilled',
+];
+
+async function generateHookBridge(company: string, fact: string, context: string): Promise<{ hook: string; bridge: string } | null> {
+  if (!OPENROUTER_KEY || !fact) return null;
+  const prompt = `You write TWO connected lines for a cold outreach email opener, in a casual "hey {first_name}, saw/noticed ..." voice. NOT corporate, NOT congratulatory, NOT a compliment — just a plain factual observation a person would actually notice and mention.
+
+Company: ${company}
+Real fact: "${fact}"${context ? `\nAdditional real context: ${context}` : ''}
+
+Line 1 (hook): starts lowercase "saw..." or "noticed...", states the SPECIFIC real fact (numbers, names, locations, role titles). If the fact involves MULTIPLE items (several job openings, several outlets, etc.), name AT MOST ONE as a concrete anchor plus a general count ("...alongside a handful of others") — do NOT list every single one, that reads as if you catalogued their page. 12-22 words.
+Line 2 (bridge): ONE sentence connecting that fact to a GENERAL, near-universally-true reason this TYPE of situation creates hiring need. Use ONLY the general mechanism (growth/investment -> needs more leaders to run it; M&A/ownership change -> integration needs leadership; new CEO/leadership appointment -> reshuffle below, NEVER "to align with their vision/agenda" — you don't know what they want; long-open search -> current approach may not be working). Do NOT invent a specific role, department, motive, or reason beyond that general mechanism. 10-18 words.
+
+Rules:
+- BANNED words/phrases: ${HOOK_BANNED_PHRASES.join(', ')}, "congrat*", any compliment/celebration framing.
+- Line 2 must NEVER mention "exec search", "someone I know", "I know someone", recruiting, placing, hiring services, or Philippe — that sentence is added separately AFTER yours by a different part of the system.
+- No exclamation marks, no emoji, no em-dashes (—) — use a plain hyphen (-) or a period if you need a break.
+- Do NOT include "hey {first_name}" or any greeting — start directly with the hook.
+- Output ONLY: line 1, then line 2, separated by a newline. Nothing else.`;
+
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENROUTER_KEY}` },
+      body: JSON.stringify({ model: HOOK_MODEL, temperature: HOOK_TEMPERATURE, messages: [{ role: 'user', content: prompt }] }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const raw = data.choices?.[0]?.message?.content?.trim();
+    if (!raw) return null;
+    const lines = raw.split('\n').map((l: string) => l.trim()).filter(Boolean);
+    if (lines.length < 2) return null;
+    return { hook: lines[0], bridge: lines[1] };
+  } catch {
+    return null;
+  }
+}
+
+function liPositioningLine(marketFocus: string) {
+  return `I place food operations leadership, ${marketFocus}.`;
+}
 
 function fillPlaceholders(text: string | null | undefined, vars: Record<string, string>): string | null {
   if (!text) return null;
@@ -54,11 +111,17 @@ function normTitleForExecCheck(s: string | null | undefined): string {
     .replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-function resolveHiringTemplateKey(pubDate: string | null, activeHiringCount: number, jobTitle: string | undefined): string {
-  if (activeHiringCount >= 2) return 'HIRING_SURGE';
+// hookContext mirrors route_email.mjs/build_linkedin_queue.mjs's own surge/stale strings —
+// same real-fact grounding fed to generateHookBridge() below, not duplicated by the caller.
+function resolveHiringTemplateKey(pubDate: string | null, activeHiringCount: number, jobTitle: string | undefined): { templateKey: string; hookContext: string } {
+  if (activeHiringCount >= 2) {
+    return { templateKey: 'HIRING_SURGE', hookContext: `there are ${activeHiringCount} distinct senior roles open at this company right now` };
+  }
   const ageDays = pubDate ? (Date.now() - new Date(pubDate).getTime()) / 86_400_000 : 0;
-  if (ageDays > 60) return 'HIRING_STALE';
-  return TOP_BAND_RE.test(normTitleForExecCheck(jobTitle)) ? 'HIRING_EXEC' : 'HIRING_MID';
+  if (ageDays > 60) {
+    return { templateKey: 'HIRING_STALE', hookContext: pubDate ? `this exact posting has been open for about ${Math.floor(ageDays)} days` : '' };
+  }
+  return { templateKey: TOP_BAND_RE.test(normTitleForExecCheck(jobTitle)) ? 'HIRING_EXEC' : 'HIRING_MID', hookContext: '' };
 }
 
 // GET — raw templates for the Settings > Templates panel (Stage 7). No fill,
@@ -82,6 +145,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   let body: {
     signalType?: string; pubDate?: string | null; jobTitle?: string | null; activeHiringCount?: number;
+    fact?: string | null; hookContext?: string;
     rank?: number | null; vars?: Record<string, string>; liVariant?: string;
   };
   try {
@@ -90,13 +154,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid JSON body' }, { status: 400 });
   }
 
-  const { signalType, pubDate = null, jobTitle = null, activeHiringCount = 0, rank = null, vars = {}, liVariant } = body;
+  const { signalType, pubDate = null, jobTitle = null, activeHiringCount = 0, fact = null, rank = null, vars = {}, liVariant } = body;
   if (!signalType) return NextResponse.json({ error: 'signalType is required' }, { status: 400 });
 
   // signals.signal_type is only ever the coarse 'HIRING' in the DB — resolve to the real
   // EXEC/MID/STALE/SURGE template key it actually maps to (see resolveHiringTemplateKey's
   // header comment for the live bug this fixes).
-  const resolvedKey = signalType === 'HIRING' ? resolveHiringTemplateKey(pubDate, activeHiringCount, jobTitle ?? undefined) : signalType;
+  const isHiring = signalType === 'HIRING';
+  const hiringResolved = isHiring ? resolveHiringTemplateKey(pubDate, activeHiringCount, jobTitle ?? undefined) : null;
+  const resolvedKey = hiringResolved ? hiringResolved.templateKey : signalType;
+  const hookContext = hiringResolved ? hiringResolved.hookContext : '';
 
   let templates: any;
   try {
@@ -108,6 +175,25 @@ export async function POST(req: NextRequest) {
   const t = templates.templates?.[resolvedKey];
   if (!t) return NextResponse.json({ error: `unknown signalType: ${resolvedKey}` }, { status: 404 });
 
+  const availableLetters = Object.keys(t.variants || {});
+  const variantUsed = variantForRank(rank, availableLetters);
+
+  if (fact) {
+    const generated = await generateHookBridge(vars.company || '', fact, hookContext);
+    if (generated) {
+      let noteMode = 'with_note';
+      try { noteMode = JSON.parse(readFileSync(CLIENT_CONFIG_PATH, 'utf8')).linkedin?.connection_note_mode || 'with_note'; } catch { /* default */ }
+      const connect = noteMode === 'no_note' ? null
+        : fillPlaceholders(`{first_name}, ${generated.hook} - ${liPositioningLine('{market_focus}')} Connect?`, vars);
+      const qualifyTemplate = noteMode === 'no_note'
+        ? `{first_name} — appreciate the connect.\n\n${generated.hook} -\n${generated.bridge}\n\n{relevant_case}\n\nWorth a quick chat if useful?`
+        : `{first_name} — appreciate the connect.\n\n${generated.bridge}\n\n{relevant_case}\n\nWorth a quick chat if useful?`;
+      const qualify = fillPlaceholders(qualifyTemplate, { relevant_case: "I've placed similar roles at comparable food companies in the region.", ...vars });
+      return NextResponse.json({ connect, qualify, variantUsed, requiredVariables: t.required_variables || [], source: 'ai' });
+    }
+    // generation failed (no key, network, malformed output) — fall through to static below
+  }
+
   let liBlock: { li_connection_note?: string; li_first_message?: string };
   if (t.li_connection_note !== undefined) {
     liBlock = t;
@@ -116,13 +202,11 @@ export async function POST(req: NextRequest) {
     liBlock = t[key] || {};
   }
 
-  const availableLetters = Object.keys(t.variants || {});
-  const variantUsed = variantForRank(rank, availableLetters);
-
   return NextResponse.json({
     connect: fillPlaceholders(liBlock.li_connection_note, vars),
     qualify: fillPlaceholders(liBlock.li_first_message, vars),
     variantUsed,
     requiredVariables: t.required_variables || [],
+    source: 'static_fallback',
   });
 }

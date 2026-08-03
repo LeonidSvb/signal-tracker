@@ -49,6 +49,10 @@ export default function DetailPanel({ detail, clientId, notes, addNote, setConta
   // (mirrors classifyEvent() in pipeline/lib/eventGrouping.mjs — can't import the .mjs
   // pipeline module here, see that route's own build-bundling note).
   const activeHiringCount = events.filter((e) => e.baseType === "HIRING" && e.status === "active").length;
+  // fact (2026-08-03) — drives /api/copy's AI hook+bridge generation (same real-fact source
+  // as the pipeline's route_email.mjs/build_linkedin_queue.mjs). event_summary preferred over
+  // the raw title when rank_leads.mjs has already synthesized one for a multi-source event.
+  const fact = bestEvent?.summary || bestEvent?.title || null;
   const tierReasonAgeNote =
     "The day count is age of the EVENT (its publish date), not how long ago we found it — a freshly-discovered but old story still counts as stale.";
 
@@ -130,6 +134,7 @@ export default function DetailPanel({ detail, clientId, notes, addNote, setConta
                 pubDate={bestEvent?.pubDate ?? null}
                 jobTitle={bestEvent?.title ?? null}
                 activeHiringCount={activeHiringCount}
+                fact={fact}
                 rank={company.rank}
                 hqCountry={company.hq_country}
                 status={contactStatuses[c.id] ?? (hasContactStates ? "new" : appStateFallback ?? "new")}
