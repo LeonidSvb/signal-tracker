@@ -205,7 +205,7 @@
       "variants": {
         "A": {
           "angle": "restructuring",
-          "body": "hey {first_name},\n\nsaw that {company} recently {appointed new CEO / named new leadership} —\nnew leadership at the top usually means restructuring below over the next months\n\nI know someone who specifically does exec search for food companies\nin {market_focus} — thought it might be timely"
+          "body": "hey {first_name},\n\nsaw that {company} recently appointed new leadership —\nnew leadership at the top usually means restructuring below over the next months\n\nI know someone who specifically does exec search for food companies\nin {market_focus} — thought it might be timely"
         },
         "B": {
           "angle": "to_the_new_leader",
@@ -213,7 +213,7 @@
         },
         "C": {
           "angle": "to_hr_director",
-          "body": "hey {first_name},\n\nsaw {company} just brought on a new {CEO/MD} —\nleadership transitions at the top usually trigger a wave of team changes\n\nI know someone who specifically places food execs in {market_focus} in 2–3 weeks —\nmight be worth a connection now before the wave hits"
+          "body": "hey {first_name},\n\nsaw {company} just brought on a new CEO —\nleadership transitions at the top usually trigger a wave of team changes\n\nI know someone who specifically places food execs in {market_focus} in 2–3 weeks —\nmight be worth a connection now before the wave hits"
         }
       },
       "followups": [
@@ -258,9 +258,9 @@
         "market_focus"
       ],
       "variants": {
-        "A": "hey {first_name},\n\nsaw that {acquirer} recently acquired {target} —\nintegration always brings leadership changes, usually fast\n\nI know someone who specifically does exec search for food companies\nin {market_focus} — places senior roles in 2–3 weeks\n\nworth an intro if the timing's right?",
-        "B": "hey {first_name},\n\nsaw the {acquirer} / {target} deal —\ncross-border integrations at this scale usually mean leadership restructuring\non both sides within 3–6 months\n\nI know someone who specifically places food execs in {market_focus} —\n2–3 weeks when you need to move fast\n\nworth keeping Philippe in mind?",
-        "C": "hey {first_name},\n\nsaw {acquirer} completed the acquisition of {target} —\nintegration usually creates leadership gaps quickly\n\nPhilippe Bosquillon does exec search for food in {market_focus},\nplaces in 2–3 weeks — might be worth a connection now"
+        "A": "hey {first_name},\n\nsaw the recent acquisition news around {company} —\nintegration always brings leadership changes, usually fast\n\nI know someone who specifically does exec search for food companies\nin {market_focus} — places senior roles in 2–3 weeks\n\nworth an intro if the timing's right?",
+        "B": "hey {first_name},\n\nsaw the M&A news around {company} —\ncross-border integrations at this scale usually mean leadership restructuring\non both sides within 3–6 months\n\nI know someone who specifically places food execs in {market_focus} —\n2–3 weeks when you need to move fast\n\nworth keeping Philippe in mind?",
+        "C": "hey {first_name},\n\nsaw {company} closed a major acquisition —\nintegration usually creates leadership gaps quickly\n\nPhilippe Bosquillon does exec search for food in {market_focus},\nplaces in 2–3 weeks — might be worth a connection now"
       },
       "followups": [
         {
@@ -269,7 +269,7 @@
         },
         {
           "day": 10,
-          "body": "hey {first_name},\n\nhow's the integration progressing? if leadership gaps have come up\nat {company} or {target}, happy to intro Philippe — fastest search\nin food in {market_focus}"
+          "body": "hey {first_name},\n\nhow's the integration progressing? if leadership gaps have come up,\nhappy to intro Philippe — fastest search\nin food in {market_focus}"
         },
         {
           "day": 20,
@@ -278,8 +278,8 @@
         }
       ],
       "linkedin_message_legacy": "Hi {first_name}, saw the {acquirer}/{target} deal close — congratulations.\nIntegration leadership is usually the hardest part. I do exec search for food\nin {market_focus}, 30 years in the industry. Worth staying in touch.",
-      "li_connection_note": "{first_name}, following the {acquirer}/{target} deal — integrations like\nthat usually surface leadership questions fast. I place food execs,\n{market_focus}. Connect?",
-      "li_first_message": "{first_name}, congratulations on the {target} deal closing.\n\nHow's the integration shaping up on the leadership side — anything open\nyet, or too early to say?\n\n{relevant_case}\n\nIf gaps start showing up on either side, I'm a fast call away."
+      "li_connection_note": "{first_name}, following {company}'s recent acquisition — integrations like\nthat usually surface leadership questions fast. I place food execs,\n{market_focus}. Connect?",
+      "li_first_message": "{first_name}, congratulations on {company}'s deal closing.\n\nHow's the integration shaping up on the leadership side — anything open\nyet, or too early to say?\n\n{relevant_case}\n\nIf gaps start showing up on either side, I'm a fast call away."
     },
     "EXPAND": {
       "source_section": "2C",
@@ -293,15 +293,15 @@
       "variants": {
         "A": {
           "angle": "timing_of_hire",
-          "body": "hey {first_name},\n\nsaw {company} is {investing €Xm in / building a new facility at} {location} —\ngrowth at that scale usually means leadership gaps follow shortly after\n\nI know someone who specifically does exec search for food in {market_focus} —\nplaces in 2–3 weeks\n\nworth an intro?"
+          "body": "hey {first_name},\n\nsaw {company} is expanding operations —\ngrowth at that scale usually means leadership gaps follow shortly after\n\nI know someone who specifically does exec search for food in {market_focus} —\nplaces in 2–3 weeks\n\nworth an intro?"
         },
         "B": {
           "angle": "timing_specific",
-          "body": "hey {first_name},\n\nsaw {company} is expanding production at {location} —\nnew facilities usually need the right operational leadership in place before they open\n\nPhilippe Bosquillon places exactly this type of role in {market_focus},\n2–3 weeks — food exec himself for 30 years\n\nworth a quick intro?"
+          "body": "hey {first_name},\n\nsaw {company} is expanding production —\nnew facilities usually need the right operational leadership in place before they open\n\nPhilippe Bosquillon places exactly this type of role in {market_focus},\n2–3 weeks — food exec himself for 30 years\n\nworth a quick intro?"
         },
         "C": {
           "angle": "scale",
-          "body": "hey {first_name},\n\n{company}'s {€Xm} expansion caught my eye —\nbuilds at that scale usually create 2-3 new senior leadership needs\n\nI know someone who specifically places food ops execs in {market_focus} in 2-3 weeks\n\nhappy to intro"
+          "body": "hey {first_name},\n\n{company}'s expansion caught my eye —\nbuilds at that scale usually create 2-3 new senior leadership needs\n\nI know someone who specifically places food ops execs in {market_focus} in 2-3 weeks\n\nhappy to intro"
         }
       },
       "followups": [
@@ -311,17 +311,17 @@
         },
         {
           "day": 10,
-          "body": "hey {first_name},\n\nwhat's the timeline on the {location} expansion?\nif leadership hiring is coming up, worth a quick intro to Philippe before the race starts"
+          "body": "hey {first_name},\n\nwhat's the timeline looking like on the expansion?\nif leadership hiring is coming up, worth a quick intro to Philippe before the race starts"
         },
         {
           "day": 18,
-          "body": "hey {first_name},\n\nclosing this out — when the {project} build gets to leadership hiring,\nPhilippe Bosquillon, {market_focus} food exec search, 2-3 weeks",
+          "body": "hey {first_name},\n\nclosing this out — when the build gets to leadership hiring,\nPhilippe Bosquillon, {market_focus} food exec search, 2-3 weeks",
           "breakup": true
         }
       ],
       "linkedin_message_legacy": "Hi {first_name}, saw {company}'s expansion plans — exciting project.\nNew facilities at that scale usually need strong operational leadership early on.\nPhilippe Bosquillon does exec search for food in {market_focus}, 30 years in industry.\nWorth connecting?",
-      "li_connection_note": "{first_name}, saw {company}'s build at {location}. I place the operational\nleadership behind projects like this in food, {market_focus} — let's\nconnect.",
-      "li_first_message": "Thanks for connecting, {first_name}.\n\nIs the leadership hire for {location} already underway, or is that further\ndown the build timeline?\n\n{relevant_case}\n\nHappy to compare notes on timing whenever it's useful."
+      "li_connection_note": "{first_name}, saw {company}'s expansion. I place the operational\nleadership behind projects like this in food, {market_focus} — let's\nconnect.",
+      "li_first_message": "Thanks for connecting, {first_name}.\n\nIs the leadership hire for the new site already underway, or is that further\ndown the build timeline?\n\n{relevant_case}\n\nHappy to compare notes on timing whenever it's useful."
     },
     "INVEST": {
       "source_section": "2D",
@@ -333,8 +333,8 @@
         "market_focus"
       ],
       "variants": {
-        "A": "hey {first_name},\n\nsaw {company} recently secured {€Xm} for {project} —\nnew capital at that scale usually means scaling the team alongside it\n\nI know someone who specifically does exec search for food in {market_focus} —\nplaces in 2–3 weeks when you need to move\n\nworth an intro?",
-        "B": "hey {first_name},\n\ncongrats on the {€Xm} raise at {company} —\ngrowth rounds usually mean new leadership needs follow fast\n\nPhilippe Bosquillon places food execs in {market_focus} in 2–3 weeks —\nmight be worth staying in touch"
+        "A": "hey {first_name},\n\nsaw {company} recently closed a funding round —\nnew capital at that scale usually means scaling the team alongside it\n\nI know someone who specifically does exec search for food in {market_focus} —\nplaces in 2–3 weeks when you need to move\n\nworth an intro?",
+        "B": "hey {first_name},\n\ncongrats on the recent raise at {company} —\ngrowth rounds usually mean new leadership needs follow fast\n\nPhilippe Bosquillon places food execs in {market_focus} in 2–3 weeks —\nmight be worth staying in touch"
       },
       "followups": [
         {
@@ -350,8 +350,8 @@
         }
       ],
       "linkedin_message_legacy": null,
-      "li_connection_note": "{first_name}, congrats on the {amount} raise at {company}. I build food\nleadership teams, {market_focus} — good to be connected.",
-      "li_first_message": "{first_name}, congrats again on the {amount} raise.\n\nAny leadership hiring on the roadmap yet, or still early days post-close?\n\n{relevant_case}\n\nWorth staying in touch either way — happy to talk whenever it's relevant."
+      "li_connection_note": "{first_name}, congrats on the recent raise at {company}. I build food\nleadership teams, {market_focus} — good to be connected.",
+      "li_first_message": "{first_name}, congrats again on the raise.\n\nAny leadership hiring on the roadmap yet, or still early days post-close?\n\n{relevant_case}\n\nWorth staying in touch either way — happy to talk whenever it's relevant."
     },
     "CONTRACT": {
       "source_section": "2E",
@@ -363,7 +363,7 @@
         "market_focus"
       ],
       "variants": {
-        "A": "hey {first_name},\n\nsaw {company} won {the X contract / a major partnership with Y} —\ncontracts like that usually mean scaling operations to match\n\nI know someone who places food ops leadership in {market_focus} in 2–3 weeks\nif hiring follows\n\nworth an intro?"
+        "A": "hey {first_name},\n\nsaw {company} won a major new contract —\ncontracts like that usually mean scaling operations to match\n\nI know someone who places food ops leadership in {market_focus} in 2–3 weeks\nif hiring follows\n\nworth an intro?"
       },
       "followups": null,
       "sequence_note": "3 steps maximum, no day offsets or follow-up bodies given in source",

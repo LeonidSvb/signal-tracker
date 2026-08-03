@@ -1,116 +1,116 @@
 {
   "_meta": {
-    "note": "One static example per signal type, generated 2026-08-03 from the SAME generateHookBridge()/fill() calls the live pipeline uses (copyEngine.mjs), sharing one hookCache per case so hook/bridge above match what is embedded in the full assembled messages exactly. hook/bridge are the raw AI output (the only genuinely UNIQUE content per type — everything wrapping them is the fixed universal skeleton, see Settings > Templates Universal block). Pre-generated, not live per page view. Regenerate manually (rerun the same inline script, see CHANGELOG) if copy_templates.json or the hook+bridge prompt changes.",
-    "generated_at": "2026-08-03T09:31:29.362Z"
+    "note": "Regenerated 2026-08-04 after removing unfillable {acquirer}/{target}/{location}/{project}/{amount} placeholders from copy_templates.json static fallback text. Same generateHookBridge()/fill() calls the live pipeline uses.",
+    "generated_at": "2026-08-03T17:42:09.327Z"
   },
   "examples": {
     "HIRING_EXEC": {
       "trigger": "HIRING signal, exec-level title (CEO/GM/MD/Director band)",
-      "hook": "saw a Managing Director role just opened at Example Foods GmbH, alongside a handful of other openings",
-      "bridge": "new senior hires often signal growth, which typically drives demand for additional leadership support",
+      "hook": "saw a Managing Director role just opened at Example Foods GmbH, alongside a handful of other openings.",
+      "bridge": "new senior role often signals growth or restructuring, prompting a need for additional leadership capacity.",
       "email_subject": "someone I'd like to introduce",
-      "email_body_1": "hey Anna,\n\nsaw a Managing Director role just opened at Example Foods GmbH, alongside a handful of other openings -\nnew senior hires often signal growth, which typically drives demand for additional leadership support\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
-      "li_connection_note": "Anna, saw a Managing Director role just opened at Example Foods GmbH, alongside a handful of other openings - I place food operations leadership, Germany. Connect?",
-      "li_first_message": "Anna — appreciate the connect.\n\nsaw a Managing Director role just opened at Example Foods GmbH, alongside a handful of other openings -\nnew senior hires often signal growth, which typically drives demand for additional leadership support\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
+      "email_body_1": "hey Anna,\n\nsaw a Managing Director role just opened at Example Foods GmbH, alongside a handful of other openings. -\nnew senior role often signals growth or restructuring, prompting a need for additional leadership capacity.\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
+      "li_connection_note": "Anna, saw a Managing Director role just opened at Example Foods GmbH, alongside a handful of other openings. - I place food operations leadership, Germany. Connect?",
+      "li_first_message": "Anna — appreciate the connect.\n\nnew senior role often signals growth or restructuring, prompting a need for additional leadership capacity.\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
     },
     "HIRING_MID": {
       "trigger": "HIRING signal, non-exec title, posted ≤60 days ago",
       "hook": "saw a Regional Sales Manager role just opened at Example Foods GmbH, alongside a handful of other openings.",
-      "bridge": "new openings usually signal growth, prompting companies to add leadership to scale operations.",
+      "bridge": "new openings often signal growth, prompting the need for additional leadership capacity.",
       "email_subject": "someone I'd like to introduce",
-      "email_body_1": "hey Anna,\n\nsaw a Regional Sales Manager role just opened at Example Foods GmbH, alongside a handful of other openings. -\nnew openings usually signal growth, prompting companies to add leadership to scale operations.\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
+      "email_body_1": "hey Anna,\n\nsaw a Regional Sales Manager role just opened at Example Foods GmbH, alongside a handful of other openings. -\nnew openings often signal growth, prompting the need for additional leadership capacity.\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
       "li_connection_note": "Anna, saw a Regional Sales Manager role just opened at Example Foods GmbH, alongside a handful of other openings. - I place food operations leadership, Germany. Connect?",
-      "li_first_message": "Anna — appreciate the connect.\n\nsaw a Regional Sales Manager role just opened at Example Foods GmbH, alongside a handful of other openings. -\nnew openings usually signal growth, prompting companies to add leadership to scale operations.\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
+      "li_first_message": "Anna — appreciate the connect.\n\nnew openings often signal growth, prompting the need for additional leadership capacity.\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
     },
     "HIRING_SURGE": {
       "trigger": "2+ active HIRING signals at the same company right now",
-      "hook": "saw a senior ops director opening at Example Foods GmbH alongside a handful of other senior roles",
-      "bridge": "rapid growth often forces companies to add more senior leaders to keep operations scaling smoothly",
+      "hook": "noticed you’ve posted a Senior Operations Manager opening, alongside a handful of other senior ops roles.",
+      "bridge": "rapid growth usually means you need extra leadership to keep the operations running smoothly.",
       "email_subject": "someone I'd like to introduce",
-      "email_body_1": "hey Anna,\n\nsaw a senior ops director opening at Example Foods GmbH alongside a handful of other senior roles -\nrapid growth often forces companies to add more senior leaders to keep operations scaling smoothly\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
-      "li_connection_note": "Anna, saw a senior ops director opening at Example Foods GmbH alongside a handful of other senior roles - I place food operations leadership, Germany. Connect?",
-      "li_first_message": "Anna — appreciate the connect.\n\nsaw a senior ops director opening at Example Foods GmbH alongside a handful of other senior roles -\nrapid growth often forces companies to add more senior leaders to keep operations scaling smoothly\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
+      "email_body_1": "hey Anna,\n\nnoticed you’ve posted a Senior Operations Manager opening, alongside a handful of other senior ops roles. -\nrapid growth usually means you need extra leadership to keep the operations running smoothly.\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
+      "li_connection_note": "Anna, noticed you’ve posted a Senior Operations Manager opening, alongside a handful of other senior ops roles. - I place food operations leadership, Germany. Connect?",
+      "li_first_message": "Anna — appreciate the connect.\n\nrapid growth usually means you need extra leadership to keep the operations running smoothly.\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
     },
     "HIRING_STALE": {
       "trigger": "HIRING signal, posted >60 days ago, still open",
-      "hook": "saw the Plant Manager role at Example Foods GmbH has been open for about 75 days",
-      "bridge": "prolonged vacancies often signal operational strain that eventually pushes companies to bring in fresh leadership",
+      "hook": "saw the Plant Manager posting at Example Foods GmbH has been open for about 75 days",
+      "bridge": "prolonged vacancies often signal operational scaling that eventually demands fresh leadership",
       "email_subject": "someone I'd like to introduce",
-      "email_body_1": "hey Anna,\n\nsaw the Plant Manager role at Example Foods GmbH has been open for about 75 days -\nprolonged vacancies often signal operational strain that eventually pushes companies to bring in fresh leadership\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
-      "li_connection_note": "Anna, saw the Plant Manager role at Example Foods GmbH has been open for about 75 days - I place food operations leadership, Germany. Connect?",
-      "li_first_message": "Anna — appreciate the connect.\n\nsaw the Plant Manager role at Example Foods GmbH has been open for about 75 days -\nprolonged vacancies often signal operational strain that eventually pushes companies to bring in fresh leadership\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
+      "email_body_1": "hey Anna,\n\nsaw the Plant Manager posting at Example Foods GmbH has been open for about 75 days -\nprolonged vacancies often signal operational scaling that eventually demands fresh leadership\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
+      "li_connection_note": "Anna, saw the Plant Manager posting at Example Foods GmbH has been open for about 75 days - I place food operations leadership, Germany. Connect?",
+      "li_first_message": "Anna — appreciate the connect.\n\nprolonged vacancies often signal operational scaling that eventually demands fresh leadership\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
     },
     "HIRING_RECRUITER": {
       "trigger": "defined in copy_templates.json but NOT wired into classifyEvent() — currently unreachable, no signal ever routes here",
       "hook": "saw Example Foods GmbH just posted an internal Talent Acquisition Manager role, alongside a handful of other openings.",
-      "bridge": "expanding hiring initiatives often create a need for more specialized sourcing expertise.",
+      "bridge": "When companies expand hiring capacity, they often need additional leadership to manage the increased workload.",
       "email_subject": "someone I'd like to introduce",
-      "email_body_1": "hey Anna,\n\nsaw Example Foods GmbH just posted an internal Talent Acquisition Manager role, alongside a handful of other openings. -\nexpanding hiring initiatives often create a need for more specialized sourcing expertise.\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
+      "email_body_1": "hey Anna,\n\nsaw Example Foods GmbH just posted an internal Talent Acquisition Manager role, alongside a handful of other openings. -\nWhen companies expand hiring capacity, they often need additional leadership to manage the increased workload.\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
       "li_connection_note": "Anna, saw Example Foods GmbH just posted an internal Talent Acquisition Manager role, alongside a handful of other openings. - I place food operations leadership, Germany. Connect?",
-      "li_first_message": "Anna — appreciate the connect.\n\nsaw Example Foods GmbH just posted an internal Talent Acquisition Manager role, alongside a handful of other openings. -\nexpanding hiring initiatives often create a need for more specialized sourcing expertise.\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
+      "li_first_message": "Anna — appreciate the connect.\n\nWhen companies expand hiring capacity, they often need additional leadership to manage the increased workload.\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
     },
     "CLEVEL": {
       "trigger": "CLEVEL signal (new C-level appointment)",
-      "hook": "saw Example Foods GmbH just appointed a new CEO, marking a leadership change at the top.",
-      "bridge": "new leadership typically triggers a re‑evaluation of the team, creating fresh talent needs.",
+      "hook": "saw that Example Foods GmbH just appointed Jana Müller as CEO, alongside a handful of other leadership changes",
+      "bridge": "A fresh leadership team often triggers a wave of new senior hires across functions",
       "email_subject": "someone I'd like to introduce",
-      "email_body_1": "hey Anna,\n\nsaw Example Foods GmbH just appointed a new CEO, marking a leadership change at the top. -\nnew leadership typically triggers a re‑evaluation of the team, creating fresh talent needs.\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
-      "li_connection_note": "Anna, saw Example Foods GmbH just appointed a new CEO, marking a leadership change at the top. - I place food operations leadership, Germany. Connect?",
-      "li_first_message": "Anna — appreciate the connect.\n\nsaw Example Foods GmbH just appointed a new CEO, marking a leadership change at the top. -\nnew leadership typically triggers a re‑evaluation of the team, creating fresh talent needs.\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
+      "email_body_1": "hey Anna,\n\nsaw that Example Foods GmbH just appointed Jana Müller as CEO, alongside a handful of other leadership changes -\nA fresh leadership team often triggers a wave of new senior hires across functions\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
+      "li_connection_note": "Anna, saw that Example Foods GmbH just appointed Jana Müller as CEO, alongside a handful of other leadership changes - I place food operations leadership, Germany. Connect?",
+      "li_first_message": "Anna — appreciate the connect.\n\nA fresh leadership team often triggers a wave of new senior hires across functions\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
     },
     "MA": {
       "trigger": "MA signal (acquisition / merger)",
       "hook": "saw Danone acquire Michel et Augustin, the French cookie and dairy‑dessert brand, for an undisclosed sum",
-      "bridge": "Such integration typically drives a need for additional leadership to align the combined operations",
+      "bridge": "Such M&A activity usually triggers integration work that creates new leadership demand.",
       "email_subject": "someone I'd like to introduce",
-      "email_body_1": "hey Anna,\n\nsaw Danone acquire Michel et Augustin, the French cookie and dairy‑dessert brand, for an undisclosed sum -\nSuch integration typically drives a need for additional leadership to align the combined operations\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
+      "email_body_1": "hey Anna,\n\nsaw Danone acquire Michel et Augustin, the French cookie and dairy‑dessert brand, for an undisclosed sum -\nSuch M&A activity usually triggers integration work that creates new leadership demand.\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
       "li_connection_note": "Anna, saw Danone acquire Michel et Augustin, the French cookie and dairy‑dessert brand, for an undisclosed sum - I place food operations leadership, Germany. Connect?",
-      "li_first_message": "Anna — appreciate the connect.\n\nsaw Danone acquire Michel et Augustin, the French cookie and dairy‑dessert brand, for an undisclosed sum -\nSuch integration typically drives a need for additional leadership to align the combined operations\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
+      "li_first_message": "Anna — appreciate the connect.\n\nSuch M&A activity usually triggers integration work that creates new leadership demand.\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
     },
     "EXPAND": {
       "trigger": "EXPAND signal (new facility / expansion)",
-      "hook": "saw Example Foods GmbH breaking ground on a new production facility in Lyon, alongside a handful of other projects.",
-      "bridge": "Such expansion typically creates a need for additional leadership to oversee operations and scale processes.",
+      "hook": "saw Example Foods GmbH breaking ground on a new production facility in Lyon, alongside a handful of other projects",
+      "bridge": "That kind of expansion usually creates a need for additional operational leadership and management capacity",
       "email_subject": "someone I'd like to introduce",
-      "email_body_1": "hey Anna,\n\nsaw Example Foods GmbH breaking ground on a new production facility in Lyon, alongside a handful of other projects. -\nSuch expansion typically creates a need for additional leadership to oversee operations and scale processes.\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
-      "li_connection_note": "Anna, saw Example Foods GmbH breaking ground on a new production facility in Lyon, alongside a handful of other projects. - I place food operations leadership, Germany. Connect?",
-      "li_first_message": "Anna — appreciate the connect.\n\nsaw Example Foods GmbH breaking ground on a new production facility in Lyon, alongside a handful of other projects. -\nSuch expansion typically creates a need for additional leadership to oversee operations and scale processes.\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
+      "email_body_1": "hey Anna,\n\nsaw Example Foods GmbH breaking ground on a new production facility in Lyon, alongside a handful of other projects -\nThat kind of expansion usually creates a need for additional operational leadership and management capacity\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
+      "li_connection_note": "Anna, saw Example Foods GmbH breaking ground on a new production facility in Lyon, alongside a handful of other projects - I place food operations leadership, Germany. Connect?",
+      "li_first_message": "Anna — appreciate the connect.\n\nThat kind of expansion usually creates a need for additional operational leadership and management capacity\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
     },
     "INVEST": {
       "trigger": "INVEST signal (funding round)",
-      "hook": "saw Example Foods GmbH close a EUR 12M Series B round earlier this quarter",
-      "bridge": "Such fresh capital typically drives a need for additional leadership to scale operations",
+      "hook": "saw Example Foods GmbH close a EUR 12 million Series B round earlier this quarter",
+      "bridge": "Such fresh capital typically triggers a need for more senior leaders to scale operations.",
       "email_subject": "someone I'd like to introduce",
-      "email_body_1": "hey Anna,\n\nsaw Example Foods GmbH close a EUR 12M Series B round earlier this quarter -\nSuch fresh capital typically drives a need for additional leadership to scale operations\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
-      "li_connection_note": "Anna, saw Example Foods GmbH close a EUR 12M Series B round earlier this quarter - I place food operations leadership, Germany. Connect?",
-      "li_first_message": "Anna — appreciate the connect.\n\nsaw Example Foods GmbH close a EUR 12M Series B round earlier this quarter -\nSuch fresh capital typically drives a need for additional leadership to scale operations\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
+      "email_body_1": "hey Anna,\n\nsaw Example Foods GmbH close a EUR 12 million Series B round earlier this quarter -\nSuch fresh capital typically triggers a need for more senior leaders to scale operations.\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
+      "li_connection_note": "Anna, saw Example Foods GmbH close a EUR 12 million Series B round earlier this quarter - I place food operations leadership, Germany. Connect?",
+      "li_first_message": "Anna — appreciate the connect.\n\nSuch fresh capital typically triggers a need for more senior leaders to scale operations.\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
     },
     "CONTRACT": {
       "trigger": "CONTRACT signal (contract win)",
-      "hook": "saw Example Foods GmbH land a 3‑year supply deal with REWE, alongside a handful of other contracts",
-      "bridge": "Such growth typically triggers a need for additional leaders to manage the expanded operations",
+      "hook": "saw Example Foods secure a 3‑year supply contract with a major national retailer",
+      "bridge": "That kind of growth usually creates a need for additional leadership to manage expanded operations",
       "email_subject": "someone I'd like to introduce",
-      "email_body_1": "hey Anna,\n\nsaw Example Foods GmbH land a 3‑year supply deal with REWE, alongside a handful of other contracts -\nSuch growth typically triggers a need for additional leaders to manage the expanded operations\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
-      "li_connection_note": "Anna, saw Example Foods GmbH land a 3‑year supply deal with REWE, alongside a handful of other contracts - I place food operations leadership, Germany. Connect?",
-      "li_first_message": "Anna — appreciate the connect.\n\nsaw Example Foods GmbH land a 3‑year supply deal with REWE, alongside a handful of other contracts -\nSuch growth typically triggers a need for additional leaders to manage the expanded operations\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
+      "email_body_1": "hey Anna,\n\nsaw Example Foods secure a 3‑year supply contract with a major national retailer -\nThat kind of growth usually creates a need for additional leadership to manage expanded operations\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
+      "li_connection_note": "Anna, saw Example Foods secure a 3‑year supply contract with a major national retailer - I place food operations leadership, Germany. Connect?",
+      "li_first_message": "Anna — appreciate the connect.\n\nThat kind of growth usually creates a need for additional leadership to manage expanded operations\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
     },
     "NICHE": {
       "trigger": "NICHE signal (product / niche-specific news) — no static LinkedIn fallback exists for this type",
-      "hook": "saw Example Foods GmbH roll out its new plant‑based product line this quarter",
-      "bridge": "Such expansion typically drives the need for additional leaders to scale operations",
+      "hook": "saw Example Foods GmbH launch its new plant‑based snack line, alongside a handful of other items",
+      "bridge": "new product launches typically drive the need for additional leadership to scale operations",
       "email_subject": "someone I'd like to introduce",
-      "email_body_1": "hey Anna,\n\nsaw Example Foods GmbH roll out its new plant‑based product line this quarter -\nSuch expansion typically drives the need for additional leaders to scale operations\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
-      "li_connection_note": "Anna, saw Example Foods GmbH roll out its new plant‑based product line this quarter - I place food operations leadership, Germany. Connect?",
-      "li_first_message": "Anna — appreciate the connect.\n\nsaw Example Foods GmbH roll out its new plant‑based product line this quarter -\nSuch expansion typically drives the need for additional leaders to scale operations\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
+      "email_body_1": "hey Anna,\n\nsaw Example Foods GmbH launch its new plant‑based snack line, alongside a handful of other items -\nnew product launches typically drive the need for additional leadership to scale operations\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
+      "li_connection_note": "Anna, saw Example Foods GmbH launch its new plant‑based snack line, alongside a handful of other items - I place food operations leadership, Germany. Connect?",
+      "li_first_message": "Anna — appreciate the connect.\n\nnew product launches typically drive the need for additional leadership to scale operations\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
     },
     "SECTOR": {
       "trigger": "SECTOR signal (sector-wide news) — no static LinkedIn fallback exists for this type",
-      "hook": "saw a wave of consolidation this quarter, highlighted by Example Foods GmbH’s purchase of FreshBite alongside a handful of others",
-      "bridge": "Such M&A activity typically creates a need for additional leadership",
+      "hook": "saw Example Foods GmbH merge with FreshBite this quarter, alongside a handful of other consolidations",
+      "bridge": "Such integration typically creates a need for additional leadership to steer the combined operations",
       "email_subject": "someone I'd like to introduce",
-      "email_body_1": "hey Anna,\n\nsaw a wave of consolidation this quarter, highlighted by Example Foods GmbH’s purchase of FreshBite alongside a handful of others -\nSuch M&A activity typically creates a need for additional leadership\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
-      "li_connection_note": "Anna, saw a wave of consolidation this quarter, highlighted by Example Foods GmbH’s purchase of FreshBite alongside a handful of others - I place food operations leadership, Germany. Connect?",
-      "li_first_message": "Anna — appreciate the connect.\n\nsaw a wave of consolidation this quarter, highlighted by Example Foods GmbH’s purchase of FreshBite alongside a handful of others -\nSuch M&A activity typically creates a need for additional leadership\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
+      "email_body_1": "hey Anna,\n\nsaw Example Foods GmbH merge with FreshBite this quarter, alongside a handful of other consolidations -\nSuch integration typically creates a need for additional leadership to steer the combined operations\n\nI know someone who specifically does exec search for food companies in Germany - places senior roles in 2-3 weeks.\n\nworth an intro?",
+      "li_connection_note": "Anna, saw Example Foods GmbH merge with FreshBite this quarter, alongside a handful of other consolidations - I place food operations leadership, Germany. Connect?",
+      "li_first_message": "Anna — appreciate the connect.\n\nSuch integration typically creates a need for additional leadership to steer the combined operations\n\nI've placed similar roles at comparable food companies in the region.\n\nWorth a quick chat if useful?"
     }
   }
 }

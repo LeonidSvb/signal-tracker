@@ -75,6 +75,29 @@ export function marketFocusForCountry(countryCode) {
   return COUNTRY_TO_MARKET_EN[countryCode] || 'Europe';
 }
 
+// Found live 2026-08-03/04: market_focus was always the EN string above, filled into
+// filledVars and substituted AFTER translation (fillPlaceholders runs post-localizeMessage
+// everywhere in this file, by design — see buildLinkedInCopy's own comment on why fill-after
+// is required) — so a DE/FR/NL message read fine except for one stray English "Germany"/
+// "Europe" sitting mid-sentence. translations.jsonl already ships real localized market
+// names (market_names, per-lang) — this was simply never wired to actually use them. Same
+// reasoning gives FALLBACK_LOCALIZED_RELEVANT_CASE below: the generic {relevant_case}
+// fallback (used whenever nobody's hand-picked one) was English-only and, like market_focus,
+// got substituted after translation — the ONE other place a translated message could end up
+// mixed-language. Hand-translated once (a fixed sentence, not worth an LLM call per send)
+// rather than run through localizeMessage() at request time.
+export function localizeMarketFocus(marketFocusEn, lang) {
+  if (lang === 'en') return marketFocusEn;
+  return TRANSLATIONS_BY_LANG[lang]?.market_names?.[marketFocusEn] || marketFocusEn;
+}
+
+const FALLBACK_RELEVANT_CASE_BY_LANG = {
+  en: "I've placed similar roles at comparable food companies in the region.",
+  de: 'Ich habe ähnliche Positionen bei vergleichbaren Lebensmittelunternehmen in der Region besetzt.',
+  fr: "J'ai placé des profils similaires dans des entreprises alimentaires comparables de la région.",
+  nl: 'Ik heb vergelijkbare functies ingevuld bij soortgelijke voedingsbedrijven in de regio.',
+};
+
 // Casual display name for a company in email body text — real names come straight from
 // Blitz/Exa as either ALL CAPS ("ACP ATLANTIQUE") or with a legal suffix ("Dmk Deutsches
 // Milchkontor Gmbh"), found live 2026-08-02 while reviewing real mockups. Word-length
@@ -474,12 +497,11 @@ export async function fill({ templateKey, variant = null, rank = null, lang = 'e
   // return value lets callers (e.g. build_linkedin_queue.mjs's HTML export) flag
   // which rows are still on the generic fallback, so it's visible — not silent —
   // when a targeted line would likely convert better.
-  const FALLBACK_RELEVANT_CASE = "I've placed similar roles at comparable food companies in the region.";
   const usedFallbackCase = vars.relevant_case === undefined || vars.relevant_case === null || vars.relevant_case === '';
   const filledVars = {
-    market_focus: vars.market_focus,
-    relevant_case: usedFallbackCase ? FALLBACK_RELEVANT_CASE : vars.relevant_case,
     ...vars,
+    market_focus: localizeMarketFocus(vars.market_focus, lang),
+    relevant_case: usedFallbackCase ? (FALLBACK_RELEVANT_CASE_BY_LANG[lang] || FALLBACK_RELEVANT_CASE_BY_LANG.en) : vars.relevant_case,
   };
 
   const day0Body = skipEmailBody ? null : await buildDay0Body({ t, chosenVariant, lang, filledVars, hookCache, company: vars.company, fact, hookContext });
