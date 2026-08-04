@@ -1,5 +1,26 @@
 SIGNAL SYSTEM — Philippe Bosquillon
-Updated: 2026-08-02
+Updated: 2026-08-04
+
+=== STATUS 2026-08-04 — client handoff ready, all known live bugs fixed ===
+Full detail: CHANGELOG.md [Unreleased], "Fixed — LinkedIn AI hook+bridge, three
+independent copies of the HIRING routing bug, mixed-language copy, live 404s".
+- PlusVibe campaign IS wired up now (was this file's "NEXT PRIORITY" as of 2026-08-02,
+  done 2026-08-02/03) — "Philippe Live Signals" campaign, `sequencer.auto_push` still
+  FALSE until Leo reviews copy_templates.json and flips it live.
+- LinkedIn AI hook+bridge, 3 independent HIRING-routing bugs, mixed-language DE/FR/NL
+  copy, and every unfillable {acquirer}/{target}/{location}/etc. placeholder (static
+  fallback + followup emails) — all found live and fixed, verified on production.
+- OPENROUTER_KEY added to Coolify's persistent env store via API (a prior 2026-07-19
+  hotfix never survived a rebuild — every redeploy since silently lost AI generation
+  on the live frontend without anyone noticing until this session's client-readiness pass).
+- Open, not blocking: HIRING_RECRUITER template exists in copy_templates.json but
+  classifyEvent() never routes a real signal to it (dead template, harmless).
+  Self-hosted Supabase's inconsistent throughput (2-9s for the same query) is the
+  sidebar's remaining load-time bottleneck — needs Traefik/PostgREST gzip config,
+  shared VPS infra, not touched this session. Date-range filter on the Leads list
+  discussed and explicitly deferred (Leo's call — freshness already in tier/rank score).
+
+=== STATUS 2026-08-02 — pipeline back on autopilot, Blitz dead, LeadsFriday now primary email path ===
 Full plan: signals/PRD.md | Architecture: docs/OVERVIEW.md | DB: docs/SCHEMA.md
 Exa architecture + incident history: docs/EXA_INTEGRATION.md
 Scoring/routing spec: clients/philippe-bosquillon/docs/HANDOFF_2026-07-15_scoring_two_channel.md
