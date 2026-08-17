@@ -121,7 +121,15 @@ export function useCompanyList(clientSlug: string) {
   }, [clientSlug, reloadKey]);
 
   const refetch = useCallback(() => setReloadKey((k) => k + 1), []);
-  return { companies, clientId, loading, refetch };
+  // Local-only status patch, no network round-trip — found live 2026-08-17: every
+  // status-button click was calling refetch() (all 216 tiered companies, ~20
+  // chunked requests) just to update ONE row's status chip, which is why the
+  // buttons felt laggy. The caller already knows the new aggregate status (it
+  // just computed it from the contact statuses it's holding), so just patch it in.
+  const patchStatus = useCallback((companyId: string, status: ContactStatus) => {
+    setCompanies((prev) => prev.map((c) => (c.id === companyId ? { ...c, status } : c)));
+  }, []);
+  return { companies, clientId, loading, refetch, patchStatus };
 }
 
 async function fetchChunked<T>(chunks: string[][], query: (ids: string[]) => PromiseLike<{ data: T[] | null }>): Promise<T[]> {
@@ -218,7 +226,13 @@ export function useCompanyDetail(companyId: string | null, clientId: string) {
   }, [companyId, clientId, reloadKey]);
 
   const refetch = useCallback(() => setReloadKey((k) => k + 1), []);
-  return { detail, loading, refetch };
+  // Local-only patch for one contact's status — same reasoning as useCompanyList's
+  // patchStatus: a full refetch() here re-queries 6 tables just to reflect one
+  // upsert the caller already knows the result of.
+  const patchContactStatus = useCallback((contactId: string, status: ContactStatus) => {
+    setDetail((prev) => (prev ? { ...prev, contactStatuses: { ...prev.contactStatuses, [contactId]: status } } : prev));
+  }, []);
+  return { detail, loading, refetch, patchContactStatus };
 }
 
 // ── Per-contact status write (migration 009, contact_state) ──

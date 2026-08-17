@@ -2,6 +2,7 @@
 import { useState } from "react";
 import type { CompanyDetail } from "@/hooks/useLeads";
 import type { ContactStatus, Note } from "@/lib/types";
+import { aggregateStatus } from "@/lib/status";
 import EventsList from "./EventsList";
 import ContactRow from "./ContactRow";
 import NotesPanel from "./NotesPanel";
@@ -26,11 +27,12 @@ interface Props {
   notes: Note[];
   addNote: (companyId: string, clientId: string, author: string, body: string) => Promise<void>;
   setContactStatus: (clientId: string, companyId: string, contactId: string, status: ContactStatus) => Promise<void>;
-  onStatusChanged: () => void; // sidebar's aggregate chip depends on this — parent refetches the list
+  patchContactStatus: (contactId: string, status: ContactStatus) => void; // local, instant — see useLeads.ts
+  patchListStatus: (companyId: string, status: ContactStatus) => void; // local, instant — see useLeads.ts
   onOpenTemplatesGuide: () => void;
 }
 
-export default function DetailPanel({ detail, clientId, notes, addNote, setContactStatus, onStatusChanged, onOpenTemplatesGuide }: Props) {
+export default function DetailPanel({ detail, clientId, notes, addNote, setContactStatus, patchContactStatus, patchListStatus, onOpenTemplatesGuide }: Props) {
   const { company, events, contacts, contactStatuses, appStateFallback, latestEmailAction } = detail;
   const primaryContact = contacts.find((c) => c.is_primary) ?? contacts[0] ?? null;
   const [openContactId, setOpenContactId] = useState<string | null>(primaryContact?.id ?? null);
@@ -56,9 +58,14 @@ export default function DetailPanel({ detail, clientId, notes, addNote, setConta
   const tierReasonAgeNote =
     "The day count is age of the EVENT (its publish date), not how long ago we found it — a freshly-discovered but old story still counts as stale.";
 
-  async function handleSetStatus(contactId: string, status: ContactStatus) {
-    await setContactStatus(clientId, company.id, contactId, status);
-    onStatusChanged();
+  function handleSetStatus(contactId: string, status: ContactStatus) {
+    // Optimistic: patch local state instantly (both this panel's contact row and
+    // the sidebar's aggregate chip), then fire the write in the background — the
+    // buttons no longer wait on a network round-trip to visually respond.
+    patchContactStatus(contactId, status);
+    const nextStatuses = contacts.map((c) => (c.id === contactId ? status : contactStatuses[c.id] ?? "new"));
+    patchListStatus(company.id, aggregateStatus(nextStatuses));
+    setContactStatus(clientId, company.id, contactId, status);
   }
 
   const metaParts = [
