@@ -1,7 +1,7 @@
 "use client";
 import { useState, useMemo } from "react";
 import type { CompanyListItem, ContactStatus, Tier } from "@/lib/types";
-import { avatarColor, initials, formatEmployees } from "./helpers";
+import { avatarColor, initials, formatEmployees, signalTypeLabel, timeAgo } from "./helpers";
 import { filterCompanies } from "@/lib/filters";
 
 const STATUS_LABELS: Record<ContactStatus, string> = { new: "New", sent: "Sent", replied: "Replied", meeting: "Meeting", pass: "Pass" };
@@ -188,6 +188,14 @@ export default function Sidebar({ companies, selectedId, onSelect, totalTiered, 
           {filtered.map((c) => {
             const isActive = c.id === selectedId;
             const meta = [c.hq_country, formatEmployees(c.employees), `${c.sourceCount} src`].filter(Boolean).join(" · ");
+            const typeLabel = signalTypeLabel(c.latestSignalType);
+            const age = timeAgo(c.latestSignalPubDate);
+            // Flag when our pipeline caught the signal well after it was actually
+            // published (5+ days lag) — surfaced as a tooltip, not a separate chip,
+            // so the card stays scannable but the lag is one hover away.
+            const caughtLagDays = c.latestSignalPubDate && c.latestSignalCaughtAt
+              ? Math.floor((new Date(c.latestSignalCaughtAt).getTime() - new Date(c.latestSignalPubDate).getTime()) / 86_400_000)
+              : 0;
             return (
               <div key={c.id} className={`row ${isActive ? "active" : ""}`} onClick={() => onSelect(c.id)}>
                 <div className="row-avatar" style={{ background: avatarColor(c.name) }}>{initials(c.name)}</div>
@@ -200,10 +208,22 @@ export default function Sidebar({ companies, selectedId, onSelect, totalTiered, 
                       {STATUS_LABELS[c.status]}
                       <span className="tip-box">Most advanced status across {c.contactCount} contacts (pass only shown if every contact passed).</span>
                     </span>
+                    {typeLabel && (
+                      <span className="chip chip-signal tip">
+                        {typeLabel}{age ? ` · ${age}` : ""}
+                        <span className="tip-box">
+                          {c.latestSignalPubDate ? `Published ${new Date(c.latestSignalPubDate).toLocaleDateString()}.` : ""}
+                          {caughtLagDays >= 5 ? ` We caught it ${caughtLagDays}d later, on ${new Date(c.latestSignalCaughtAt as string).toLocaleDateString()}.` : ""}
+                        </span>
+                      </span>
+                    )}
                     {c.hasLinkedinOnly ? (
                       <span className="chip chip-channel warn">LinkedIn only</span>
                     ) : (
-                      <span className="chip chip-channel">{c.withEmailCount}/{c.contactCount} email</span>
+                      <span className="chip chip-channel tip">
+                        {c.withEmailCount}/{c.contactCount} email
+                        <span className="tip-box">{c.withEmailCount} of {c.contactCount} contacts have a verified email.</span>
+                      </span>
                     )}
                   </div>
                 </div>

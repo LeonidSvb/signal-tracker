@@ -113,6 +113,7 @@
 .chip-T2 { background: var(--accent-light); color: var(--accent-text); }
 .chip-T3 { background: var(--neutral-bg); color: var(--neutral-text); }
 .chip-status { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+.chip-signal { background: #F3E8FF; color: #7C3AED; }
 .chip-channel { background: #EAF3FC; color: #1D6FBF; }
 .chip-channel.warn { background: var(--warn-bg); color: var(--warn); }
 

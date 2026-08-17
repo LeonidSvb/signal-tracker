@@ -29,6 +29,36 @@ export function formatEmployees(n: number | null): string | null {
   return n ? `${n.toLocaleString()}p` : null;
 }
 
+// Human labels for signals.signal_type (see docs/SIGNALS_REGISTRY.md for what each
+// means to Philippe) — the raw DB values (HIRING/CLEVEL/MA/EXPAND/INVEST/CONTRACT/
+// NICHE/SECTOR) meant nothing at a glance in the sidebar card.
+export const SIGNAL_TYPE_LABEL: Record<string, string> = {
+  HIRING: "Hiring",
+  CLEVEL: "New C-Level",
+  MA: "M&A",
+  EXPAND: "Expansion",
+  INVEST: "Investment",
+  CONTRACT: "Contract/Partnership",
+  NICHE: "Sector news",
+  SECTOR: "Sector news",
+};
+export function signalTypeLabel(type: string | null): string | null {
+  if (!type) return null;
+  return SIGNAL_TYPE_LABEL[type.toUpperCase()] ?? type;
+}
+
+// Relative age for the sidebar card. "Xd ago" up to ~2 months, then "Xmo ago" —
+// matches the freshness windows docs/SIGNALS_REGISTRY.md scores on (≤7d / 8-14d /
+// 15-30d), so the label itself hints at how hot the signal still is.
+export function timeAgo(dateStr: string | null): string | null {
+  if (!dateStr) return null;
+  const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86_400_000);
+  if (days <= 0) return "today";
+  if (days === 1) return "1d ago";
+  if (days < 60) return `${days}d ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+}
+
 // Scraped contact names sometimes come in as all-lowercase ("oliver jaensch") —
 // found live 2026-08-17: this leaked verbatim into the outbound LinkedIn copy
 // text itself ("oliver, saw..."), not just the sidebar display. Title-case every

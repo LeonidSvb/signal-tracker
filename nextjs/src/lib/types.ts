@@ -139,6 +139,9 @@ export interface CompanyListItem {
   withEmailCount: number;
   origin: "exa" | "job_board" | "both" | null;
   hasLinkedinOnly: boolean; // no contact has an email, at least one has linkedin_url
+  latestSignalType: string | null; // signal_type of the most recent (active-first) signal, for the sidebar type chip
+  latestSignalPubDate: string | null; // when that signal was actually published — drives the age shown
+  latestSignalCaughtAt: string | null; // when our pipeline ingested it — surfaced only if it lags pub_date a lot
   status: ContactStatus; // aggregateStatus() over contact_state, fallback app_state
 }
 

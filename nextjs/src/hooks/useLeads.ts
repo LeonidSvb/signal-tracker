@@ -54,7 +54,7 @@ export function useCompanyList(clientSlug: string) {
       for (let i = 0; i < tieredIds.length; i += CHUNK) chunks.push(tieredIds.slice(i, i + CHUNK));
 
       const [signalRows, contactRows, contactStateRows, appStateRows] = await Promise.all([
-        fetchChunked(chunks, (ids) => sm.from("signals").select("company_id,source,status").eq("client_id", client.id).in("company_id", ids)),
+        fetchChunked(chunks, (ids) => sm.from("signals").select("company_id,source,status,signal_type,pub_date,created_at").eq("client_id", client.id).in("company_id", ids)),
         fetchChunked(chunks, (ids) => sm.from("contacts").select("id,company_id,email,linkedin_url").eq("client_id", client.id).in("company_id", ids)),
         fetchChunked(chunks, (ids) => sm.from("contact_state").select("company_id,contact_id,status").eq("client_id", client.id).in("company_id", ids)),
         fetchChunked(chunks, (ids) => sm.from("app_state").select("company_id,status").eq("client_id", client.id).in("company_id", ids)),
@@ -78,6 +78,19 @@ export function useCompanyList(clientSlug: string) {
           const origin: "exa" | "job_board" | "both" | null =
             origins.size === 2 ? "both" : origins.size === 1 ? Array.from(origins)[0] : null;
 
+          // "Latest signal" for the card = most recent by pub_date (falls back to
+          // created_at for signals with no pub_date), preferring active over stale.
+          // pub_date drives the age shown (what actually decays the outreach angle,
+          // see docs/SIGNALS_REGISTRY.md); created_at is kept alongside so the UI can
+          // flag when OUR pipeline caught it much later than it was actually published.
+          const active = signals.filter((s: any) => s.status === "active");
+          const pool = active.length ? active : signals;
+          const latest = pool.reduce((best: any, s: any) => {
+            const sd = new Date(s.pub_date || s.created_at).getTime();
+            const bd = best ? new Date(best.pub_date || best.created_at).getTime() : -Infinity;
+            return sd > bd ? s : best;
+          }, null);
+
           return {
             id: c.id,
             name: c.name,
@@ -89,6 +102,9 @@ export function useCompanyList(clientSlug: string) {
             withEmailCount: withEmail,
             origin,
             hasLinkedinOnly,
+            latestSignalType: latest?.signal_type ?? null,
+            latestSignalPubDate: latest?.pub_date ?? null,
+            latestSignalCaughtAt: latest?.created_at ?? null,
             status: resolveCompanyStatus(
               contactStates.map((s: any) => s.status as ContactStatus),
               appStateByCompany.get(c.id) ?? null

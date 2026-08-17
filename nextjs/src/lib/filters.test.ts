@@ -7,6 +7,7 @@ function co(over: Partial<CompanyListItem>): CompanyListItem {
     id: "id", name: "Test Co", tier: "T1", employees: 100, hq_country: "DE",
     sourceCount: 1, contactCount: 2, withEmailCount: 1, origin: "exa",
     hasLinkedinOnly: false, status: "new",
+    latestSignalType: null, latestSignalPubDate: null, latestSignalCaughtAt: null,
     ...over,
   };
 }
