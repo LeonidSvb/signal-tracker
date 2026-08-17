@@ -70,19 +70,37 @@ interface Props {
 export default function ContactRow({
   companyId, companyName, clientId, contact, signalType, pubDate, jobTitle, activeHiringCount, fact, rank, hqCountry, status, isOpen, onToggleOpen, onSetStatus, onOpenTemplatesGuide,
 }: Props) {
-  // channel (2026-08-17): LinkedIn (connect/qualify, status-gated — see renderCopyBox)
-  // vs Email (initial/followup, Philippe direct, both shown at once — no accept-gate
-  // concept for email). Each channel's copy is cached separately per contact-row-open
-  // so switching back and forth doesn't re-trigger an AI call.
+  // channel (2026-08-17): LinkedIn vs Email. liMode only matters for channel=linkedin —
+  // whether LinkedIn goes through a connect-note step, or skips straight to InMail (no
+  // accept-gate, needs a subject line). Both channel and liMode key the copy cache (a
+  // liMode switch changes the underlying content even though channel stays "linkedin"),
+  // so flipping between them never re-triggers a paid AI call once fetched once.
   const [channel, setChannel] = useState<"linkedin" | "email">("linkedin");
+  const [liMode, setLiMode] = useState<"connect_note" | "connect_no_note" | "inmail">("connect_note");
   const [lang, setLang] = useState<"en" | "de" | "fr" | "nl">("en");
-  const [copyByChannel, setCopyByChannel] = useState<Record<string, Record<string, string | null>>>({});
+  const [copyByKey, setCopyByKey] = useState<Record<string, Record<string, string | null>>>({});
   const [copyLoading, setCopyLoading] = useState(false);
-  const [translatedByChannel, setTranslatedByChannel] = useState<Record<string, Record<string, string | null>>>({});
+  const [translatedByKey, setTranslatedByKey] = useState<Record<string, Record<string, string | null>>>({});
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const copy = copyByChannel[channel] ?? null;
-  const translated = translatedByChannel[channel] ?? null;
-  const FIELDS: Record<"linkedin" | "email", [string, string]> = { linkedin: ["connect", "qualify"], email: ["initial", "followup"] };
+  const isDirectMessage = channel === "email" || liMode === "inmail"; // no connect/accept gate
+  const cacheKey = channel === "linkedin" ? `linkedin:${liMode}` : "email";
+  const copy = copyByKey[cacheKey] ?? null;
+  const translated = translatedByKey[cacheKey] ?? null;
+  // Which two copy_templates.json-fill fields represent "the thing to send at this
+  // contact status" for the current channel/mode — mirrors the funnel everywhere else
+  // in the app: New/Sent/Replied/Meeting/Pass, just resolved into different text per
+  // channel. Meeting/Pass are special-cased in renderCopyBox (no scripted copy either way).
+  const STAGE_FIELD: Record<"new" | "sent" | "replied", { field: string; label: string }> = isDirectMessage
+    ? {
+        new: { field: "initial", label: channel === "email" ? "Ready to send — initial email" : "Ready to send — InMail" },
+        sent: { field: "followup", label: "Follow-up — if no reply after a few days" },
+        replied: { field: "replyQualify", label: "They replied — qualifying question" },
+      }
+    : {
+        new: { field: "connect", label: "Ready to send — connection request" },
+        sent: { field: "qualify", label: "Waiting on a reply — once they answer, use this" },
+        replied: { field: "qualify", label: "They replied — qualifying question" },
+      };
 
   const firstName = capitalizeName((contact.first_name || contact.full_name || "").split(" ")[0]);
   const fullName = capitalizeName(contact.full_name);
@@ -92,37 +110,35 @@ export default function ContactRow({
   const hasEmail = !!contact.email;
 
   useEffect(() => {
-    if (!isOpen || copyByChannel[channel] || status === "pass") return;
+    if (!isOpen || copyByKey[cacheKey] || status === "pass") return;
     setCopyLoading(true);
     fetch("/api/copy", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        signalType, pubDate, jobTitle, activeHiringCount, fact, rank, channel,
+        signalType, pubDate, jobTitle, activeHiringCount, fact, rank, channel, liMode,
         vars: { first_name: firstName, company: companyName, market_focus: marketFocus },
       }),
     })
       .then((r) => r.json())
-      .then((d) => setCopyByChannel((prev) => ({ ...prev, [channel]: d })))
-      .catch(() => setCopyByChannel((prev) => ({ ...prev, [channel]: {} })))
+      .then((d) => setCopyByKey((prev) => ({ ...prev, [cacheKey]: d })))
+      .catch(() => setCopyByKey((prev) => ({ ...prev, [cacheKey]: {} })))
       .finally(() => setCopyLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, channel]);
+  }, [isOpen, cacheKey]);
 
   async function toggleTranslate() {
     if (lang !== "en") { setLang("en"); return; }
     if (nativeLang === "en") return;
     setLang(nativeLang);
     if (translated || !copy) return;
-    const [f1, f2] = FIELDS[channel];
-    const [res1, res2] = await Promise.all([
-      copy[f1] ? fetch("/api/translate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: copy[f1], lang: nativeLang }) }).then((r) => r.json()) : null,
-      copy[f2] ? fetch("/api/translate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: copy[f2], lang: nativeLang }) }).then((r) => r.json()) : null,
-    ]);
-    setTranslatedByChannel((prev) => ({
-      ...prev,
-      [channel]: { [f1]: res1?.translated ?? copy[f1], [f2]: res2?.translated ?? copy[f2] },
-    }));
+    const fields = isDirectMessage ? ["initial", "followup", "replyQualify"] : ["connect", "qualify"];
+    const results = await Promise.all(
+      fields.map((f) => (copy[f] ? fetch("/api/translate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: copy[f], lang: nativeLang }) }).then((r) => r.json()) : null))
+    );
+    const next: Record<string, string | null> = {};
+    fields.forEach((f, i) => { next[f] = results[i]?.translated ?? copy[f]; });
+    setTranslatedByKey((prev) => ({ ...prev, [cacheKey]: next }));
   }
 
   function activeText(field: string): string {
@@ -153,87 +169,74 @@ export default function ContactRow({
   }
 
   function renderChannelTabs() {
-    if (!hasEmail) return null;
     return (
       <div className="channel-tabs" onClick={(e) => e.stopPropagation()}>
         <button className={`channel-tab ${channel === "linkedin" ? "on" : ""}`} onClick={() => setChannel("linkedin")}>LinkedIn</button>
-        <button className={`channel-tab ${channel === "email" ? "on" : ""}`} onClick={() => setChannel("email")}>Email</button>
+        {hasEmail && <button className={`channel-tab ${channel === "email" ? "on" : ""}`} onClick={() => setChannel("email")}>Email</button>}
       </div>
     );
   }
 
-  function renderEmailCopyBox() {
-    if (status === "pass") {
-      return <div className="copy-box"><div className="cb-label" style={{ color: "var(--muted)" }}>Marked as pass — no further copy needed, no more nudges.</div></div>;
-    }
-    if (copyLoading) {
-      return <div className="copy-box"><div className="cb-label">Loading copy…</div></div>;
-    }
-    // Email has no LinkedIn-style accept-gate — both the opener and the nudge are
-    // shown together so Philippe/Leo can grab whichever applies right now.
+  // liMode selector (2026-08-17) — per-CONTACT choice, not a global setting: LinkedIn
+  // sometimes disables the connection-note field (weekly invite cap), and not every
+  // contact has Open Profile/accepts InMail, so Philippe picks per contact based on
+  // what LinkedIn actually shows him in the moment.
+  function renderLiModeSelector() {
+    if (channel !== "linkedin") return null;
+    const OPTIONS: { key: typeof liMode; label: string }[] = [
+      { key: "connect_note", label: "Connect + note" },
+      { key: "connect_no_note", label: "Connect, no note" },
+      { key: "inmail", label: "InMail direct" },
+    ];
     return (
-      <>
-        <div className="copy-box">
-          <div className="cb-label">Initial email — from Philippe directly</div>
-          <div className="cb-msg">{activeText("initial")}</div>
-          {copyActions("initial")}
-        </div>
-        <div className="copy-box">
-          <div className="cb-label">Follow-up — if no reply after a few days</div>
-          <div className="cb-msg">{activeText("followup")}</div>
-          {copyActions("followup")}
-        </div>
-      </>
+      <div className="li-mode-row" onClick={(e) => e.stopPropagation()}>
+        {OPTIONS.map((o) => (
+          <button key={o.key} className={`li-mode-btn ${liMode === o.key ? "on" : ""}`} onClick={() => setLiMode(o.key)}>{o.label}</button>
+        ))}
+      </div>
     );
   }
 
   function renderCopyBox() {
-    if (channel === "email") return renderEmailCopyBox();
     if (status === "pass") {
       return <div className="copy-box"><div className="cb-label" style={{ color: "var(--muted)" }}>Marked as pass — no further copy needed, no more nudges.</div></div>;
     }
     if (copyLoading) {
       return <div className="copy-box"><div className="cb-label">Loading copy…</div></div>;
     }
-    if (status === "new") {
+    if (status === "meeting") {
+      // Real finding (Stage 3): the actual playbook has NO scripted step-3/follow-up
+      // message — "Follow-up'ов от Philippe НЕТ." Philippe runs this stage himself,
+      // directly in his own LinkedIn/inbox — Leo has no access and this tool doesn't
+      // script it. Honest note instead of a fabricated "propose a call" script.
       return (
         <div className="copy-box">
-          <div className="cb-label">Ready to send — connection request</div>
-          <div className="cb-msg">{activeText("connect")}</div>
-          {copyActions("connect")}
+          <div className="cb-label">Engaged — Philippe takes it from here</div>
+          <div className="cb-aside" style={{ marginBottom: 0 }}>
+            There's no further scripted message for this stage — Philippe continues the conversation himself,
+            directly in his own LinkedIn/inbox (not through this tool). Any reply before this point routes to Leo.
+          </div>
         </div>
       );
     }
-    if (status === "sent" || status === "replied") {
-      return (
-        <div className="copy-box">
-          <div className="cb-label">{status === "sent" ? "Waiting on a reply — once they answer, use this" : "They replied — qualifying question"}</div>
-          <div className="cb-msg">{activeText("qualify")}</div>
+    const stage = STAGE_FIELD[status as "new" | "sent" | "replied"];
+    if (!stage) return null;
+    const showSubject = stage.field === "initial" && copy?.subject;
+    return (
+      <div className="copy-box">
+        <div className="cb-label">{stage.label}</div>
+        {showSubject && <div className="cb-subject"><b>Subject:</b> {activeText("subject")}</div>}
+        <div className="cb-msg">{activeText(stage.field)}</div>
+        {status === "replied" && (
           <div className="cb-aside">
             If the answer is a clear no — don't propose a call, simply move on. If they're clearly engaged, it's
             fine to ask a bit more (decision-maker? other roles open? rough timeline?) — but leave the actual
             pitch for Leo.
           </div>
-          {copyActions("qualify")}
-        </div>
-      );
-    }
-    if (status === "meeting") {
-      // Real finding (Stage 3): the actual playbook has NO scripted step-3/follow-up
-      // message — "Follow-up'ов от Philippe НЕТ." Any reply routes to Leo from here;
-      // showing an honest note instead of a fabricated "propose a call" script.
-      return (
-        <div className="copy-box">
-          <div className="cb-label">Engaged — Philippe's LinkedIn part is done here</div>
-          <div className="cb-aside" style={{ marginBottom: 0 }}>
-            There's no further scripted LinkedIn message for this stage — Philippe sends the connection note and
-            first message only, per the playbook. Any reply from here routes to Leo, who takes the conversation
-            forward directly (not through this tool).
-          </div>
-        </div>
-      );
-    }
-    return null;
+        )}
+        {copyActions(stage.field)}
+      </div>
+    );
   }
 
   return (
@@ -279,6 +282,7 @@ export default function ContactRow({
             ))}
           </div>
           {renderChannelTabs()}
+          {renderLiModeSelector()}
           {renderCopyBox()}
         </div>
       )}

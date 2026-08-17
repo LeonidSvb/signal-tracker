@@ -23,7 +23,6 @@ import { join } from 'path';
 
 const TEMPLATES_PATH = join(process.cwd(), '../pipeline/config/copy_templates.json');
 const EXAMPLES_PATH = join(process.cwd(), '../pipeline/config/copy_examples.json');
-const CLIENT_CONFIG_PATH = join(process.cwd(), '../pipeline/clients/philippe-bosquillon.json');
 
 // AI hook+bridge (2026-08-03) — this route used to be pure static template fill ("no LLM
 // call here" was the original design). Found live: HIRING_SURGE's static li_connection_note
@@ -148,6 +147,12 @@ export async function POST(req: NextRequest) {
     fact?: string | null; hookContext?: string;
     rank?: number | null; vars?: Record<string, string>; liVariant?: string;
     channel?: 'linkedin' | 'email';
+    // liMode (2026-08-17): per-CONTACT choice, not a client-wide config — LinkedIn
+    // sometimes disables the note field (weekly invite limits), and not every contact
+    // has Open Profile/accepts InMail. 'inmail' skips the connect/accept step entirely,
+    // same shape as the email channel (initial/followup/replyQualify + subject) since
+    // there's no "wait for accept" concept once you're messaging directly.
+    liMode?: 'connect_note' | 'connect_no_note' | 'inmail';
   };
   try {
     body = await req.json();
@@ -155,8 +160,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid JSON body' }, { status: 400 });
   }
 
-  const { signalType, pubDate = null, jobTitle = null, activeHiringCount = 0, fact = null, rank = null, vars = {}, liVariant, channel = 'linkedin' } = body;
+  const { signalType, pubDate = null, jobTitle = null, activeHiringCount = 0, fact = null, rank = null, vars = {}, liVariant, channel = 'linkedin', liMode = 'connect_note' } = body;
   if (!signalType) return NextResponse.json({ error: 'signalType is required' }, { status: 400 });
+  const isDirectMessage = channel === 'email' || liMode === 'inmail'; // no connect/accept gate — one message per stage
 
   // signals.signal_type is only ever the coarse 'HIRING' in the DB — resolve to the real
   // EXEC/MID/STALE/SURGE template key it actually maps to (see resolveHiringTemplateKey's
@@ -180,30 +186,37 @@ export async function POST(req: NextRequest) {
   const variantUsed = variantForRank(rank, availableLetters);
 
   const RELEVANT_CASE = "I've placed similar roles at comparable food companies in the region.";
+  const SUBJECT = templates._meta?.subject_by_lang?.en || 'someone I\'d like to introduce';
 
   if (fact) {
     const generated = await generateHookBridge(vars.company || '', fact, hookContext);
     if (generated) {
-      // Email (Philippe, direct — 2026-08-17): no LinkedIn-style connect/accept gate to
-      // work around, so hook+bridge+positioning+case go out in ONE message instead of
-      // split across two. Same generateHookBridge() call as LinkedIn — same real fact,
-      // same variables — just a different wrapper template for the channel. The
-      // follow-up is deliberately generic (no fact re-stated): it's a time-based nudge,
-      // not new information.
-      if (channel === 'email') {
+      // Direct message (email, or LinkedIn InMail — 2026-08-17): no connect/accept gate
+      // to work around, so hook+bridge+positioning+case go out in ONE opener instead of
+      // split across two. Same generateHookBridge() call as the connect-based LinkedIn
+      // path — same real fact, same variables — just a different wrapper. followup is a
+      // deliberately generic time-based nudge (no fact restated); replyQualify reuses the
+      // bridge (not the hook — they've already read it) once they actually reply, mirroring
+      // what the connect-based qualify message does at the "replied" stage.
+      if (isDirectMessage) {
         const initial = fillPlaceholders(
           `{first_name}, ${generated.hook} - ${liPositioningLine('{market_focus}')}\n\n${generated.bridge}\n\n{relevant_case}\n\nWorth a quick reply?`,
           { relevant_case: RELEVANT_CASE, ...vars }
         );
         const followup = fillPlaceholders(`{first_name} — just floating this back up in case it got buried. Still relevant on your end?`, vars);
-        return NextResponse.json({ initial, followup, variantUsed, requiredVariables: t.required_variables || [], source: 'ai' });
+        const replyQualify = fillPlaceholders(
+          `{first_name} — thanks for getting back to me.\n\n${generated.bridge}\n\n{relevant_case}\n\nWorth a quick call this week?`,
+          { relevant_case: RELEVANT_CASE, ...vars }
+        );
+        return NextResponse.json({
+          subject: isDirectMessage ? SUBJECT : undefined,
+          initial, followup, replyQualify, variantUsed, requiredVariables: t.required_variables || [], source: 'ai',
+        });
       }
 
-      let noteMode = 'with_note';
-      try { noteMode = JSON.parse(readFileSync(CLIENT_CONFIG_PATH, 'utf8')).linkedin?.connection_note_mode || 'with_note'; } catch { /* default */ }
-      const connect = noteMode === 'no_note' ? null
+      const connect = liMode === 'connect_no_note' ? null
         : fillPlaceholders(`{first_name}, ${generated.hook} - ${liPositioningLine('{market_focus}')} Connect?`, vars);
-      const qualifyTemplate = noteMode === 'no_note'
+      const qualifyTemplate = liMode === 'connect_no_note'
         ? `{first_name} — appreciate the connect.\n\n${generated.hook} -\n${generated.bridge}\n\n{relevant_case}\n\nWorth a quick chat if useful?`
         : `{first_name} — appreciate the connect.\n\n${generated.bridge}\n\n{relevant_case}\n\nWorth a quick chat if useful?`;
       const qualify = fillPlaceholders(qualifyTemplate, { relevant_case: RELEVANT_CASE, ...vars });
@@ -212,17 +225,19 @@ export async function POST(req: NextRequest) {
     // generation failed (no key, network, malformed output) — fall through to static below
   }
 
-  if (channel === 'email') {
-    // Static fallback for email — reuses the existing Leo-voiced PlusVibe variants
-    // (real, already-reviewed copy, just not Philippe's own voice). Acceptable here
-    // because this path only fires when AI generation is unavailable/failed — a rare
-    // edge case, not the normal flow.
+  if (isDirectMessage) {
+    // Static fallback — reuses the existing Leo-voiced PlusVibe variants (real,
+    // already-reviewed copy, just not Philippe's own voice). Acceptable here because
+    // this path only fires when AI generation is unavailable/failed — a rare edge
+    // case, not the normal flow.
     const variantRaw = t.variants?.[variantUsed as string];
     const variantText = typeof variantRaw === 'string' ? variantRaw : variantRaw?.body;
     const followupRaw = Array.isArray(t.followups) ? t.followups.find((f: any) => f.body)?.body : null;
     return NextResponse.json({
+      subject: isDirectMessage ? SUBJECT : undefined,
       initial: fillPlaceholders(variantText, { relevant_case: RELEVANT_CASE, ...vars }),
       followup: fillPlaceholders(followupRaw, vars),
+      replyQualify: fillPlaceholders(`{first_name} — thanks for getting back to me.\n\n{relevant_case}\n\nWorth a quick call this week?`, { relevant_case: RELEVANT_CASE, ...vars }),
       variantUsed,
       requiredVariables: t.required_variables || [],
       source: 'static_fallback',
