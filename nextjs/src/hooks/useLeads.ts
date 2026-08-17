@@ -43,23 +43,28 @@ export function useCompanyList(clientSlug: string) {
       if (cancelled) return;
       const tieredIds = (companyRows ?? []).map((c: any) => c.id);
 
-      const [
-        { data: signalRows },
-        { data: contactRows },
-        { data: contactStateRows },
-        { data: appStateRows },
-      ] = tieredIds.length ? await Promise.all([
-        sm.from("signals").select("company_id,source,status").eq("client_id", client.id).in("company_id", tieredIds),
-        sm.from("contacts").select("id,company_id,email,linkedin_url").eq("client_id", client.id).in("company_id", tieredIds),
-        sm.from("contact_state").select("company_id,contact_id,status").eq("client_id", client.id).in("company_id", tieredIds),
-        sm.from("app_state").select("company_id,status").eq("client_id", client.id).in("company_id", tieredIds),
-      ]) : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
+      // company_id list is passed as a URL query param (.in()) — with 150+ UUIDs
+      // (36 chars each) the GET URL exceeds the server's URI length limit and the
+      // CORS preflight itself 414s, so every one of these 4 queries silently
+      // returns nothing (found live 2026-08-17: sidebar showed "0 companies"
+      // while the header count read from a separate, unfiltered query still
+      // showed real numbers). Chunking keeps each request's URL short.
+      const CHUNK = 50;
+      const chunks: string[][] = [];
+      for (let i = 0; i < tieredIds.length; i += CHUNK) chunks.push(tieredIds.slice(i, i + CHUNK));
+
+      const [signalRows, contactRows, contactStateRows, appStateRows] = await Promise.all([
+        fetchChunked(chunks, (ids) => sm.from("signals").select("company_id,source,status").eq("client_id", client.id).in("company_id", ids)),
+        fetchChunked(chunks, (ids) => sm.from("contacts").select("id,company_id,email,linkedin_url").eq("client_id", client.id).in("company_id", ids)),
+        fetchChunked(chunks, (ids) => sm.from("contact_state").select("company_id,contact_id,status").eq("client_id", client.id).in("company_id", ids)),
+        fetchChunked(chunks, (ids) => sm.from("app_state").select("company_id,status").eq("client_id", client.id).in("company_id", ids)),
+      ]);
       if (cancelled) return;
 
-      const signalsByCompany = groupBy(signalRows ?? [], (s) => s.company_id);
-      const contactsByCompany = groupBy(contactRows ?? [], (c) => c.company_id);
-      const contactStateByCompany = groupBy(contactStateRows ?? [], (s) => s.company_id);
-      const appStateByCompany = new Map((appStateRows ?? []).map((a) => [a.company_id, a.status as ContactStatus]));
+      const signalsByCompany = groupBy(signalRows, (s: any) => s.company_id);
+      const contactsByCompany = groupBy(contactRows, (c: any) => c.company_id);
+      const contactStateByCompany = groupBy(contactStateRows, (s: any) => s.company_id);
+      const appStateByCompany = new Map(appStateRows.map((a: any) => [a.company_id, a.status as ContactStatus]));
 
       const items: CompanyListItem[] = (companyRows ?? [])
         .filter((c: any) => (signalsByCompany.get(c.id)?.length ?? 0) > 0)
@@ -101,6 +106,12 @@ export function useCompanyList(clientSlug: string) {
 
   const refetch = useCallback(() => setReloadKey((k) => k + 1), []);
   return { companies, clientId, loading, refetch };
+}
+
+async function fetchChunked<T>(chunks: string[][], query: (ids: string[]) => PromiseLike<{ data: T[] | null }>): Promise<T[]> {
+  if (!chunks.length) return [];
+  const results = await Promise.all(chunks.map((ids) => query(ids)));
+  return results.flatMap((r) => r.data ?? []);
 }
 
 function groupBy<T, K>(rows: T[], key: (row: T) => K): Map<K, T[]> {
