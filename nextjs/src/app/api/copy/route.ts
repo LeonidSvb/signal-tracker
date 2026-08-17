@@ -147,6 +147,7 @@ export async function POST(req: NextRequest) {
     signalType?: string; pubDate?: string | null; jobTitle?: string | null; activeHiringCount?: number;
     fact?: string | null; hookContext?: string;
     rank?: number | null; vars?: Record<string, string>; liVariant?: string;
+    channel?: 'linkedin' | 'email';
   };
   try {
     body = await req.json();
@@ -154,7 +155,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid JSON body' }, { status: 400 });
   }
 
-  const { signalType, pubDate = null, jobTitle = null, activeHiringCount = 0, fact = null, rank = null, vars = {}, liVariant } = body;
+  const { signalType, pubDate = null, jobTitle = null, activeHiringCount = 0, fact = null, rank = null, vars = {}, liVariant, channel = 'linkedin' } = body;
   if (!signalType) return NextResponse.json({ error: 'signalType is required' }, { status: 400 });
 
   // signals.signal_type is only ever the coarse 'HIRING' in the DB — resolve to the real
@@ -178,9 +179,26 @@ export async function POST(req: NextRequest) {
   const availableLetters = Object.keys(t.variants || {});
   const variantUsed = variantForRank(rank, availableLetters);
 
+  const RELEVANT_CASE = "I've placed similar roles at comparable food companies in the region.";
+
   if (fact) {
     const generated = await generateHookBridge(vars.company || '', fact, hookContext);
     if (generated) {
+      // Email (Philippe, direct — 2026-08-17): no LinkedIn-style connect/accept gate to
+      // work around, so hook+bridge+positioning+case go out in ONE message instead of
+      // split across two. Same generateHookBridge() call as LinkedIn — same real fact,
+      // same variables — just a different wrapper template for the channel. The
+      // follow-up is deliberately generic (no fact re-stated): it's a time-based nudge,
+      // not new information.
+      if (channel === 'email') {
+        const initial = fillPlaceholders(
+          `{first_name}, ${generated.hook} - ${liPositioningLine('{market_focus}')}\n\n${generated.bridge}\n\n{relevant_case}\n\nWorth a quick reply?`,
+          { relevant_case: RELEVANT_CASE, ...vars }
+        );
+        const followup = fillPlaceholders(`{first_name} — just floating this back up in case it got buried. Still relevant on your end?`, vars);
+        return NextResponse.json({ initial, followup, variantUsed, requiredVariables: t.required_variables || [], source: 'ai' });
+      }
+
       let noteMode = 'with_note';
       try { noteMode = JSON.parse(readFileSync(CLIENT_CONFIG_PATH, 'utf8')).linkedin?.connection_note_mode || 'with_note'; } catch { /* default */ }
       const connect = noteMode === 'no_note' ? null
@@ -188,10 +206,27 @@ export async function POST(req: NextRequest) {
       const qualifyTemplate = noteMode === 'no_note'
         ? `{first_name} — appreciate the connect.\n\n${generated.hook} -\n${generated.bridge}\n\n{relevant_case}\n\nWorth a quick chat if useful?`
         : `{first_name} — appreciate the connect.\n\n${generated.bridge}\n\n{relevant_case}\n\nWorth a quick chat if useful?`;
-      const qualify = fillPlaceholders(qualifyTemplate, { relevant_case: "I've placed similar roles at comparable food companies in the region.", ...vars });
+      const qualify = fillPlaceholders(qualifyTemplate, { relevant_case: RELEVANT_CASE, ...vars });
       return NextResponse.json({ connect, qualify, variantUsed, requiredVariables: t.required_variables || [], source: 'ai' });
     }
     // generation failed (no key, network, malformed output) — fall through to static below
+  }
+
+  if (channel === 'email') {
+    // Static fallback for email — reuses the existing Leo-voiced PlusVibe variants
+    // (real, already-reviewed copy, just not Philippe's own voice). Acceptable here
+    // because this path only fires when AI generation is unavailable/failed — a rare
+    // edge case, not the normal flow.
+    const variantRaw = t.variants?.[variantUsed as string];
+    const variantText = typeof variantRaw === 'string' ? variantRaw : variantRaw?.body;
+    const followupRaw = Array.isArray(t.followups) ? t.followups.find((f: any) => f.body)?.body : null;
+    return NextResponse.json({
+      initial: fillPlaceholders(variantText, { relevant_case: RELEVANT_CASE, ...vars }),
+      followup: fillPlaceholders(followupRaw, vars),
+      variantUsed,
+      requiredVariables: t.required_variables || [],
+      source: 'static_fallback',
+    });
   }
 
   let liBlock: { li_connection_note?: string; li_first_message?: string };

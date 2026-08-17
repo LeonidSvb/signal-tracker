@@ -70,63 +70,73 @@ interface Props {
 export default function ContactRow({
   companyId, companyName, clientId, contact, signalType, pubDate, jobTitle, activeHiringCount, fact, rank, hqCountry, status, isOpen, onToggleOpen, onSetStatus, onOpenTemplatesGuide,
 }: Props) {
+  // channel (2026-08-17): LinkedIn (connect/qualify, status-gated — see renderCopyBox)
+  // vs Email (initial/followup, Philippe direct, both shown at once — no accept-gate
+  // concept for email). Each channel's copy is cached separately per contact-row-open
+  // so switching back and forth doesn't re-trigger an AI call.
+  const [channel, setChannel] = useState<"linkedin" | "email">("linkedin");
   const [lang, setLang] = useState<"en" | "de" | "fr" | "nl">("en");
-  const [copy, setCopy] = useState<{ connect: string | null; qualify: string | null } | null>(null);
+  const [copyByChannel, setCopyByChannel] = useState<Record<string, Record<string, string | null>>>({});
   const [copyLoading, setCopyLoading] = useState(false);
-  const [translated, setTranslated] = useState<{ connect: string | null; qualify: string | null } | null>(null);
+  const [translatedByChannel, setTranslatedByChannel] = useState<Record<string, Record<string, string | null>>>({});
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const copy = copyByChannel[channel] ?? null;
+  const translated = translatedByChannel[channel] ?? null;
+  const FIELDS: Record<"linkedin" | "email", [string, string]> = { linkedin: ["connect", "qualify"], email: ["initial", "followup"] };
 
   const firstName = capitalizeName((contact.first_name || contact.full_name || "").split(" ")[0]);
   const fullName = capitalizeName(contact.full_name);
   const marketFocus = marketFocusForCountry(hqCountry);
   const nativeLang = langForCountry(hqCountry);
   const emailHref = contact.email_status === "verified" && contact.email ? `mailto:${contact.email}` : null;
+  const hasEmail = !!contact.email;
 
   useEffect(() => {
-    if (!isOpen || copy || status === "pass") return;
+    if (!isOpen || copyByChannel[channel] || status === "pass") return;
     setCopyLoading(true);
     fetch("/api/copy", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        signalType, pubDate, jobTitle, activeHiringCount, fact, rank,
+        signalType, pubDate, jobTitle, activeHiringCount, fact, rank, channel,
         vars: { first_name: firstName, company: companyName, market_focus: marketFocus },
       }),
     })
       .then((r) => r.json())
-      .then((d) => setCopy({ connect: d.connect, qualify: d.qualify }))
-      .catch(() => setCopy({ connect: null, qualify: null }))
+      .then((d) => setCopyByChannel((prev) => ({ ...prev, [channel]: d })))
+      .catch(() => setCopyByChannel((prev) => ({ ...prev, [channel]: {} })))
       .finally(() => setCopyLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, channel]);
 
   async function toggleTranslate() {
     if (lang !== "en") { setLang("en"); return; }
     if (nativeLang === "en") return;
     setLang(nativeLang);
     if (translated || !copy) return;
-    const [connectRes, qualifyRes] = await Promise.all([
-      copy.connect ? fetch("/api/translate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: copy.connect, lang: nativeLang }) }).then((r) => r.json()) : null,
-      copy.qualify ? fetch("/api/translate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: copy.qualify, lang: nativeLang }) }).then((r) => r.json()) : null,
+    const [f1, f2] = FIELDS[channel];
+    const [res1, res2] = await Promise.all([
+      copy[f1] ? fetch("/api/translate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: copy[f1], lang: nativeLang }) }).then((r) => r.json()) : null,
+      copy[f2] ? fetch("/api/translate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: copy[f2], lang: nativeLang }) }).then((r) => r.json()) : null,
     ]);
-    setTranslated({
-      connect: connectRes?.translated ?? copy.connect,
-      qualify: qualifyRes?.translated ?? copy.qualify,
-    });
+    setTranslatedByChannel((prev) => ({
+      ...prev,
+      [channel]: { [f1]: res1?.translated ?? copy[f1], [f2]: res2?.translated ?? copy[f2] },
+    }));
   }
 
-  function activeText(field: "connect" | "qualify"): string {
+  function activeText(field: string): string {
     const src = lang === "en" ? copy : translated || copy;
     return (src?.[field] || "").replace(/\{first_name\}/g, firstName);
   }
 
-  function copyToClipboard(field: "connect" | "qualify") {
+  function copyToClipboard(field: string) {
     navigator.clipboard.writeText(activeText(field)).catch(() => {});
     setCopiedField(field);
     setTimeout(() => setCopiedField(null), 1400);
   }
 
-  function copyActions(field: "connect" | "qualify") {
+  function copyActions(field: string) {
     return (
       <div className="cb-actions" onClick={(e) => e.stopPropagation()}>
         <button className={`btn btn-copy ${copiedField === field ? "copied" : ""}`} onClick={() => copyToClipboard(field)}>
@@ -142,7 +152,43 @@ export default function ContactRow({
     );
   }
 
+  function renderChannelTabs() {
+    if (!hasEmail) return null;
+    return (
+      <div className="channel-tabs" onClick={(e) => e.stopPropagation()}>
+        <button className={`channel-tab ${channel === "linkedin" ? "on" : ""}`} onClick={() => setChannel("linkedin")}>LinkedIn</button>
+        <button className={`channel-tab ${channel === "email" ? "on" : ""}`} onClick={() => setChannel("email")}>Email</button>
+      </div>
+    );
+  }
+
+  function renderEmailCopyBox() {
+    if (status === "pass") {
+      return <div className="copy-box"><div className="cb-label" style={{ color: "var(--muted)" }}>Marked as pass — no further copy needed, no more nudges.</div></div>;
+    }
+    if (copyLoading) {
+      return <div className="copy-box"><div className="cb-label">Loading copy…</div></div>;
+    }
+    // Email has no LinkedIn-style accept-gate — both the opener and the nudge are
+    // shown together so Philippe/Leo can grab whichever applies right now.
+    return (
+      <>
+        <div className="copy-box">
+          <div className="cb-label">Initial email — from Philippe directly</div>
+          <div className="cb-msg">{activeText("initial")}</div>
+          {copyActions("initial")}
+        </div>
+        <div className="copy-box">
+          <div className="cb-label">Follow-up — if no reply after a few days</div>
+          <div className="cb-msg">{activeText("followup")}</div>
+          {copyActions("followup")}
+        </div>
+      </>
+    );
+  }
+
   function renderCopyBox() {
+    if (channel === "email") return renderEmailCopyBox();
     if (status === "pass") {
       return <div className="copy-box"><div className="cb-label" style={{ color: "var(--muted)" }}>Marked as pass — no further copy needed, no more nudges.</div></div>;
     }
@@ -232,6 +278,7 @@ export default function ContactRow({
               </button>
             ))}
           </div>
+          {renderChannelTabs()}
           {renderCopyBox()}
         </div>
       )}

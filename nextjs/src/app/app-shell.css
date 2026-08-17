@@ -218,6 +218,11 @@
 .status-btn.on.pass { background: var(--neg); border-color: var(--neg); }
 .status-btn.on.meeting { background: var(--pos); border-color: var(--pos); }
 
+.channel-tabs { padding: 8px 14px 0; display: flex; gap: 6px; }
+.channel-tab { padding: 4px 12px; border-radius: 999px; font-size: 11px; font-weight: 700; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; }
+.channel-tab:hover { border-color: var(--accent); }
+.channel-tab.on { background: var(--accent-light); border-color: var(--accent); color: var(--accent-text); }
+
 .copy-box { margin: 10px 14px 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
 .cb-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--accent-text); margin-bottom: 7px; }
 .cb-msg { font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; white-space: pre-wrap; line-height: 1.55; margin-bottom: 9px; }
