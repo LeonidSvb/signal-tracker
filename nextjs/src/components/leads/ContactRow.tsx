@@ -116,7 +116,7 @@ export default function ContactRow({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        signalType, pubDate, jobTitle, activeHiringCount, fact, rank, channel, liMode,
+        signalType, pubDate, jobTitle, activeHiringCount, fact, rank, channel, liMode, companyId, clientId,
         vars: { first_name: firstName, company: companyName, market_focus: marketFocus },
       }),
     })

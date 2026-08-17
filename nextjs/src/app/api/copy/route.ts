@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { createHash } from 'crypto';
+import { createClient } from '@supabase/supabase-js';
+
+// Server-side cache (generated_copy table, migration 010) — 2026-08-17: this route
+// was calling the LLM on EVERY contact-row open (7-13s each with the real prompt
+// shape), with nothing persisted — same fact regenerated, paid for, and waited on
+// again every page reload. The AI text is grounded in the COMPANY's fact, not the
+// individual contact ({first_name} is filled in client-side, see ContactRow's
+// activeText()), so one row per (company, channel, li_mode, fact) serves every
+// contact at that company forever, until the underlying signal changes fact_hash.
+const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY, { db: { schema: 'signal_monitoring' } })
+  : null;
+
+function factHash(resolvedKey: string, fact: string, hookContext: string): string {
+  return createHash('md5').update(`${resolvedKey}|${fact}|${hookContext}`).digest('hex');
+}
 
 // Real LinkedIn outreach copy for the frontend's per-contact Outreach panel
 // (Stage 6, docs/HANDOFF_2026-07-19_frontend_build.md). Reads
@@ -34,7 +51,16 @@ const EXAMPLES_PATH = join(process.cwd(), '../pipeline/config/copy_examples.json
 // to the static template below if fact is missing, OPENROUTER_KEY isn't set, or generation
 // fails — never blocks the panel from showing SOMETHING.
 const OPENROUTER_KEY = process.env.OPENROUTER_KEY;
-const HOOK_MODEL = 'openai/gpt-oss-120b';
+// Model swap 2026-08-17: gpt-oss-120b measured 7-13s per call with this route's real
+// prompt shape (5 live timed runs via OpenRouter, CoreWeave/DeepInfra backends) — with
+// the generated_copy cache above that only hits once per company/channel/mode, but the
+// FIRST hit (or any cache miss after a signal changes) still felt broken at that
+// latency. gpt-4o-mini measured 1-3s on the same prompts AND — unlike
+// meta-llama/llama-3.3-70b-instruct, also tested — preserves proper-noun capitalization
+// (company/person names), which llama consistently lowercased (the exact class of bug
+// capitalizeName() in helpers.ts fixes for scraped contact names — must not reintroduce
+// it via the AI copy itself).
+const HOOK_MODEL = 'openai/gpt-4o-mini';
 const HOOK_TEMPERATURE = 0.45;
 const HOOK_BANNED_PHRASES = [
   'clearly prioritizing', 'ideal time', 'perfect time', "let's discuss", 'leverage',
@@ -48,29 +74,36 @@ async function generateHookBridge(company: string, fact: string, context: string
 Company: ${company}
 Real fact: "${fact}"${context ? `\nAdditional real context: ${context}` : ''}
 
-Line 1 (hook): starts lowercase "saw..." or "noticed...", states the SPECIFIC real fact (numbers, names, locations, role titles). If the fact involves MULTIPLE items (several job openings, several outlets, etc.), name AT MOST ONE as a concrete anchor plus a general count ("...alongside a handful of others") — do NOT list every single one, that reads as if you catalogued their page. 12-22 words.
-Line 2 (bridge): ONE sentence connecting that fact to a GENERAL, near-universally-true reason this TYPE of situation creates hiring need. Use ONLY the general mechanism (growth/investment -> needs more leaders to run it; M&A/ownership change -> integration needs leadership; new CEO/leadership appointment -> reshuffle below, NEVER "to align with their vision/agenda" — you don't know what they want; long-open search -> current approach may not be working). Do NOT invent a specific role, department, motive, or reason beyond that general mechanism. 10-18 words.
+hook: starts lowercase "saw..." or "noticed...", states the SPECIFIC real fact (numbers, names, locations, role titles). If the fact involves MULTIPLE items (several job openings, several outlets, etc.), name AT MOST ONE as a concrete anchor plus a general count ("...alongside a handful of others") — do NOT list every single one, that reads as if you catalogued their page. 12-22 words.
+bridge: ONE sentence connecting that fact to a GENERAL, near-universally-true reason this TYPE of situation creates hiring need. Use ONLY the general mechanism (growth/investment -> needs more leaders to run it; M&A/ownership change -> integration needs leadership; new CEO/leadership appointment -> reshuffle below, NEVER "to align with their vision/agenda" — you don't know what they want; long-open search -> current approach may not be working). Do NOT invent a specific role, department, motive, or reason beyond that general mechanism. 10-18 words.
 
 Rules:
 - BANNED words/phrases: ${HOOK_BANNED_PHRASES.join(', ')}, "congrat*", any compliment/celebration framing.
-- Line 2 must NEVER mention "exec search", "someone I know", "I know someone", recruiting, placing, hiring services, or Philippe — that sentence is added separately AFTER yours by a different part of the system.
+- bridge must NEVER mention "exec search", "someone I know", "I know someone", recruiting, placing, hiring services, or Philippe — that sentence is added separately AFTER yours by a different part of the system.
 - No exclamation marks, no emoji, no em-dashes (—) — use a plain hyphen (-) or a period if you need a break.
-- Do NOT include "hey {first_name}" or any greeting — start directly with the hook.
-- Output ONLY: line 1, then line 2, separated by a newline. Nothing else.`;
+- Do NOT include "hey {first_name}" or any greeting in hook — start directly with the fact.
+- Respond with ONLY a JSON object of the exact shape {"hook": "...", "bridge": "..."} — nothing else, no markdown fences.`;
 
   try {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENROUTER_KEY}` },
-      body: JSON.stringify({ model: HOOK_MODEL, temperature: HOOK_TEMPERATURE, messages: [{ role: 'user', content: prompt }] }),
+      body: JSON.stringify({
+        model: HOOK_MODEL, temperature: HOOK_TEMPERATURE,
+        response_format: { type: 'json_object' }, // 2026-08-17: gpt-4o-mini doesn't reliably keep hook/bridge
+        // on two separate newline-delimited lines the way gpt-oss-120b did — found live, every real call was
+        // silently collapsing to the static fallback because the old newline-split parser saw 1 line, not 2.
+        // JSON mode removes the ambiguity entirely instead of trying to parse free-form formatting.
+        messages: [{ role: 'user', content: prompt }],
+      }),
     });
     if (!res.ok) return null;
     const data = await res.json();
     const raw = data.choices?.[0]?.message?.content?.trim();
     if (!raw) return null;
-    const lines = raw.split('\n').map((l: string) => l.trim()).filter(Boolean);
-    if (lines.length < 2) return null;
-    return { hook: lines[0], bridge: lines[1] };
+    const parsed = JSON.parse(raw);
+    if (!parsed.hook || !parsed.bridge) return null;
+    return { hook: String(parsed.hook).trim(), bridge: String(parsed.bridge).trim() };
   } catch {
     return null;
   }
@@ -147,6 +180,8 @@ export async function POST(req: NextRequest) {
     fact?: string | null; hookContext?: string;
     rank?: number | null; vars?: Record<string, string>; liVariant?: string;
     channel?: 'linkedin' | 'email';
+    companyId?: string | null; // cache key — see generated_copy note above
+    clientId?: string | null;
     // liMode (2026-08-17): per-CONTACT choice, not a client-wide config — LinkedIn
     // sometimes disables the note field (weekly invite limits), and not every contact
     // has Open Profile/accepts InMail. 'inmail' skips the connect/accept step entirely,
@@ -160,9 +195,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid JSON body' }, { status: 400 });
   }
 
-  const { signalType, pubDate = null, jobTitle = null, activeHiringCount = 0, fact = null, rank = null, vars = {}, liVariant, channel = 'linkedin', liMode = 'connect_note' } = body;
+  const { signalType, pubDate = null, jobTitle = null, activeHiringCount = 0, fact = null, rank = null, vars = {}, liVariant, channel = 'linkedin', liMode = 'connect_note', companyId = null, clientId = null } = body;
   if (!signalType) return NextResponse.json({ error: 'signalType is required' }, { status: 400 });
   const isDirectMessage = channel === 'email' || liMode === 'inmail'; // no connect/accept gate — one message per stage
+  const liModeKey = channel === 'linkedin' ? liMode : 'na';
 
   // signals.signal_type is only ever the coarse 'HIRING' in the DB — resolve to the real
   // EXEC/MID/STALE/SURGE template key it actually maps to (see resolveHiringTemplateKey's
@@ -189,8 +225,35 @@ export async function POST(req: NextRequest) {
   const SUBJECT = templates._meta?.subject_by_lang?.en || 'someone I\'d like to introduce';
 
   if (fact) {
+    const hash = factHash(resolvedKey, fact, hookContext);
+
+    // Cache read — one row per (company, channel, li_mode, fact) serves every contact
+    // at that company. {first_name} is stored as a literal placeholder (never baked
+    // in), filled client-side by ContactRow's activeText() — see top-of-file note.
+    if (companyId && supabaseAdmin) {
+      const { data: cached } = await supabaseAdmin
+        .from('generated_copy')
+        .select('*')
+        .eq('company_id', companyId)
+        .eq('channel', channel)
+        .eq('li_mode', liModeKey)
+        .eq('fact_hash', hash)
+        .maybeSingle();
+      if (cached) {
+        return NextResponse.json({
+          subject: cached.subject, connect: cached.connect, qualify: cached.qualify,
+          initial: cached.initial, followup: cached.followup, replyQualify: cached.reply_qualify,
+          variantUsed: cached.variant_used, requiredVariables: t.required_variables || [], source: cached.source, cached: true,
+        });
+      }
+    }
+
     const generated = await generateHookBridge(vars.company || '', fact, hookContext);
     if (generated) {
+      // company/market_focus filled, first_name deliberately NOT — see cache note above.
+      const companyVars = { relevant_case: RELEVANT_CASE, company: vars.company || '', market_focus: vars.market_focus || '' };
+      let toCache: Record<string, string | null> = {};
+
       // Direct message (email, or LinkedIn InMail — 2026-08-17): no connect/accept gate
       // to work around, so hook+bridge+positioning+case go out in ONE opener instead of
       // split across two. Same generateHookBridge() call as the connect-based LinkedIn
@@ -201,26 +264,39 @@ export async function POST(req: NextRequest) {
       if (isDirectMessage) {
         const initial = fillPlaceholders(
           `{first_name}, ${generated.hook} - ${liPositioningLine('{market_focus}')}\n\n${generated.bridge}\n\n{relevant_case}\n\nWorth a quick reply?`,
-          { relevant_case: RELEVANT_CASE, ...vars }
+          companyVars
         );
-        const followup = fillPlaceholders(`{first_name} — just floating this back up in case it got buried. Still relevant on your end?`, vars);
+        const followup = `{first_name} — just floating this back up in case it got buried. Still relevant on your end?`;
         const replyQualify = fillPlaceholders(
           `{first_name} — thanks for getting back to me.\n\n${generated.bridge}\n\n{relevant_case}\n\nWorth a quick call this week?`,
-          { relevant_case: RELEVANT_CASE, ...vars }
+          companyVars
         );
-        return NextResponse.json({
-          subject: isDirectMessage ? SUBJECT : undefined,
-          initial, followup, replyQualify, variantUsed, requiredVariables: t.required_variables || [], source: 'ai',
-        });
+        toCache = { subject: SUBJECT, initial, followup, reply_qualify: replyQualify, variant_used: variantUsed, source: 'ai' };
+      } else {
+        const connect = liMode === 'connect_no_note' ? null
+          : fillPlaceholders(`{first_name}, ${generated.hook} - ${liPositioningLine('{market_focus}')} Connect?`, companyVars);
+        const qualifyTemplate = liMode === 'connect_no_note'
+          ? `{first_name} — appreciate the connect.\n\n${generated.hook} -\n${generated.bridge}\n\n{relevant_case}\n\nWorth a quick chat if useful?`
+          : `{first_name} — appreciate the connect.\n\n${generated.bridge}\n\n{relevant_case}\n\nWorth a quick chat if useful?`;
+        const qualify = fillPlaceholders(qualifyTemplate, companyVars);
+        toCache = { connect, qualify, variant_used: variantUsed, source: 'ai' };
       }
 
-      const connect = liMode === 'connect_no_note' ? null
-        : fillPlaceholders(`{first_name}, ${generated.hook} - ${liPositioningLine('{market_focus}')} Connect?`, vars);
-      const qualifyTemplate = liMode === 'connect_no_note'
-        ? `{first_name} — appreciate the connect.\n\n${generated.hook} -\n${generated.bridge}\n\n{relevant_case}\n\nWorth a quick chat if useful?`
-        : `{first_name} — appreciate the connect.\n\n${generated.bridge}\n\n{relevant_case}\n\nWorth a quick chat if useful?`;
-      const qualify = fillPlaceholders(qualifyTemplate, { relevant_case: RELEVANT_CASE, ...vars });
-      return NextResponse.json({ connect, qualify, variantUsed, requiredVariables: t.required_variables || [], source: 'ai' });
+      // Best-effort write — a DB hiccup must never block returning the text that was
+      // already generated. ignoreDuplicates covers the rare race of two contacts at the
+      // same company opening simultaneously and both missing the cache.
+      if (companyId && supabaseAdmin) {
+        supabaseAdmin.from('generated_copy')
+          .upsert({ client_id: clientId, company_id: companyId, channel, li_mode: liModeKey, fact_hash: hash, ...toCache },
+            { onConflict: 'company_id,channel,li_mode,fact_hash', ignoreDuplicates: true })
+          .then(() => {}, () => {});
+      }
+
+      return NextResponse.json({
+        subject: toCache.subject, connect: toCache.connect, qualify: toCache.qualify,
+        initial: toCache.initial, followup: toCache.followup, replyQualify: toCache.reply_qualify,
+        variantUsed, requiredVariables: t.required_variables || [], source: 'ai',
+      });
     }
     // generation failed (no key, network, malformed output) — fall through to static below
   }
