@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import type { Contact, ContactStatus } from "@/lib/types";
-import { avatarColor, initials } from "./helpers";
+import { avatarColor, initials, capitalizeName } from "./helpers";
 
 const STATUSES: { key: ContactStatus; label: string }[] = [
   { key: "new", label: "New" },
@@ -76,7 +76,8 @@ export default function ContactRow({
   const [translated, setTranslated] = useState<{ connect: string | null; qualify: string | null } | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  const firstName = (contact.first_name || contact.full_name || "").split(" ")[0];
+  const firstName = capitalizeName((contact.first_name || contact.full_name || "").split(" ")[0]);
+  const fullName = capitalizeName(contact.full_name);
   const marketFocus = marketFocusForCountry(hqCountry);
   const nativeLang = langForCountry(hqCountry);
   const emailHref = contact.email_status === "verified" && contact.email ? `mailto:${contact.email}` : null;
@@ -192,11 +193,11 @@ export default function ContactRow({
   return (
     <div className="c-row-wrap">
       <div className={`c-row ${contact.is_primary ? "primary" : ""}`} onClick={onToggleOpen}>
-        <div className="c-avatar" style={{ background: avatarColor(contact.full_name || firstName) }}>
-          {initials(contact.full_name || firstName)}
+        <div className="c-avatar" style={{ background: avatarColor(fullName || firstName) }}>
+          {initials(fullName || firstName)}
         </div>
         <div className="c-info">
-          <span className="c-name">{contact.full_name}</span>
+          <span className="c-name">{fullName}</span>
           <span className="c-title">{contact.title || ""}</span>
         </div>
         {statusInline(contact.email_status)}

@@ -28,3 +28,21 @@ export function hostnameLabel(url: string | null): string {
 export function formatEmployees(n: number | null): string | null {
   return n ? `${n.toLocaleString()}p` : null;
 }
+
+// Scraped contact names sometimes come in as all-lowercase ("oliver jaensch") —
+// found live 2026-08-17: this leaked verbatim into the outbound LinkedIn copy
+// text itself ("oliver, saw..."), not just the sidebar display. Title-case every
+// word except lowercase name particles (von/van/de/der/...), which stay lowercase
+// unless they're the first word.
+const NAME_PARTICLES = new Set(["von", "van", "der", "den", "de", "du", "la", "le", "af", "el"]);
+export function capitalizeName(name: string | null | undefined): string {
+  if (!name) return "";
+  return name
+    .split(/\s+/)
+    .map((w, i) => {
+      if (!w) return w;
+      if (i > 0 && NAME_PARTICLES.has(w.toLowerCase())) return w.toLowerCase();
+      return w[0].toUpperCase() + w.slice(1).toLowerCase();
+    })
+    .join(" ");
+}
