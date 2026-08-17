@@ -1,7 +1,7 @@
 "use client";
 import { useState, useMemo } from "react";
 import type { CompanyListItem, ContactStatus, Tier } from "@/lib/types";
-import { avatarColor, initials, formatEmployees, signalTypeLabel, timeAgo } from "./helpers";
+import { avatarColorForCountry, initials, formatEmployees, signalTypeLabel, timeAgo } from "./helpers";
 import { filterCompanies } from "@/lib/filters";
 
 const STATUS_LABELS: Record<ContactStatus, string> = { new: "New", sent: "Sent", replied: "Replied", meeting: "Meeting", pass: "Pass" };
@@ -198,7 +198,7 @@ export default function Sidebar({ companies, selectedId, onSelect, totalTiered, 
               : 0;
             return (
               <div key={c.id} className={`row ${isActive ? "active" : ""}`} onClick={() => onSelect(c.id)}>
-                <div className="row-avatar" style={{ background: avatarColor(c.name) }}>{initials(c.name)}</div>
+                <div className="row-avatar" style={{ background: avatarColorForCountry(c.hq_country, c.name) }}>{initials(c.name)}</div>
                 <div className="row-body">
                   <div className="row-top"><span className="row-name">{c.name}</span></div>
                   <div className="row-meta">{meta}</div>

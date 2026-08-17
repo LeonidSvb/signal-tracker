@@ -9,6 +9,26 @@ export function avatarColor(name: string): string {
   return AVATAR_COLORS[h];
 }
 
+// One color per HQ country (the 7 markets in pipeline/clients/philippe-bosquillon.json's
+// countries list) so scanning the sidebar shows country clusters at a glance — found live
+// 2026-08-17: hash-by-name gave every company a visually unrelated color, no way to spot
+// "these are all DE" without reading the meta line. Colors nod to each flag's most
+// recognizable hue, but picked/shifted for mutual distinctness and white-text contrast —
+// literal flag colors (e.g. NL red, BE yellow, AT red) clash or wash out as an avatar fill.
+const COUNTRY_COLORS: Record<string, string> = {
+  DE: "#1F2937", // black stripe
+  FR: "#2563EB", // bleu
+  NL: "#EA580C", // Dutch orange (more iconically NL than the flag's red)
+  BE: "#CA8A04", // yellow/gold stripe
+  LU: "#38BDF8", // pale blue, kept distinct from FR's blue
+  CH: "#DC2626", // Swiss red
+  AT: "#9F1239", // burgundy, kept distinct from CH's red
+};
+export function avatarColorForCountry(country: string | null, fallbackName: string): string {
+  if (country && COUNTRY_COLORS[country]) return COUNTRY_COLORS[country];
+  return avatarColor(fallbackName);
+}
+
 export function initials(name: string): string {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 }
